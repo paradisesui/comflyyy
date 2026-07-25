@@ -114,7 +114,7 @@ export default function Home() {
             <p className="font-semibold mb-2 flex items-center gap-2 text-slate-100 text-lg" style={{ margin: 0, marginBottom: '8px' }}>
               <span>💡</span> คำแนะนำเฉพาะบุคคล
             </p>
-            <p style={{ color: '#94a3b8', margin: 0, fontSize: '1rem', leading: '1.6' }}>{recommendation}</p>
+            <p style={{ color: '#94a3b8', margin: 0, fontSize: '1rem', lineHeight: '1.6' }}>{recommendation}</p>
           </div>
 
           {/* Action Buttons */}
