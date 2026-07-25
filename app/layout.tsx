@@ -1,9 +1,8 @@
-import Navbar from './components/Navbar';
 import './globals.css';
 
 export const metadata = {
-  title: 'Comflyyy',
-  description: 'Room Quality Score',
+  title: 'Comflyyy - Quality Score',
+  description: 'Room Quality Score Dashboard',
 };
 
 export default function RootLayout({
@@ -13,11 +12,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th">
-      <body className="bg-[#0b0f19] text-white min-h-screen flex flex-col antialiased m-0 p-0">
-        <Navbar />
-        <main className="flex-1 w-full flex flex-col items-center justify-center bg-[#0b0f19]">
-          {children}
-        </main>
+      <body className="bg-[#090d16] text-white min-h-screen flex flex-col justify-center items-center antialiased">
+        {children}
       </body>
     </html>
   );
