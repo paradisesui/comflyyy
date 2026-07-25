@@ -1,6 +1,11 @@
 import Navbar from './components/Navbar';
 import './globals.css';
 
+export const metadata = {
+  title: 'Comflyyy',
+  description: 'Room Quality Score',
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -8,14 +13,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th">
-      <body className="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
-        {/* ใส่ Navbar ตรงนี้ จะได้แสดงผลทุกหน้า */}
+      <body className="bg-[#0b0f19] text-white min-h-screen flex flex-col antialiased">
         <Navbar />
-        
-        {/* children คือเนื้อหาของแต่ละหน้า (เช่น page.tsx) */}
-        <div className="flex-1">
+        <main className="flex-1 w-full flex flex-col items-center justify-center">
           {children}
-        </div>
+        </main>
       </body>
     </html>
   );
