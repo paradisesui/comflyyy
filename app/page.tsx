@@ -10,160 +10,175 @@ export default function Home() {
         backgroundColor: '#090d16',
         minHeight: '100vh',
         width: '100%',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        padding: '40px 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif'
       }}
-      /* เพิ่ม padding รอบขอบจอ (p-6 md:p-14) เพื่อระยะห่างจากขอบสวยงาม */
-      className="flex flex-col justify-between p-6 md:p-14 font-sans max-w-6xl mx-auto"
     >
-      {/* Header ส่วนบนสุด */}
-      <header className="flex items-center justify-between w-full pb-6 border-b border-slate-800/80">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">🌙</span>
-          <h1 className="font-bold text-2xl text-slate-100 tracking-wide" style={{ margin: 0 }}>
-            Comflyyy
-          </h1>
-        </div>
+      <div style={{ maxWidth: '1100px', width: '100%', margin: '0 auto' }}>
         
-        <button 
+        {/* Header ส่วนบนสุด */}
+        <header 
           style={{ 
-            backgroundColor: '#1e293b', 
-            borderColor: '#334155',
-            width: '44px',
-            height: '44px',
-            borderRadius: '9999px',
-            borderWidth: '1px',
-            borderStyle: 'solid'
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            paddingBottom: '20px', 
+            borderBottom: '1px solid #1e293b',
+            marginBottom: '40px'
           }}
-          className="transition cursor-pointer flex items-center justify-center p-0 hover:bg-slate-700 hover:scale-105 active:scale-95"
         >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="22" 
-            height="22" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor" 
-            style={{ color: '#cbd5e1', width: '22px', height: '22px' }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '28px' }}>🌙</span>
+            <h1 style={{ fontWeight: 'bold', fontSize: '24px', color: '#f8fafc', margin: 0, tracking: '0.05em' }}>
+              Comflyyy
+            </h1>
+          </div>
+          
+          <button 
+            style={{ 
+              backgroundColor: '#1e293b', 
+              borderColor: '#334155',
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-        </button>
-      </header>
-
-      {/* Main Grid Content */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 my-auto py-10 items-center">
-        
-        {/* Left Side: Score Display */}
-        <div 
-          style={{
-            backgroundColor: '#0f172a',
-            borderColor: '#1e293b',
-            borderRadius: '1.75rem',
-            borderWidth: '1px',
-            borderStyle: 'solid'
-          }}
-          className="p-8 md:p-10 shadow-2xl flex flex-col items-center justify-center text-center transition hover:border-slate-700"
-        >
-          <div className="relative w-64 h-64 flex items-center justify-center">
-            <svg className="-rotate-90 transform" width="240" height="240" viewBox="0 0 100 100" style={{ width: '240px', height: '240px' }}>
-              <circle
-                cx="50"
-                cy="50"
-                r="42"
-                stroke="#1e293b"
-                strokeWidth="7.5"
-                fill="transparent"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="42"
-                stroke="#10b981"
-                strokeWidth="7.5"
-                strokeDasharray="263.89"
-                strokeDashoffset="15"
-                strokeLinecap="round"
-                fill="transparent"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: '#cbd5e1' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-6xl font-black text-white tracking-tight" style={{ fontWeight: 900, fontSize: '3.5rem' }}>97%</span>
-              <span className="text-xs font-semibold tracking-widest mt-1 uppercase" style={{ color: '#94a3b8' }}>ROOM SCORE</span>
+          </button>
+        </header>
+
+        {/* Layout แบ่ง 2 ฝั่ง (ซ้าย-ขวา) บนจอคอม */}
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+            gap: '32px',
+            alignItems: 'center'
+          }}
+        >
+          
+          {/* ฝั่งซ้าย: วงกลมแสดงคะแนน */}
+          <div 
+            style={{
+              backgroundColor: '#0f172a',
+              borderColor: '#1e293b',
+              borderRadius: '24px',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              padding: '40px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <div style={{ position: 'relative', width: '240px', height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg transform="rotate(-90)" width="240" height="240" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" stroke="#1e293b" strokeWidth="7.5" fill="transparent" />
+                <circle cx="50" cy="50" r="42" stroke="#10b981" strokeWidth="7.5" strokeDasharray="263.89" strokeDashoffset="15" strokeLinecap="round" fill="transparent" />
+              </svg>
+              <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <span style={{ fontWeight: 900, fontSize: '56px', color: '#ffffff', leading: 1 }}>97%</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', letterSpacing: '2px', marginTop: '4px' }}>ROOM SCORE</span>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+              <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>ระดับคุณภาพห้องนอน</p>
+              <h2 style={{ fontSize: '32px', fontWeight: 800, color: '#34d399', margin: '6px 0 0 0' }}>{level}</h2>
             </div>
           </div>
 
-          <div className="mt-5">
-            <p className="text-sm font-medium" style={{ color: '#94a3b8', margin: 0 }}>ระดับคุณภาพห้องนอน</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-wide mt-1.5" style={{ color: '#34d399', fontWeight: 800, margin: 0 }}>{level}</h2>
-          </div>
-        </div>
-
-        {/* Right Side: AI Box & Action Buttons */}
-        <div className="flex flex-col space-y-7 justify-center">
-          
-          {/* Recommendation */}
-          <div 
-            style={{ 
-              backgroundColor: '#0f172a', 
-              borderColor: '#1e293b', 
-              borderRadius: '1.75rem',
-              borderWidth: '1px',
-              borderStyle: 'solid'
-            }}
-            className="p-7 text-left shadow-2xl transition hover:border-slate-700"
-          >
-            <p className="font-semibold mb-2.5 flex items-center gap-2 text-slate-100 text-lg" style={{ margin: 0, marginBottom: '10px' }}>
-              <span>💡</span> คำแนะนำเฉพาะบุคคล
-            </p>
-            <p style={{ color: '#94a3b8', margin: 0, fontSize: '1.025rem', lineHeight: '1.65' }}>{recommendation}</p>
-          </div>
-
-          {/* Action Buttons Container - ปรับระยะห่างระหว่างปุ่ม (gap-4) และเพิ่มเอฟเฟกต์สวยงาม */}
-          <div className="space-y-4 flex flex-col gap-4 pt-2">
+          {/* ฝั่งขวา: คำแนะนำ + ปุ่มกด */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
-            {/* ปุ่มดูคะแนนเพิ่มเติม (Emerald Modern Glow) */}
-            <button
-              onClick={() => alert('ไปยังหน้าดูคะแนนเซนเซอร์และกราฟ')}
-              style={{ 
-                backgroundColor: '#10b981', 
-                color: '#020617', 
-                borderRadius: '1rem',
-                padding: '18px 24px',
-                border: 'none',
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                boxShadow: '0 10px 25px -5px rgba(16, 185, 129, 0.25)'
-              }}
-              className="w-full transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer hover:bg-emerald-400 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]"
-            >
-              <span>ดูคะแนนเพิ่มเติม</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
-
-            {/* ปุ่มประวัติการใช้งาน (Slate Outline Dark) */}
-            <button
-              onClick={() => alert('ไปยังหน้าประวัติการใช้งานและข้อมูล Persona')}
+            {/* Box คำแนะนำ */}
+            <div 
               style={{ 
                 backgroundColor: '#0f172a', 
-                borderColor: '#334155', 
-                color: '#f1f5f9', 
-                borderRadius: '1rem',
-                padding: '18px 24px',
+                borderColor: '#1e293b', 
+                borderRadius: '24px',
                 borderWidth: '1px',
                 borderStyle: 'solid',
-                fontSize: '1.1rem',
-                fontWeight: 600,
-                boxShadow: '0 8px 20px -5px rgba(0, 0, 0, 0.3)'
+                padding: '28px',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
               }}
-              className="w-full transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer hover:bg-slate-800/90 hover:border-slate-500 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]"
             >
-              <span>ประวัติการใช้งาน</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20" fill="currentColor" style={{ color: '#94a3b8' }}>
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-            </button>
+              <p style={{ fontWeight: 600, fontSize: '18px', color: '#f1f5f9', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>💡</span> คำแนะนำเฉพาะบุคคล
+              </p>
+              <p style={{ color: '#94a3b8', margin: 0, fontSize: '16px', lineHeight: '1.6' }}>{recommendation}</p>
+            </div>
+
+            {/* กล่องปุ่มกด (มีระยะห่างปุ่ม 16px ชัดเจน) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {/* ปุ่มดูคะแนนเพิ่มเติม */}
+              <button
+                onClick={() => alert('ไปยังหน้าดูคะแนนเซนเซอร์และกราฟ')}
+                style={{ 
+                  backgroundColor: '#10b981', 
+                  color: '#020617', 
+                  borderRadius: '16px',
+                  padding: '18px 24px',
+                  border: 'none',
+                  fontSize: '17px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.3)'
+                }}
+              >
+                <span>ดูคะแนนเพิ่มเติม</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+              {/* ปุ่มประวัติการใช้งาน */}
+              <button
+                onClick={() => alert('ไปยังหน้าประวัติการใช้งานและข้อมูล Persona')}
+                style={{ 
+                  backgroundColor: '#0f172a', 
+                  borderColor: '#334155', 
+                  color: '#f8fafc', 
+                  borderRadius: '16px',
+                  padding: '18px 24px',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  fontSize: '17px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px'
+                }}
+              >
+                <span>ประวัติการใช้งาน</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20" fill="currentColor" style={{ color: '#94a3b8' }}>
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+            </div>
 
           </div>
 
