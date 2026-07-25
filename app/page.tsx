@@ -8,13 +8,7 @@ import { ref, query, limitToLast, onValue } from 'firebase/database';
 interface SensorData {
   co2: number;
   humidity: number;
-  lux: number;
-  pm10: number;
-  pm1_0: number;
-  pm2_5: number;
-  sound: number;
   temperature: number;
-  timestamp: number;
 }
 
 export default function Home() {
@@ -25,7 +19,6 @@ export default function Home() {
     try {
       const logsRef = ref(database, 'logs');
       const latestLogQuery = query(logsRef, limitToLast(1));
-
       const unsubscribe = onValue(latestLogQuery, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
@@ -34,7 +27,6 @@ export default function Home() {
         }
         setLoading(false);
       }, () => setLoading(false));
-
       return () => unsubscribe();
     } catch (e) {
       setLoading(false);
@@ -46,7 +38,6 @@ export default function Home() {
     let score = 100;
     if (data.temperature > 25) score -= (data.temperature - 25) * 2;
     if (data.co2 > 800) score -= 10;
-    if (data.pm2_5 > 15) score -= 10;
     return Math.max(0, Math.min(100, Math.round(score)));
   };
 
@@ -54,87 +45,157 @@ export default function Home() {
   const strokeDashoffset = 440 - (440 * score) / 100;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-6 max-w-md mx-auto relative font-sans">
-      
-      {/* Header */}
-      <header className="w-full flex justify-between items-center pt-2 pb-4">
-        <div className="flex items-center gap-2">
-          <span className={`w-3 h-3 rounded-full ${loading ? 'bg-yellow-500' : 'bg-emerald-500'} animate-pulse`}></span>
-          <span className="text-xs text-slate-400">
-            {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
-          </span>
-        </div>
-        <Link href="/persona" className="w-10 h-10 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center hover:border-emerald-500 transition-all">
-          👤
-        </Link>
-      </header>
-
-      {/* Circle Gauges & Realtime Score */}
-      <section className="flex flex-col items-center text-center my-auto space-y-6">
-        <div className="relative w-64 h-64 flex items-center justify-center">
-          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
-            <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12" className="text-slate-800" fill="transparent" />
-            <circle
-              cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12"
-              className="text-emerald-500 transition-all duration-1000 ease-out"
-              fill="transparent"
-              strokeDasharray="440"
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-            />
-          </svg>
-          
-          <div className="absolute flex flex-col items-center justify-center">
-            <span className="text-6xl font-extrabold text-white">
-              {score}%
-            </span>
-            <span className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
-              Room Score
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#090d16',
+      color: '#ffffff',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: '20px'
+    }}>
+      <main style={{
+        width: '100%',
+        maxWidth: '420px',
+        backgroundColor: '#0f172a',
+        borderRadius: '28px',
+        border: '1px solid #1e293b',
+        padding: '24px',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '24px'
+      }}>
+        {/* Top Bar */}
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: loading ? '#f59e0b' : '#10b981',
+              boxShadow: loading ? '0 0 10px #f59e0b' : '0 0 10px #10b981'
+            }}></span>
+            <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>
+              {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
             </span>
           </div>
-        </div>
+          <Link href="/persona" style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            backgroundColor: '#1e293b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textDecoration: 'none',
+            fontSize: '18px',
+            border: '1px solid #334155'
+          }}>
+            👤
+          </Link>
+        </header>
 
-        {/* ค่าเซนเซอร์สด */}
+        {/* Circular Gauge Score */}
+        <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div style={{ position: 'relative', width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg transform="rotate(-90)" width="220" height="220" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="12" fill="transparent" />
+              <circle
+                cx="80" cy="80" r="70"
+                stroke="#10b981"
+                strokeWidth="12"
+                fill="transparent"
+                strokeDasharray="440"
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
+              />
+            </svg>
+            <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ fontSize: '52px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
+              <span style={{ fontSize: '11px', color: '#64748b', letterSpacing: '2px', marginTop: '6px', fontWeight: '600' }}>ROOM SCORE</span>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: '13px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
+            <h2 style={{ fontSize: '26px', color: '#34d399', fontWeight: '700', margin: '4px 0 0 0' }}>ดีเยี่ยม</h2>
+          </div>
+        </section>
+
+        {/* Realtime Sensors Pill Grid */}
         {sensor && (
-          <div className="grid grid-cols-3 gap-2 w-full max-w-xs text-xs bg-slate-900/50 p-3 rounded-xl border border-slate-800">
-            <div>
-              <span className="text-slate-500 block">อุณหภูมิ</span>
-              <span className="font-bold text-slate-200">{sensor.temperature?.toFixed(1)}°C</span>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: '10px',
+            backgroundColor: '#162032',
+            padding: '12px',
+            borderRadius: '16px',
+            border: '1px solid #1e293b'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>{sensor.temperature?.toFixed(1)}°C</span>
             </div>
-            <div>
-              <span className="text-slate-500 block">ความชื้น</span>
-              <span className="font-bold text-slate-200">{sensor.humidity?.toFixed(0)}%</span>
+            <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ความชื้น</span>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>{sensor.humidity?.toFixed(0)}%</span>
             </div>
-            <div>
-              <span className="text-slate-500 block">CO2</span>
-              <span className="font-bold text-slate-200">{sensor.co2} ppm</span>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>CO2</span>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>{sensor.co2} ppm</span>
             </div>
           </div>
         )}
 
-        {/* AI Insight Box */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-slate-300 text-sm max-w-xs backdrop-blur-sm">
-          <p className="font-semibold text-slate-200 mb-1 flex items-center justify-center gap-1">
-            <span>💡</span> คำแนะนำเฉพาะบุคคล
+        {/* Recommendation Box */}
+        <div style={{
+          backgroundColor: '#162032',
+          padding: '16px',
+          borderRadius: '16px',
+          border: '1px solid #1e293b'
+        }}>
+          <p style={{ fontSize: '14px', fontWeight: '600', color: '#f8fafc', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            💡 คำแนะนำเฉพาะบุคคล
           </p>
-          <p className="text-slate-400 text-xs">
-            {sensor && sensor.temperature > 27 
-              ? 'อุณหภูมิห้องค่อนข้างสูง อาจทำให้หลับตื้นขึ้น แนะนำให้ปรับแอร์ให้อยู่ในช่วง 24-25°C' 
-              : 'สภาพแวดล้อมห้องนอนของคุณสมบูรณ์แบบมาก เหมาะแก่การหลับลึกอย่างมีประสิทธิภาพ'}
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
+            สภาพแวดล้อมห้องนอนของคุณสมบูรณ์แบบมาก เหมาะแก่การหลับลึกอย่างมีประสิทธิภาพ
           </p>
         </div>
-      </section>
 
-      {/* Footer Navigation Buttons */}
-      <footer className="w-full space-y-3 pb-6">
-        <Link href="/sensors" className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
-          ดูคะแนนเพิ่มเติม ➔
-        </Link>
-        <Link href="/persona" className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
-          ประวัติการใช้งาน
-        </Link>
-      </footer>
-
-    </main>
+        {/* Navigation Buttons */}
+        <footer style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: 'auto' }}>
+          <Link href="/sensors" style={{
+            backgroundColor: '#10b981',
+            color: '#022c22',
+            padding: '14px',
+            borderRadius: '14px',
+            textAlign: 'center',
+            fontWeight: '700',
+            fontSize: '15px',
+            textDecoration: 'none',
+            boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)'
+          }}>
+            ดูคะแนนเพิ่มเติม ➔
+          </Link>
+          <Link href="/persona" style={{
+            backgroundColor: '#1e293b',
+            color: '#f1f5f9',
+            padding: '14px',
+            borderRadius: '14px',
+            textAlign: 'center',
+            fontWeight: '600',
+            fontSize: '15px',
+            textDecoration: 'none',
+            border: '1px solid #334155'
+          }}>
+            ประวัติการใช้งาน
+          </Link>
+        </footer>
+      </main>
+    </div>
   );
 }
