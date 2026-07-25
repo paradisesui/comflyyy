@@ -1,15 +1,15 @@
 'use client';
 
-const level = "ดีเยี่ยม";
-const recommendation = "สภาพแวดล้อมห้องนอนของคุณสมบูรณ์แบบมาก เหมาะแก่การหลับลึกอย่างมีประสิทธิภาพ";
-
 export default function Home() {
+  const level = "ดีเยี่ยม";
+  const recommendation = "สภาพแวดล้อมห้องนอนของคุณสมบูรณ์แบบมาก เหมาะแก่การหลับลึกอย่างมีประสิทธิภาพ";
+
   return (
-    <div className="w-full min-h-screen bg-[#0b0f19] text-white flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto">
+    <div className="w-full min-h-screen bg-[#0b0f19] text-white flex flex-col justify-between p-4 md:p-8 max-w-5xl mx-auto font-sans">
       
       {/* Header ส่วนโปรไฟล์ด้านบน */}
-      <div className="w-full flex justify-end">
-        <button className="bg-slate-800/80 p-2.5 rounded-full border border-slate-700/60 hover:bg-slate-700 transition shadow-md">
+      <div className="w-full flex justify-end pt-2">
+        <button className="bg-slate-800/80 p-2.5 rounded-full border border-slate-700 hover:bg-slate-700 transition shadow-md cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
@@ -17,7 +17,7 @@ export default function Home() {
       </div>
 
       {/* Main Content Area */}
-      <div className="w-full flex flex-col items-center justify-center space-y-6 md:space-y-8 my-auto py-6">
+      <div className="w-full flex flex-col items-center justify-center my-auto py-8 space-y-6">
         
         {/* Circle Score Display */}
         <div className="relative flex items-center justify-center">
@@ -27,7 +27,7 @@ export default function Home() {
                 cx="50"
                 cy="50"
                 r="42"
-                className="stroke-slate-800"
+                stroke="#1e293b"
                 strokeWidth="8"
                 fill="transparent"
               />
@@ -35,7 +35,7 @@ export default function Home() {
                 cx="50"
                 cy="50"
                 r="42"
-                className="stroke-emerald-500"
+                stroke="#10b981"
                 strokeWidth="8"
                 strokeDasharray="263.89"
                 strokeDashoffset="15"
@@ -57,7 +57,7 @@ export default function Home() {
         </div>
 
         {/* AI Recommendation Box */}
-        <div className="w-full max-w-xl bg-slate-900/90 border border-slate-800 rounded-2xl p-5 md:p-6 text-slate-300 text-sm md:text-base leading-relaxed shadow-xl text-center backdrop-blur-sm">
+        <div className="w-full max-w-xl bg-slate-900/90 border border-slate-800 rounded-2xl p-5 md:p-6 text-slate-300 text-sm md:text-base leading-relaxed shadow-xl text-center">
           <p className="font-semibold text-slate-200 mb-1.5 flex items-center justify-center gap-2">
             <span>💡</span> คำแนะนำเฉพาะบุคคล
           </p>
@@ -67,10 +67,10 @@ export default function Home() {
       </div>
 
       {/* Footer Action Buttons */}
-      <footer className="w-full max-w-xl mx-auto space-y-3 pt-4 pb-6">
+      <footer className="w-full max-w-xl mx-auto space-y-3 pb-6">
         <button
           onClick={() => alert('ไปยังหน้าดูคะแนนเซนเซอร์และกราฟ')}
-          className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+          className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
         >
           <span>ดูคะแนนเพิ่มเติม</span>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -80,7 +80,7 @@ export default function Home() {
 
         <button
           onClick={() => alert('ไปยังหน้าประวัติการใช้งานและข้อมูล Persona')}
-          className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+          className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
         >
           <span>ประวัติการใช้งาน</span>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
