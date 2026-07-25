@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Comflyyy - Quality Score',
+  title: 'Comflyyy - Room Score',
   description: 'Room Quality Score Dashboard',
 };
 
@@ -12,7 +12,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th">
-      <body className="bg-[#090d16] text-white min-h-screen flex flex-col justify-center items-center antialiased">
+      <body 
+        style={{ backgroundColor: '#090d16', margin: 0, padding: 0 }}
+        className="min-h-screen w-full flex items-center justify-center font-sans"
+      >
         {children}
       </body>
     </html>
