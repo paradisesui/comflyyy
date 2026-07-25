@@ -15,6 +15,9 @@ export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // ข้อมูลสมมติชั่วโมงการนอน (หรือดึงจาก Database)
+  const sleepHours = "7 ชม. 45 นาที"; 
+
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
@@ -65,7 +68,7 @@ export default function Home() {
         boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '24px'
+        gap: '20px'
       }}>
         {/* Top Bar */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -81,7 +84,8 @@ export default function Home() {
               {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
             </span>
           </div>
-          <Link href="/persona" style={{
+          {/* ลิงก์ไปยังหน้า Account */}
+          <Link href="/account" style={{
             width: '40px',
             height: '40px',
             borderRadius: '50%',
@@ -98,9 +102,9 @@ export default function Home() {
         </header>
 
         {/* Circular Gauge Score */}
-        <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-          <div style={{ position: 'relative', width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg transform="rotate(-90)" width="220" height="220" viewBox="0 0 160 160">
+        <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <div style={{ position: 'relative', width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg transform="rotate(-90)" width="200" height="200" viewBox="0 0 160 160">
               <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="12" fill="transparent" />
               <circle
                 cx="80" cy="80" r="70"
@@ -114,16 +118,38 @@ export default function Home() {
               />
             </svg>
             <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <span style={{ fontSize: '52px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
-              <span style={{ fontSize: '11px', color: '#64748b', letterSpacing: '2px', marginTop: '6px', fontWeight: '600' }}>ROOM SCORE</span>
+              <span style={{ fontSize: '48px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
+              <span style={{ fontSize: '10px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '600' }}>ROOM SCORE</span>
             </div>
           </div>
 
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '13px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-            <h2 style={{ fontSize: '26px', color: '#34d399', fontWeight: '700', margin: '4px 0 0 0' }}>ดีเยี่ยม</h2>
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
+            <h2 style={{ fontSize: '24px', color: '#34d399', fontWeight: '700', margin: '2px 0 0 0' }}>ดีเยี่ยม</h2>
           </div>
         </section>
+
+        {/* 🛏️ เพิ่มแถบแสดงชั่วโมงการนอน */}
+        <div style={{
+          backgroundColor: '#162032',
+          padding: '12px 16px',
+          borderRadius: '16px',
+          border: '1px solid #1e293b',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '20px' }}>🌙</span>
+            <div>
+              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ระยะเวลาการนอนคืนนี้</span>
+              <span style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc' }}>{sleepHours}</span>
+            </div>
+          </div>
+          <span style={{ fontSize: '11px', color: '#10b981', backgroundColor: '#10b98115', padding: '4px 8px', borderRadius: '8px', border: '1px solid #10b98130' }}>
+            เพียงพอ
+          </span>
+        </div>
 
         {/* Realtime Sensors Pill Grid */}
         {sensor && (
@@ -151,44 +177,28 @@ export default function Home() {
           </div>
         )}
 
-        {/* Recommendation Box */}
-        <div style={{
-          backgroundColor: '#162032',
-          padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid #1e293b'
-        }}>
-          <p style={{ fontSize: '14px', fontWeight: '600', color: '#f8fafc', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            💡 คำแนะนำเฉพาะบุคคล
-          </p>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
-            สภาพแวดล้อมห้องนอนของคุณสมบูรณ์แบบมาก เหมาะแก่การหลับลึกอย่างมีประสิทธิภาพ
-          </p>
-        </div>
-
         {/* Navigation Buttons */}
-        <footer style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: 'auto' }}>
+        <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
           <Link href="/sensors" style={{
             backgroundColor: '#10b981',
             color: '#022c22',
-            padding: '14px',
+            padding: '12px',
             borderRadius: '14px',
             textAlign: 'center',
             fontWeight: '700',
-            fontSize: '15px',
-            textDecoration: 'none',
-            boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)'
+            fontSize: '14px',
+            textDecoration: 'none'
           }}>
             ดูคะแนนเพิ่มเติม ➔
           </Link>
           <Link href="/persona" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '14px',
+            padding: '12px',
             borderRadius: '14px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '15px',
+            fontSize: '14px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
