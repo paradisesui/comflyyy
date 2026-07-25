@@ -12,30 +12,30 @@ export default function Home() {
         width: '100%',
         boxSizing: 'border-box'
       }}
-      className="flex items-center justify-center p-4 md:p-6 font-sans"
+      className="flex items-center justify-center p-4 md:p-10 font-sans"
     >
-      {/* Dashboard Card Container - ล็อกความกว้าง max-w-md เพื่อความสวยงาม */}
+      {/* Dashboard Card - ปรับความกว้างให้ใหญ่ขึ้นเป็น max-w-2xl (672px) */}
       <div 
         style={{
           backgroundColor: '#0f172a',
           borderColor: '#1e293b',
-          borderRadius: '1.5rem',
+          borderRadius: '1.75rem',
           borderWidth: '1px',
           borderStyle: 'solid',
-          maxWidth: '440px',
+          maxWidth: '680px',
           width: '100%'
         }}
-        className="p-6 md:p-8 shadow-2xl flex flex-col space-y-6"
+        className="p-8 md:p-10 shadow-2xl flex flex-col space-y-8"
       >
         
         {/* Header ส่วนบนของการ์ด */}
         <div 
           style={{ borderBottomColor: '#1e293b', borderBottomWidth: '1px', borderBottomStyle: 'solid' }}
-          className="flex items-center justify-between w-full pb-3"
+          className="flex items-center justify-between w-full pb-4"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🌙</span>
-            <h1 className="font-bold text-lg text-slate-100 tracking-wide" style={{ margin: 0, fontSize: '1.125rem' }}>
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">🌙</span>
+            <h1 className="font-bold text-xl text-slate-100 tracking-wide" style={{ margin: 0 }}>
               Comflyyy
             </h1>
           </div>
@@ -44,8 +44,8 @@ export default function Home() {
             style={{ 
               backgroundColor: '#1e293b', 
               borderColor: '#334155',
-              width: '40px',
-              height: '40px',
+              width: '44px',
+              height: '44px',
               borderRadius: '9999px',
               borderWidth: '1px',
               borderStyle: 'solid'
@@ -54,28 +54,28 @@ export default function Home() {
           >
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
-              width="20" 
-              height="20" 
+              width="22" 
+              height="22" 
               fill="none" 
               viewBox="0 0 24 24" 
               stroke="currentColor" 
-              style={{ color: '#cbd5e1', width: '20px', height: '20px' }}
+              style={{ color: '#cbd5e1', width: '22px', height: '22px' }}
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </button>
         </div>
 
-        {/* Circle Score Display */}
+        {/* Circle Score Display - ขยายวงกลมคะแนนให้ใหญ่เต็มตา */}
         <div className="flex flex-col items-center justify-center my-2">
-          <div className="relative w-48 h-48 flex items-center justify-center">
-            <svg className="-rotate-90 transform" width="190" height="190" viewBox="0 0 100 100" style={{ width: '190px', height: '190px' }}>
+          <div className="relative w-60 h-60 md:w-64 md:h-64 flex items-center justify-center">
+            <svg className="-rotate-90 transform" width="240" height="240" viewBox="0 0 100 100" style={{ width: '240px', height: '240px' }}>
               <circle
                 cx="50"
                 cy="50"
                 r="42"
                 stroke="#1e293b"
-                strokeWidth="7"
+                strokeWidth="7.5"
                 fill="transparent"
               />
               <circle
@@ -83,7 +83,7 @@ export default function Home() {
                 cy="50"
                 r="42"
                 stroke="#10b981"
-                strokeWidth="7"
+                strokeWidth="7.5"
                 strokeDasharray="263.89"
                 strokeDashoffset="15"
                 strokeLinecap="round"
@@ -91,15 +91,15 @@ export default function Home() {
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-4xl font-black text-white tracking-tight" style={{ fontWeight: 900, fontSize: '2.5rem' }}>97%</span>
-              <span className="text-xs font-semibold tracking-widest mt-1 uppercase" style={{ color: '#94a3b8', fontSize: '0.75rem' }}>ROOM SCORE</span>
+              <span className="text-6xl font-black text-white tracking-tight" style={{ fontWeight: 900, fontSize: '3.5rem' }}>97%</span>
+              <span className="text-xs md:text-sm font-semibold tracking-widest mt-1 uppercase" style={{ color: '#94a3b8' }}>ROOM SCORE</span>
             </div>
           </div>
 
           {/* Level Label */}
-          <div className="text-center mt-3">
-            <p className="text-xs font-medium" style={{ color: '#94a3b8', margin: 0 }}>ระดับคุณภาพห้องนอน</p>
-            <h2 className="text-2xl font-extrabold tracking-wide mt-1" style={{ color: '#34d399', fontWeight: 800, margin: 0 }}>{level}</h2>
+          <div className="text-center mt-4">
+            <p className="text-sm font-medium" style={{ color: '#94a3b8', margin: 0 }}>ระดับคุณภาพห้องนอน</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-wide mt-1" style={{ color: '#34d399', fontWeight: 800, margin: 0 }}>{level}</h2>
           </div>
         </div>
 
@@ -108,35 +108,35 @@ export default function Home() {
           style={{ 
             backgroundColor: '#162032', 
             borderColor: '#1e293b', 
-            borderRadius: '1rem',
+            borderRadius: '1.25rem',
             borderWidth: '1px',
             borderStyle: 'solid'
           }}
-          className="w-full p-4 text-sm leading-relaxed text-center"
+          className="w-full p-5 text-base leading-relaxed text-center shadow-inner"
         >
-          <p className="font-semibold mb-1.5 flex items-center justify-center gap-1.5 text-slate-200" style={{ margin: 0, marginBottom: '6px' }}>
+          <p className="font-semibold mb-2 flex items-center justify-center gap-2 text-slate-100 text-base" style={{ margin: 0, marginBottom: '8px' }}>
             <span>💡</span> คำแนะนำเฉพาะบุคคล
           </p>
-          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.875rem' }}>{recommendation}</p>
+          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.975rem' }}>{recommendation}</p>
         </div>
 
         {/* Footer Action Buttons */}
-        <div className="w-full space-y-2.5 pt-2 flex flex-col gap-2.5">
+        <div className="w-full space-y-3 pt-2 flex flex-col gap-3">
           <button
             onClick={() => alert('ไปยังหน้าดูคะแนนเซนเซอร์และกราฟ')}
             style={{ 
               backgroundColor: '#10b981', 
               color: '#020617', 
-              borderRadius: '0.75rem',
-              padding: '12px 16px',
+              borderRadius: '0.875rem',
+              padding: '14px 20px',
               border: 'none',
-              fontSize: '0.95rem',
+              fontSize: '1.05rem',
               fontWeight: 'bold'
             }}
             className="w-full transition-all flex items-center justify-center gap-2 cursor-pointer hover:opacity-90 active:scale-[0.99]"
           >
             <span>ดูคะแนนเพิ่มเติม</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor" style={{ width: '18px', height: '18px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
           </button>
@@ -147,17 +147,17 @@ export default function Home() {
               backgroundColor: '#1e293b', 
               borderColor: '#334155', 
               color: '#e2e8f0', 
-              borderRadius: '0.75rem',
-              padding: '12px 16px',
+              borderRadius: '0.875rem',
+              padding: '14px 20px',
               borderWidth: '1px',
               borderStyle: 'solid',
-              fontSize: '0.95rem',
+              fontSize: '1.05rem',
               fontWeight: 600
             }}
             className="w-full transition-all flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-700 active:scale-[0.99]"
           >
             <span>ประวัติการใช้งาน</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="currentColor" style={{ color: '#94a3b8', width: '18px', height: '18px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style={{ color: '#94a3b8' }}>
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
             </svg>
           </button>
