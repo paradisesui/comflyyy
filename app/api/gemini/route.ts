@@ -4,12 +4,11 @@ export async function POST(req: Request) {
   try {
     const { sensorData } = await req.json();
 
-    // ดึง API Key
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ไม่พบ API Key ในระบบ กรุณาตรวจสอบ .env.local หรือ Vercel' },
+        { error: 'ไม่พบ API Key ในระบบ' },
         { status: 500 }
       );
     }
@@ -27,8 +26,9 @@ export async function POST(req: Request) {
 1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
 2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
 
+    // ใช้ gemini-2.5-flash บน REST API v1
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      // หากติด Rate Limit / Exceeded Quota (429) ให้แสดงข้อความแนะนำสำรองภาษาไทยแทนหน้าต่าง Error
+      // ดักจับกรณี Rate Limit / Quota Exceeded (429) ให้แสดงข้อความแนะนำแทน Error ชนวน
       if (response.status === 429) {
         return NextResponse.json({
           result: '✨ สภาพแวดล้อมห้องนอนตอนนี้อยู่ในเกณฑ์ดีครับ อุณหภูมิและความชื้นเหมาะสมแก่การนอนหลับพักผ่อน'
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json(
-        { error: data.error?.message || 'ไม่สามารถดึงข้อมูลจาก Gemini ได้ในขณะนี้' },
+        { error: data.error?.message || 'ไม่สามารถเชื่อมต่อ Gemini AI ได้' },
         { status: response.status }
       );
     }
