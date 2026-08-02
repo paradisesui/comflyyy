@@ -8,15 +8,18 @@ import { ref, query, limitToLast, onValue } from 'firebase/database';
 interface SensorData {
   co2: number;
   humidity: number;
+  lux: number;
+  pm10: number;
+  pm1_0: number;
+  pm2_5: number;
+  sound: number;
   temperature: number;
+  timestamp: number;
 }
 
 export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-
-  // ข้อมูลสมมติชั่วโมงการนอน (หรือดึงจาก Database)
-  const sleepHours = "7 ชม. 45 นาที"; 
 
   useEffect(() => {
     try {
@@ -36,12 +39,15 @@ export default function Home() {
     }
   }, []);
 
+  // คำนวณ Room Score จากค่าสด
   const calculateScore = (data: SensorData | null) => {
     if (!data) return 97;
     let score = 100;
-    if (data.temperature > 25) score -= (data.temperature - 25) * 2;
+    if (data.temperature > 25) score -= Math.round((data.temperature - 25) * 2);
     if (data.co2 > 800) score -= 10;
-    return Math.max(0, Math.min(100, Math.round(score)));
+    if (data.pm2_5 > 15) score -= 10;
+    if (data.sound > 1000) score -= 5;
+    return Math.max(0, Math.min(100, score));
   };
 
   const score = calculateScore(sensor);
@@ -84,7 +90,6 @@ export default function Home() {
               {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
             </span>
           </div>
-          {/* ลิงก์ไปยังหน้า Account */}
           <Link href="/account" style={{
             width: '40px',
             height: '40px',
@@ -101,14 +106,14 @@ export default function Home() {
           </Link>
         </header>
 
-        {/* Circular Gauge Score */}
+        {/* Circular Score */}
         <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
           <div style={{ position: 'relative', width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg transform="rotate(-90)" width="200" height="200" viewBox="0 0 160 160">
               <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="12" fill="transparent" />
               <circle
                 cx="80" cy="80" r="70"
-                stroke="#10b981"
+                stroke={score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444'}
                 strokeWidth="12"
                 fill="transparent"
                 strokeDasharray="440"
@@ -125,59 +130,62 @@ export default function Home() {
 
           <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-            <h2 style={{ fontSize: '24px', color: '#34d399', fontWeight: '700', margin: '2px 0 0 0' }}>ดีเยี่ยม</h2>
+            <h2 style={{ fontSize: '24px', color: score >= 80 ? '#34d399' : '#f59e0b', fontWeight: '700', margin: '2px 0 0 0' }}>
+              {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
+            </h2>
           </div>
         </section>
 
-        {/* 🛏️ เพิ่มแถบแสดงชั่วโมงการนอน */}
+        {/* Realtime Sensors Preview Grid */}
         <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gap: '10px',
           backgroundColor: '#162032',
-          padding: '12px 16px',
+          padding: '12px',
           borderRadius: '16px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          border: '1px solid #1e293b'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '20px' }}>🌙</span>
-            <div>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ระยะเวลาการนอนคืนนี้</span>
-              <span style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc' }}>{sleepHours}</span>
-            </div>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
+              {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
+            </span>
           </div>
-          <span style={{ fontSize: '11px', color: '#10b981', backgroundColor: '#10b98115', padding: '4px 8px', borderRadius: '8px', border: '1px solid #10b98130' }}>
-            เพียงพอ
-          </span>
+          <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ความชื้น</span>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
+              {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
+            </span>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>CO2</span>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
+              {sensor ? `${sensor.co2} ppm` : '--'}
+            </span>
+          </div>
         </div>
 
-        {/* Realtime Sensors Pill Grid */}
-        {sensor && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: '10px',
-            backgroundColor: '#162032',
-            padding: '12px',
-            borderRadius: '16px',
-            border: '1px solid #1e293b'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>{sensor.temperature?.toFixed(1)}°C</span>
-            </div>
-            <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ความชื้น</span>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>{sensor.humidity?.toFixed(0)}%</span>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>CO2</span>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>{sensor.co2} ppm</span>
-            </div>
-          </div>
-        )}
+        {/* Dynamic AI Recommendation */}
+        <div style={{
+          backgroundColor: '#162032',
+          padding: '16px',
+          borderRadius: '16px',
+          border: '1px solid #1e293b'
+        }}>
+          <p style={{ fontSize: '14px', fontWeight: '600', color: '#f8fafc', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            💡 คำแนะนำเฉพาะบุคคล
+          </p>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
+            {sensor && sensor.temperature > 26 
+              ? 'อุณหภูมิห้องค่อนข้างสูง อาจทำให้หลับตื้นขึ้น แนะนำปรับแอร์ให้อยู่ช่วง 24-25°C'
+              : sensor && sensor.co2 > 800 
+              ? 'ระดับ CO2 สูงเกินไป อาจทำให้ตื่นมาแล้วปวดหัว แนะนำให้อากาศถ่ายเทเพิ่มขึ้น'
+              : 'สภาพแวดล้อมห้องนอนของคุณสมบูรณ์แบบมาก เหมาะแก่การหลับลึกอย่างมีประสิทธิภาพ'}
+          </p>
+        </div>
 
-        {/* Navigation Buttons */}
+        {/* Buttons */}
         <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
           <Link href="/sensors" style={{
             backgroundColor: '#10b981',
