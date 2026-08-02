@@ -26,8 +26,7 @@ export default function Home() {
   const analyzeWithGemini = async (data: SensorData) => {
     try {
       setAiLoading(true);
-      
-      // เรียกใช้ API Route ของเราเอง
+
       const res = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,7 +38,7 @@ export default function Home() {
       if (res.ok && json.result) {
         setAiAnalysis(json.result);
       } else {
-        console.error('Gemini API Error:', json.error);
+        console.error('Gemini Error:', json.error);
         setAiAnalysis(json.error || 'ไม่สามารถประมวลผลคำตอบจาก Gemini ได้');
       }
     } catch (error) {
