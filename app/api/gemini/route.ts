@@ -1,22 +1,18 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req: Request) {
   try {
     const { sensorData } = await req.json();
 
-    // ดึง API Key จาก Environment Variable
+    // ดึง API Key
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ไม่พบ API Key ในระบบ กรุณาตรวจสอบ .env.local หรือ Vercel' },
+        { error: 'ไม่พบ API Key ในระบบ กรุณาเช็ก .env.local หรือ Vercel' },
         { status: 500 }
       );
     }
-
-    // เริ่มต้นใช้งาน Google Gen AI SDK
-    const ai = new GoogleGenAI({ apiKey });
 
     const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
 โปรดวิเคราะห์ข้อมูลเซนเซอร์สภาพแวดล้อมห้องนอนปัจจุบันดังนี้:
@@ -31,13 +27,29 @@ export async function POST(req: Request) {
 1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
 2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
 
-    // เรียกใช้ Gemini
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: promptText,
-    });
+    // เรียก REST API แบบ Standard Endpoint (gemini-1.5-flash)
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }] }],
+        }),
+      }
+    );
 
-    const resultText = response.text;
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Gemini API Error Response:', data);
+      return NextResponse.json(
+        { error: data.error?.message || 'เกิดข้อผิดพลาดจาก Gemini API' },
+        { status: response.status }
+      );
+    }
+
+    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (resultText) {
       return NextResponse.json({ result: resultText });
@@ -48,9 +60,9 @@ export async function POST(req: Request) {
       );
     }
   } catch (error: any) {
-    console.error('Gemini API Error:', error);
+    console.error('Server Error:', error);
     return NextResponse.json(
-      { error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผลคำตอบจาก Gemini' },
+      { error: 'เกิดข้อผิดพลาดในระบบเซิร์ฟเวอร์' },
       { status: 500 }
     );
   }
