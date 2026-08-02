@@ -28,15 +28,20 @@ export async function POST(req: NextRequest) {
 ช่วยประเมินภาพรวมสภาพแวดล้อมสั้นๆ ใน 2-3 ประโยค (ตอบเป็นภาษาไทยที่เป็นกันเอง เข้าใจง่าย และให้คำแนะนำที่สามารถปฏิบัติตามได้จริงทันที เช่น เปิดหน้าต่าง เปิดพัดลม หรือปรับแสงไฟ):
     `.trim();
 
-    // รายชื่อโมเดลที่พยายามเรียกใช้งานตามลำดับความเสถียร
-    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    // รายชื่อโมเดลมาตรฐานในปัจจุบัน และใช้อ้างอิงแบบ REST API v1
+    const modelsToTry = [
+      { name: 'gemini-1.5-flash', version: 'v1' },
+      { name: 'gemini-1.5-flash', version: 'v1beta' },
+      { name: 'gemini-pro', version: 'v1' }
+    ];
+
     let responseText = '';
     let lastError = '';
 
-    for (const modelName of modelsToTry) {
+    for (const modelConfig of modelsToTry) {
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/${modelConfig.version}/models/${modelConfig.name}:generateContent?key=${apiKey}`,
           {
             method: 'POST',
             headers: {
@@ -60,7 +65,7 @@ export async function POST(req: NextRequest) {
 
         if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
           responseText = data.candidates[0].content.parts[0].text;
-          break; // ถ้ายิงผ่านแล้ว ให้หลุดจากลูปทันที
+          break; // ถ้ายิงผ่านแล้ว ออกจากลูปทันที
         } else {
           lastError = data?.error?.message || JSON.stringify(data);
         }
