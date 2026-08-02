@@ -24,43 +24,23 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState<boolean>(false);
 
   const analyzeWithGemini = async (data: SensorData) => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      setAiAnalysis('ไม่พบ API Key กรุณาตรวจสอบ Environment Variables');
-      return;
-    }
-
     try {
       setAiLoading(true);
-      const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
-โปรดวิเคราะห์ข้อมูลเซนเซอร์สภาพแวดล้อมห้องนอนปัจจุบันดังนี้:
-- อุณหภูมิ: ${data.temperature?.toFixed(1) ?? '--'} °C
-- ความชื้น: ${data.humidity?.toFixed(0) ?? '--'} %
-- คาร์บอนไดออกไซด์ (CO2): ${data.co2 ?? '--'} ppm
-- ฝุ่น PM2.5: ${data.pm2_5 ?? '--'} µg/m³
-- แสงสว่าง: ${data.lux?.toFixed(1) ?? '--'} Lux
-- ระดับเสียง: ${data.sound ?? '--'}
-
-คำสั่ง:
-1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
-2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
-
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
-          }),
-        }
-      );
+      
+      // เรียกใช้ API Route ของเราเอง
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sensorData: data }),
+      });
 
       const json = await res.json();
-      if (json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
-        setAiAnalysis(json.candidates[0].content.parts[0].text);
+
+      if (res.ok && json.result) {
+        setAiAnalysis(json.result);
       } else {
-        setAiAnalysis('ไม่สามารถประมวลผลคำตอบจาก Gemini ได้');
+        console.error('Gemini API Error:', json.error);
+        setAiAnalysis(json.error || 'ไม่สามารถประมวลผลคำตอบจาก Gemini ได้');
       }
     } catch (error) {
       console.error('Fetch Error:', error);
