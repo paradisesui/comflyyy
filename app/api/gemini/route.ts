@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req: Request) {
   try {
@@ -8,10 +9,13 @@ export async function POST(req: Request) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ไม่พบ API Key ในระบบ' },
+        { error: 'ไม่พบ API Key ใน Environment Variables' },
         { status: 500 }
       );
     }
+
+    // เริ่มต้น Official SDK ล่าสุด
+    const ai = new GoogleGenAI({ apiKey });
 
     const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
 โปรดวิเคราะห์ข้อมูลเซนเซอร์สภาพแวดล้อมห้องนอนปัจจุบันดังนี้:
@@ -26,48 +30,26 @@ export async function POST(req: Request) {
 1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
 2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
 
-    // ใช้ gemini-2.5-flash บน REST API v1
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
-        }),
-      }
-    );
+    // เรียกใช้โมเดล gemini-2.0-flash หรือ gemini-1.5-flash ผ่าน SDK ตัวใหม่
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: promptText,
+    });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      // ดักจับกรณี Rate Limit / Quota Exceeded (429) ให้แสดงข้อความแนะนำแทน Error ชนวน
-      if (response.status === 429) {
-        return NextResponse.json({
-          result: '✨ สภาพแวดล้อมห้องนอนตอนนี้อยู่ในเกณฑ์ดีครับ อุณหภูมิและความชื้นเหมาะสมแก่การนอนหลับพักผ่อน'
-        });
-      }
-
-      return NextResponse.json(
-        { error: data.error?.message || 'ไม่สามารถเชื่อมต่อ Gemini AI ได้' },
-        { status: response.status }
-      );
-    }
-
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const resultText = response.text;
 
     if (resultText) {
       return NextResponse.json({ result: resultText });
     } else {
       return NextResponse.json(
-        { error: 'ไม่สามารถประมวลผลคำตอบได้' },
+        { error: 'Gemini ตอบกลับมาเป็นค่าว่าง' },
         { status: 500 }
       );
     }
   } catch (error: any) {
-    console.error('Server Error:', error);
+    console.error('Gemini API Error Detail:', error);
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในระบบเซิร์ฟเวอร์' },
+      { error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผลคำตอบจาก Gemini' },
       { status: 500 }
     );
   }
