@@ -49,7 +49,8 @@ export default function Home() {
 
       // ยิงตรงไปที่ Gemini 1.5 Flash REST API
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        // ✅ แก้เป็นอันนี้ (ใช้ gemini-2.5-flash บน v1)
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
