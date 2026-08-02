@@ -11,9 +11,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 400 });
     }
 
-    // ใช้ GoogleGenerativeAI แบบมาตรฐาน
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    
+    // ใช้ gemini-1.5-flash-latest เพื่อดึงโมเดลล่าสุดที่ไม่ติดปัญหา Error 404
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
