@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,11 +14,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY ในระบบ Environment Variables' }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // ใช้รุ่น gemini-1.5-flash ซึ่งเป็นรุ่นเสถียรสำหรับข้อมูล Realtime
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    const prompt = `
+    const promptText = `
 คุณคือผู้เชี่ยวชาญด้านสุขภาพและสภาพแวดล้อมภายในห้องนอน
 กรุณาวิเคราะห์ค่าจากเซนเซอร์สภาพแวดล้อมในห้องนอนดังต่อไปนี้:
 
@@ -33,17 +28,61 @@ export async function POST(req: NextRequest) {
 ช่วยประเมินภาพรวมสภาพแวดล้อมสั้นๆ ใน 2-3 ประโยค (ตอบเป็นภาษาไทยที่เป็นกันเอง เข้าใจง่าย และให้คำแนะนำที่สามารถปฏิบัติตามได้จริงทันที เช่น เปิดหน้าต่าง เปิดพัดลม หรือปรับแสงไฟ):
     `.trim();
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    // รายชื่อโมเดลที่พยายามเรียกใช้งานตามลำดับความเสถียร
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    let responseText = '';
+    let lastError = '';
 
-    return NextResponse.json({ result: responseText }, { status: 200 });
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: promptText,
+                    },
+                  ],
+                },
+              ],
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          responseText = data.candidates[0].content.parts[0].text;
+          break; // ถ้ายิงผ่านแล้ว ให้หลุดจากลูปทันที
+        } else {
+          lastError = data?.error?.message || JSON.stringify(data);
+        }
+      } catch (err: any) {
+        lastError = err?.message || String(err);
+      }
+    }
+
+    if (responseText) {
+      return NextResponse.json({ result: responseText }, { status: 200 });
+    } else {
+      return NextResponse.json(
+        { error: `ไม่สามารถเชื่อมต่อ Gemini API ได้: ${lastError}` },
+        { status: 500 }
+      );
+    }
 
   } catch (error: any) {
     console.error('Gemini API Route Error:', error);
     return NextResponse.json(
       { 
-        error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผล Gemini AI',
-        details: String(error)
+        error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผล Gemini AI'
       },
       { status: 500 }
     );
