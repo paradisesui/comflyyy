@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
@@ -11,18 +10,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 400 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // ใช้ gemini-1.5-flash-latest เพื่อดึงโมเดลล่าสุดที่ไม่ติดปัญหา Error 404
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+    // เรียกตรงไปยัง REST API v1 ของ Gemini (ใช้รุ่น gemini-1.5-flash)
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ]
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return NextResponse.json({ error: data.error?.message || 'Google API Error' }, { status: res.status });
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'ไม่สามารถสร้างเนื้อหาได้';
 
     return NextResponse.json({ result: text });
   } catch (error: any) {
-    console.error('Gemini API Route Error:', error);
+    console.error('Gemini REST API Error:', error);
     return NextResponse.json(
       { error: error.message || 'Gemini Response Error' },
       { status: 500 }
