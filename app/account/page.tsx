@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { database } from '@/app/lib/firebase';
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,19 +12,19 @@ export default function AccountPage() {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
-  const auth = getAuth();
-
   useEffect(() => {
+    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [auth]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const auth = getAuth();
 
     try {
       if (isRegister) {
@@ -35,7 +34,7 @@ export default function AccountPage() {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
       } else if (err.code === 'auth/email-already-in-use') {
         setError('อีเมลนี้ถูกใช้งานแล้ว');
@@ -48,6 +47,7 @@ export default function AccountPage() {
   };
 
   const handleLogout = async () => {
+    const auth = getAuth();
     await signOut(auth);
   };
 
