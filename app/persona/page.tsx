@@ -55,21 +55,14 @@ export default function PersonaHistoryPage() {
     return () => unsubscribeAuth();
   }, []);
 
-  // ฟังก์ชันให้ Gemini วิเคราะห์ความ Sensitive เฉพาะบุคคล
+// ฟังก์ชันวิเคราะห์ความ Sensitive โดยเรียกผ่าน /api/gemini
   const analyzeSensitivity = async () => {
     if (logs.length === 0) return;
     setAnalyzing(true);
+    setSensitivityProfile('');
 
     try {
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-      if (!apiKey) {
-        setSensitivityProfile('ไม่พบ API Key');
-        return;
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-
-      // สรุปค่าเฉลี่ยและค่าสูงสุด/ต่ำสุดจากประวัติ
+      // 1. คำนวณค่าเฉลี่ยและค่าสูงสุดจากประวัติ
       const avgTemp = (logs.reduce((acc, curr) => acc + (curr.temperature || 0), 0) / logs.length).toFixed(1);
       const avgCo2 = (logs.reduce((acc, curr) => acc + (curr.co2 || 0), 0) / logs.length).toFixed(0);
       const maxSound = Math.max(...logs.map(l => l.sound || 0));
@@ -87,19 +80,25 @@ export default function PersonaHistoryPage() {
 1. ประเมินและสรุปว่าผู้ใช้คนนี้มีแนวโน้ม "Sensitive ต่อปัจจัยใดมากที่สุด" (เช่น ไวต่ออุณหภูมิร้อนเกินไป, ไวต่อเสียงรบกวนฉับพลัน หรือไวต่ออากาศอับ CO2 สูง)
 2. เขียนสรุปโปรไฟล์ความไวเฉพาะบุคคลเป็นข้อๆ สั้นๆ เข้าใจง่าย 3 ข้อ สไตล์เป็นกันเองและให้กำลังใจ`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: promptText,
+      // 2. ส่ง request ไปยัง /api/gemini ของ Next.js
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: promptText }),
       });
 
-      if (response.text) {
-        setSensitivityProfile(response.text);
+      const data = await res.json();
+
+      if (res.ok && data.result) {
+        setSensitivityProfile(data.result);
       } else {
-        setSensitivityProfile('ไม่สามารถวิเคราะห์ข้อมูลได้');
+        setSensitivityProfile(`เกิดข้อผิดพลาด: ${data.error || 'ไม่สามารถวิเคราะห์ข้อมูลได้'}`);
       }
     } catch (err: any) {
       console.error(err);
-      setSensitivityProfile('เกิดข้อผิดพลาดในการวิเคราะห์ความ Sensitive');
+      setSensitivityProfile('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
     } finally {
       setAnalyzing(false);
     }
