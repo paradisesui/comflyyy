@@ -20,12 +20,13 @@ interface SensorData {
 export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [aiAnalysis, setAiAnalysis] = useState<string>('กำลังให้ Gemini AI วิเคราะห์สภาพแวดล้อม...');
+  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มด้านล่างเพื่อวิเคราะห์สภาพแวดล้อมด้วย Gemini AI');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
 
   const analyzeWithGemini = async (data: SensorData) => {
     try {
       setAiLoading(true);
+      setAiAnalysis('🤖 Gemini กำลังประมวลผลคำแนะนำ...');
 
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -38,12 +39,12 @@ export default function Home() {
       if (res.ok && json.result) {
         setAiAnalysis(json.result);
       } else {
-        console.error('Gemini Error:', json.error);
-        setAiAnalysis(json.error || 'ไม่สามารถประมวลผลคำตอบจาก Gemini ได้');
+        console.error('Gemini API Error:', json);
+        setAiAnalysis(json.error || 'ไม่สามารถประมวลผลคำตอบได้');
       }
     } catch (error) {
       console.error('Fetch Error:', error);
-      setAiAnalysis('ไม่สามารถเชื่อมต่อ Gemini AI ได้ในขณะนี้');
+      setAiAnalysis('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     } finally {
       setAiLoading(false);
     }
@@ -59,7 +60,6 @@ export default function Home() {
           const latestKey = Object.keys(data)[0];
           const currentSensorData: SensorData = data[latestKey];
           setSensor(currentSensorData);
-          analyzeWithGemini(currentSensorData);
         }
         setLoading(false);
       }, (error) => {
@@ -196,33 +196,55 @@ export default function Home() {
           </div>
         </div>
 
-        // เพิ่มปุ่มให้ผู้ใช้กดวิเคราะห์ หรือจำกัดไม่ให้เรียกซ้ำถ้ายังไม่ได้กด
-<button 
-  onClick={() => sensor && analyzeWithGemini(sensor)}
-  disabled={aiLoading}
-  style={{
-    backgroundColor: '#10b981',
-    color: '#022c22',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    marginTop: '10px'
-  }}
->
-  {aiLoading ? '🤖 กำลังวิเคราะห์...' : '🔄 วิเคราะห์สดด้วย Gemini'}
-</button>
-        <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
-          <Link href="/sensors" style={{
+        <div style={{
+          backgroundColor: '#162032',
+          padding: '16px',
+          borderRadius: '16px',
+          border: '1px solid #10b98140',
+          position: 'relative'
+        }}>
+          <p style={{ fontSize: '14px', fontWeight: '600', color: '#34d399', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            ✨ Gemini AI วิเคราะห์สด
+          </p>
+          <p style={{ fontSize: '13px', color: aiLoading ? '#64748b' : '#cbd5e1', margin: 0, lineHeight: '1.5' }}>
+            {aiAnalysis}
+          </p>
+        </div>
+
+        <button
+          onClick={() => sensor && analyzeWithGemini(sensor)}
+          disabled={aiLoading || !sensor}
+          style={{
+            width: '100%',
+            padding: '12px',
             backgroundColor: '#10b981',
             color: '#022c22',
+            border: 'none',
+            borderRadius: '14px',
+            fontWeight: '700',
+            fontSize: '14px',
+            cursor: aiLoading ? 'not-allowed' : 'pointer',
+            opacity: aiLoading ? 0.6 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          {aiLoading ? '🔄 กำลังวิเคราะห์...' : '🔄 วิเคราะห์สดด้วย Gemini'}
+        </button>
+
+        <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
+          <Link href="/sensors" style={{
+            backgroundColor: '#1e293b',
+            color: '#f1f5f9',
             padding: '12px',
             borderRadius: '14px',
             textAlign: 'center',
-            fontWeight: '700',
+            fontWeight: '600',
             fontSize: '14px',
-            textDecoration: 'none'
+            textDecoration: 'none',
+            border: '1px solid #334155'
           }}>
             ดูคะแนนเพิ่มเติม ➔
           </Link>

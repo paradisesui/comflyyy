@@ -5,16 +5,17 @@ export async function POST(req: Request) {
   try {
     const { sensorData } = await req.json();
 
+    // ดึง API Key จาก Environment Variable
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ไม่พบ API Key ใน Environment Variables' },
+        { error: 'ไม่พบ API Key ในระบบ กรุณาตรวจสอบ .env.local หรือ Vercel' },
         { status: 500 }
       );
     }
 
-    // เริ่มต้น Official SDK ล่าสุด
+    // เริ่มต้นใช้งาน Official Google Gen AI SDK
     const ai = new GoogleGenAI({ apiKey });
 
     const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
@@ -30,9 +31,9 @@ export async function POST(req: Request) {
 1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
 2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
 
-    // เรียกใช้โมเดล gemini-2.0-flash หรือ gemini-1.5-flash ผ่าน SDK ตัวใหม่
+    // เรียกใช้ Gemini โมเดลล่าสุด
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: promptText,
     });
 
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ result: resultText });
     } else {
       return NextResponse.json(
-        { error: 'Gemini ตอบกลับมาเป็นค่าว่าง' },
+        { error: 'ไม่สามารถประมวลผลคำตอบจาก Gemini ได้' },
         { status: 500 }
       );
     }
