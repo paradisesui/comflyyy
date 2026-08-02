@@ -1,20 +1,20 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
+import { getAuth } from "firebase/auth";
 
-// ค่า Config จาก Firebase ของคุณ
 const firebaseConfig = {
-  apiKey: "AIzaSyCmmMKOVHSK9T6TwpajxwzPSHeyb866T1A",
+  apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY, // หรือ API Key ของ Firebase คุณ
   authDomain: "room-envi-test.firebaseapp.com",
   databaseURL: "https://room-envi-test-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "room-envi-test",
-  storageBucket: "room-envi-test.firebasestorage.app",
-  messagingSenderId: "968477700610",
-  appId: "1:968477700610:web:53862979e2ced138802d1b",
-  measurementId: "G-TGQ0TQ3KDP"
+  storageBucket: "room-envi-test.appspot.com",
+  messagingSenderId: "1071191319714",
+  appId: "1:1071191319714:web:80c7493fa5954a107384c2"
 };
 
-// ป้องกันการ Initialize ซ้ำใน Next.js
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const database = getDatabase(app);
+const auth = getAuth(app);
 
-// ส่งออกตัวแปร database ออกไปให้หน้าอื่นดึงไปใช้
-export const database = getDatabase(app);
+export { app, database, auth };
