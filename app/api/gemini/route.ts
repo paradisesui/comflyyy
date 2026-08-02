@@ -1,56 +1,37 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 
-export async function POST(req: Request) {
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+export async function POST(request: Request) {
   try {
-    const { sensorData } = await req.json();
+    const { sensorData } = await request.json();
 
-    // ดึง API Key จาก Environment Variable
-    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    // เลือกใช้โมเดล gemini-1.5-flash แทนรุ่นเก่า
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'ไม่พบ API Key ในระบบ กรุณาตรวจสอบ .env.local หรือ Vercel' },
-        { status: 500 }
-      );
-    }
+    const prompt = `
+      คุณคือผู้เชี่ยวชาญด้านคุณภาพห้องนอนและการนอนหลับ 
+      โปรดวิเคราะห์ข้อมูลเซนเซอร์ห้องนอนนี้:
+      - อุณหภูมิ: ${sensorData.temperature} °C
+      - ความชื้น: ${sensorData.humidity} %
+      - CO2: ${sensorData.co2} ppm
+      - PM2.5: ${sensorData.pm2_5} µg/m³
+      - เสียง: ${sensorData.sound} dB
+      - แสง: ${sensorData.lux} Lux
 
-    // เริ่มต้นใช้งาน Official Google Gen AI SDK
-    const ai = new GoogleGenAI({ apiKey });
+      ให้คำแนะนำสั้นๆ สรุปได้กระชับ และเข้าใจง่าย ไม่เกิน 3 ประโยค
+    `;
 
-    const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
-โปรดวิเคราะห์ข้อมูลเซนเซอร์สภาพแวดล้อมห้องนอนปัจจุบันดังนี้:
-- อุณหภูมิ: ${sensorData?.temperature?.toFixed(1) ?? '--'} °C
-- ความชื้น: ${sensorData?.humidity?.toFixed(0) ?? '--'} %
-- คาร์บอนไดออกไซด์ (CO2): ${sensorData?.co2 ?? '--'} ppm
-- ฝุ่น PM2.5: ${sensorData?.pm2_5 ?? '--'} µg/m³
-- แสงสว่าง: ${sensorData?.lux?.toFixed(1) ?? '--'} Lux
-- ระดับเสียง: ${sensorData?.sound ?? '--'}
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-คำสั่ง:
-1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
-2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
-
-    // เรียกใช้ Gemini โมเดลล่าสุด
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: promptText,
-    });
-
-    const resultText = response.text;
-
-    if (resultText) {
-      return NextResponse.json({ result: resultText });
-    } else {
-      return NextResponse.json(
-        { error: 'ไม่สามารถประมวลผลคำตอบจาก Gemini ได้' },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({ result: text });
   } catch (error: any) {
-    console.error('Gemini API Error Detail:', error);
+    console.error('Gemini API Error:', error);
     return NextResponse.json(
-      { error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผลคำตอบจาก Gemini' },
+      { error: 'ไม่สามารถประมวลผล Gemini AI ได้' },
       { status: 500 }
     );
   }
