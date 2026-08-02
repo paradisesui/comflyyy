@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/app/lib/firebase';
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,7 +14,6 @@ export default function AccountPage() {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -24,7 +24,6 @@ export default function AccountPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const auth = getAuth();
 
     try {
       if (isRegister) {
@@ -33,21 +32,17 @@ export default function AccountPage() {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
-      } else if (err.code === 'auth/email-already-in-use') {
-        setError('อีเมลนี้ถูกใช้งานแล้ว');
-      } else if (err.code === 'auth/weak-password') {
-        setError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+      console.error('Firebase Auth Error:', err);
+      // แสดงข้อความ Error จริงๆ จาก Firebase ออกมา
+      if (err.code) {
+        setError(`[${err.code}]: ${err.message}`);
       } else {
-        setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+        setError('เกิดข้อผิดพลาดในการเชื่อมต่อกับ Firebase');
       }
     }
   };
 
   const handleLogout = async () => {
-    const auth = getAuth();
     await signOut(auth);
   };
 
@@ -82,7 +77,6 @@ export default function AccountPage() {
         flexDirection: 'column',
         gap: '20px'
       }}>
-        {/* Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>
             ← กลับหน้าหลัก
@@ -93,7 +87,6 @@ export default function AccountPage() {
         </header>
 
         {user ? (
-          /* Profile Screen */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', margin: '10px 0' }}>👤</div>
             <div style={{ backgroundColor: '#162032', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
@@ -119,10 +112,9 @@ export default function AccountPage() {
             </button>
           </div>
         ) : (
-          /* Login/Register Form */
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {error && (
-              <div style={{ backgroundColor: '#ef444420', color: '#f87171', border: '1px solid #ef444440', padding: '10px', borderRadius: '10px', fontSize: '12px', textAlign: 'center' }}>
+              <div style={{ backgroundColor: '#ef444420', color: '#f87171', border: '1px solid #ef444440', padding: '10px', borderRadius: '10px', fontSize: '12px', textAlign: 'center', wordBreak: 'break-word' }}>
                 {error}
               </div>
             )}

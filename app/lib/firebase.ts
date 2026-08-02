@@ -3,7 +3,8 @@ import { getDatabase } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY, // หรือ API Key ของ Firebase คุณ
+  // ใส่ Firebase API Key ของโปรเจกต์คุณโดยตรง
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY,
   authDomain: "room-envi-test.firebaseapp.com",
   databaseURL: "https://room-envi-test-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "room-envi-test",
