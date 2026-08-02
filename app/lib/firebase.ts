@@ -3,14 +3,13 @@ import { getDatabase } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  // ใส่ Firebase API Key ของโปรเจกต์คุณโดยตรง
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY,
+  apiKey: "AIzaSyCmmMKOVH5K9T6TwpajxwzPSHeyb866T1A", 
   authDomain: "room-envi-test.firebaseapp.com",
   databaseURL: "https://room-envi-test-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "room-envi-test",
   storageBucket: "room-envi-test.appspot.com",
-  messagingSenderId: "1071191319714",
-  appId: "1:1071191319714:web:80c7493fa5954a107384c2"
+  messagingSenderId: "968477700610",
+  appId: "1:968477700610:web:53862979e2ced138802d1b"
 };
 
 // Initialize Firebase
