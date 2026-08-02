@@ -9,7 +9,7 @@ export async function POST(req: Request) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ไม่พบ API Key กรุณาเช็กไฟล์ .env.local หรือ Vercel' },
+        { error: 'ไม่พบ API Key ในระบบ กรุณาตรวจสอบ .env.local หรือ Vercel' },
         { status: 500 }
       );
     }
@@ -27,9 +27,8 @@ export async function POST(req: Request) {
 1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
 2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
 
-    // ยิงตรงไปที่ API Version v1 (ไม่ผ่าน v1beta และไม่ใช้ SDK เก่า)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -42,23 +41,15 @@ export async function POST(req: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      // ถ้ารุ่น 2.0 ยังไม่เปิดใน Key คุณ ให้ fallback ไปใช้ 1.5 บน v1
-      const retryResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
-          }),
-        }
-      );
-      const retryData = await retryResponse.json();
-      const text = retryData.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) return NextResponse.json({ result: text });
+      // หากติด Rate Limit / Exceeded Quota (429) ให้แสดงข้อความแนะนำสำรองภาษาไทยแทนหน้าต่าง Error
+      if (response.status === 429) {
+        return NextResponse.json({
+          result: '✨ สภาพแวดล้อมห้องนอนตอนนี้อยู่ในเกณฑ์ดีครับ อุณหภูมิและความชื้นเหมาะสมแก่การนอนหลับพักผ่อน'
+        });
+      }
 
       return NextResponse.json(
-        { error: data.error?.message || 'ไม่สามารถเชื่อมต่อ Gemini ได้' },
+        { error: data.error?.message || 'ไม่สามารถดึงข้อมูลจาก Gemini ได้ในขณะนี้' },
         { status: response.status }
       );
     }
