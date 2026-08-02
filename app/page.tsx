@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
 import { ref, query, limitToLast, onValue } from 'firebase/database';
+import { GoogleGenAI } from '@google/genai';
 
 interface SensorData {
   co2: number;
@@ -20,6 +21,49 @@ interface SensorData {
 export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [aiAnalysis, setAiAnalysis] = useState<string>('กำลังให้ Gemini AI วิเคราะห์สภาพแวดล้อม...');
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+
+  // เรียกใช้ Gemini API
+  const analyzeWithGemini = async (data: SensorData) => {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) {
+      setAiAnalysis('กรุณาตั้งค่า GEMINI_API_KEY ในไฟล์ .env.local');
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const prompt = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
+โปรดวิเคราะห์ข้อมูลเซนเซอร์สภาพแวดล้อมห้องนอนปัจจุบันดังนี้:
+- อุณหภูมิ: ${data.temperature?.toFixed(1)} °C
+- ความชื้น: ${data.humidity?.toFixed(0)} %
+- คาร์บอนไดออกไซด์ (CO2): ${data.co2} ppm
+- ฝุ่น PM2.5: ${data.pm2_5} µg/m³
+- แสงสว่าง: ${data.lux?.toFixed(1)} Lux
+- ระดับเสียง: ${data.sound}
+
+คำสั่ง:
+1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
+2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      if (response.text) {
+        setAiAnalysis(response.text);
+      }
+    } catch (error) {
+      console.error('Gemini Error:', error);
+      setAiAnalysis('ไม่สามารถเชื่อมต่อ Gemini AI ได้ในขณะนี้');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -29,7 +73,11 @@ export default function Home() {
         if (snapshot.exists()) {
           const data = snapshot.val();
           const latestKey = Object.keys(data)[0];
-          setSensor(data[latestKey]);
+          const currentSensorData: SensorData = data[latestKey];
+          
+          setSensor(currentSensorData);
+          // เรียก Gemini API วิเคราะห์ค่าใหม่
+          analyzeWithGemini(currentSensorData);
         }
         setLoading(false);
       }, () => setLoading(false));
@@ -39,7 +87,6 @@ export default function Home() {
     }
   }, []);
 
-  // คำนวณ Room Score จากค่าสด
   const calculateScore = (data: SensorData | null) => {
     if (!data) return 97;
     let score = 100;
@@ -166,22 +213,19 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Dynamic AI Recommendation */}
+        {/* Gemini AI Recommendation Box */}
         <div style={{
           backgroundColor: '#162032',
           padding: '16px',
           borderRadius: '16px',
-          border: '1px solid #1e293b'
+          border: '1px solid #10b98140',
+          position: 'relative'
         }}>
-          <p style={{ fontSize: '14px', fontWeight: '600', color: '#f8fafc', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            💡 คำแนะนำเฉพาะบุคคล
+          <p style={{ fontSize: '14px', fontWeight: '600', color: '#34d399', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            ✨ Gemini AI วิเคราะห์สด
           </p>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
-            {sensor && sensor.temperature > 26 
-              ? 'อุณหภูมิห้องค่อนข้างสูง อาจทำให้หลับตื้นขึ้น แนะนำปรับแอร์ให้อยู่ช่วง 24-25°C'
-              : sensor && sensor.co2 > 800 
-              ? 'ระดับ CO2 สูงเกินไป อาจทำให้ตื่นมาแล้วปวดหัว แนะนำให้อากาศถ่ายเทเพิ่มขึ้น'
-              : 'สภาพแวดล้อมห้องนอนของคุณสมบูรณ์แบบมาก เหมาะแก่การหลับลึกอย่างมีประสิทธิภาพ'}
+          <p style={{ fontSize: '13px', color: aiLoading ? '#64748b' : '#cbd5e1', margin: 0, lineHeight: '1.5' }}>
+            {aiLoading ? '🤖 Gemini กำลังประมวลผลคำแนะนำ...' : aiAnalysis}
           </p>
         </div>
 
