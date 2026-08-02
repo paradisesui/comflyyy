@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { database, auth } from '@/app/lib/firebase';
 import { ref, query, limitToLast, onValue } from 'firebase/database';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { GoogleGenAI } from '@google/genai';
 
 interface LogItem {
   id: string;
@@ -21,18 +22,16 @@ export default function PersonaHistoryPage() {
   const [user, setUser] = useState<User | null>(null);
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [sensitivityProfile, setSensitivityProfile] = useState<string>('');
+  const [analyzing, setAnalyzing] = useState<boolean>(false);
 
   useEffect(() => {
-    // 1. ตรวจสอบสถานะการล็อกอิน
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
 
       if (currentUser) {
-        // 2. ถ้าล็อกอินแล้ว ให้ไปดึงประวัติย้อนหลังจาก Firebase
-        // หากต้องการดึงรายบุคคลให้ใช้ path: `users/${currentUser.uid}/logs`
-        // หรือดึงจาก `logs` รวมก่อนเพื่อทดสอบ:
         const logsRef = ref(database, 'logs');
-        const latestLogsQuery = query(logsRef, limitToLast(10));
+        const latestLogsQuery = query(logsRef, limitToLast(20));
 
         const unsubscribeLogs = onValue(latestLogsQuery, (snapshot) => {
           if (snapshot.exists()) {
@@ -40,7 +39,7 @@ export default function PersonaHistoryPage() {
             const logList: LogItem[] = Object.keys(data).map((key) => ({
               id: key,
               ...data[key],
-            })).reverse(); // เรียงจากล่าสุดไปเก่าสุด
+            })).reverse();
 
             setLogs(logList);
           }
@@ -55,6 +54,56 @@ export default function PersonaHistoryPage() {
 
     return () => unsubscribeAuth();
   }, []);
+
+  // ฟังก์ชันให้ Gemini วิเคราะห์ความ Sensitive เฉพาะบุคคล
+  const analyzeSensitivity = async () => {
+    if (logs.length === 0) return;
+    setAnalyzing(true);
+
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      if (!apiKey) {
+        setSensitivityProfile('ไม่พบ API Key');
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+
+      // สรุปค่าเฉลี่ยและค่าสูงสุด/ต่ำสุดจากประวัติ
+      const avgTemp = (logs.reduce((acc, curr) => acc + (curr.temperature || 0), 0) / logs.length).toFixed(1);
+      const avgCo2 = (logs.reduce((acc, curr) => acc + (curr.co2 || 0), 0) / logs.length).toFixed(0);
+      const maxSound = Math.max(...logs.map(l => l.sound || 0));
+      const avgLux = (logs.reduce((acc, curr) => acc + (curr.lux || 0), 0) / logs.length).toFixed(1);
+
+      const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการวิเคราะห์พฤติกรรมเฉพาะบุคคล (Personalized Sleep Profiler)
+โปรดวิเคราะห์ความ Sensitive (ความไวต่อสิ่งรบกวน) ของผู้ใช้คนนี้จากประวัติค่าเซนเซอร์สิ่งแวดล้อมที่บันทึกไว้ดังนี้:
+- อุณหภูมิเฉลี่ย: ${avgTemp} °C
+- CO2 เฉลี่ย: ${avgCo2} ppm
+- ระดับเสียงสูงสุดที่เคยพบ: ${maxSound}
+- ความสว่างเฉลี่ย: ${avgLux} Lux
+- จำนวนข้อมูลที่บันทึก: ${logs.length} รายการ
+
+คำสั่ง:
+1. ประเมินและสรุปว่าผู้ใช้คนนี้มีแนวโน้ม "Sensitive ต่อปัจจัยใดมากที่สุด" (เช่น ไวต่ออุณหภูมิร้อนเกินไป, ไวต่อเสียงรบกวนฉับพลัน หรือไวต่ออากาศอับ CO2 สูง)
+2. เขียนสรุปโปรไฟล์ความไวเฉพาะบุคคลเป็นข้อๆ สั้นๆ เข้าใจง่าย 3 ข้อ สไตล์เป็นกันเองและให้กำลังใจ`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: promptText,
+      });
+
+      if (response.text) {
+        setSensitivityProfile(response.text);
+      } else {
+        setSensitivityProfile('ไม่สามารถวิเคราะห์ข้อมูลได้');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setSensitivityProfile('เกิดข้อผิดพลาดในการวิเคราะห์ความ Sensitive');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <div style={{
@@ -79,21 +128,19 @@ export default function PersonaHistoryPage() {
         flexDirection: 'column',
         gap: '20px'
       }}>
-        {/* Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>
             ← กลับหน้าหลัก
           </Link>
           <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '700' }}>
-            ประวัติการใช้งาน
+            วิเคราะห์ความ Sensitive
           </h2>
         </header>
 
         {!user ? (
-          /* แจ้งเตือนถ้ายังไม่ล็อกอิน */
           <div style={{ textAlign: 'center', padding: '30px 10px' }}>
             <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '16px' }}>
-              กรุณาเข้าสู่ระบบเพื่อดูประวัติการบันทึกสภาพแวดล้อม
+              กรุณาเข้าสู่ระบบเพื่อดูโปรไฟล์ความ Sensitive ของคุณ
             </p>
             <Link href="/account" style={{
               backgroundColor: '#10b981',
@@ -107,49 +154,82 @@ export default function PersonaHistoryPage() {
               ไปหน้าเข้าสู่ระบบ
             </Link>
           </div>
-        ) : loading ? (
-          <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>
-            กำลังโหลดประวัติ...
-          </div>
-        ) : logs.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>
-            ยังไม่มีประวัติการบันทึกข้อมูล
-          </div>
         ) : (
-          /* รายการประวัติย้อนหลัง */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '450px', overflowY: 'auto' }}>
-            {logs.map((item) => (
-              <div key={item.id} style={{
-                backgroundColor: '#162032',
-                padding: '14px',
-                borderRadius: '16px',
-                border: '1px solid #1e293b',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
-                  <span>⏰ {item.timestamp ? new Date(item.timestamp * 1000).toLocaleString('th-TH') : 'ไม่ระบุเวลา'}</span>
-                  <span style={{ color: '#10b981' }}>บันทึกสำเร็จ</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '13px' }}>
-                  <div>
-                    <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>อุณหภูมิ</span>
-                    <strong style={{ color: '#f1f5f9' }}>{item.temperature?.toFixed(1) ?? '--'}°C</strong>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>ความชื้น</span>
-                    <strong style={{ color: '#f1f5f9' }}>{item.humidity?.toFixed(0) ?? '--'}%</strong>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>CO2</span>
-                    <strong style={{ color: '#f1f5f9' }}>{item.co2 ?? '--'} ppm</strong>
-                  </div>
-                </div>
+          <>
+            {/* กล่องประเมิน Sensitive Profile จาก AI */}
+            <div style={{
+              backgroundColor: '#162032',
+              padding: '16px',
+              borderRadius: '20px',
+              border: '1px solid #8b5cf660',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', fontWeight: '700', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🧠 โปรไฟล์ความไวเฉพาะบุคคล
+                </span>
+                <button
+                  onClick={analyzeSensitivity}
+                  disabled={analyzing || logs.length === 0}
+                  style={{
+                    backgroundColor: '#8b5cf6',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: '10px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {analyzing ? 'กำลังวิเคราะห์...' : 'วิเคราะห์ประวัติ'}
+                </button>
               </div>
-            ))}
-          </div>
+
+              {sensitivityProfile ? (
+                <div style={{ fontSize: '13px', color: '#e2e8f0', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
+                  {sensitivityProfile}
+                </div>
+              ) : (
+                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+                  กดปุ่ม "วิเคราะห์ประวัติ" เพื่อให้ Gemini AI วิเคราะห์ว่าร่างกายของคุณ Sensitive ต่อปัจจัยใดในห้องนอนมากที่สุด
+                </p>
+              )}
+            </div>
+
+            {/* รายการประวัติย้อนหลัง */}
+            <h3 style={{ fontSize: '14px', color: '#94a3b8', margin: '10px 0 0 0' }}>📜 ประวัติการบันทึกล่าสุด</h3>
+            
+            {loading ? (
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>กำลังโหลด...</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+                {logs.map((item) => (
+                  <div key={item.id} style={{
+                    backgroundColor: '#162032',
+                    padding: '12px',
+                    borderRadius: '14px',
+                    border: '1px solid #1e293b',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>
+                      ⏰ {item.timestamp ? new Date(item.timestamp * 1000).toLocaleString('th-TH') : 'ไม่ระบุเวลา'}
+                    </span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px', fontSize: '12px' }}>
+                      <div><span style={{ color: '#64748b', fontSize: '10px', display: 'block' }}>Temp</span>{item.temperature?.toFixed(1)}°C</div>
+                      <div><span style={{ color: '#64748b', fontSize: '10px', display: 'block' }}>Hum</span>{item.humidity?.toFixed(0)}%</div>
+                      <div><span style={{ color: '#64748b', fontSize: '10px', display: 'block' }}>CO2</span>{item.co2}</div>
+                      <div><span style={{ color: '#64748b', fontSize: '10px', display: 'block' }}>Sound</span>{item.sound}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
