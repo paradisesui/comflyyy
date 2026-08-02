@@ -196,21 +196,23 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={{
-          backgroundColor: '#162032',
-          padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid #10b98140',
-          position: 'relative'
-        }}>
-          <p style={{ fontSize: '14px', fontWeight: '600', color: '#34d399', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            ✨ Gemini AI วิเคราะห์สด
-          </p>
-          <p style={{ fontSize: '13px', color: aiLoading ? '#64748b' : '#cbd5e1', margin: 0, lineHeight: '1.5' }}>
-            {aiLoading ? '🤖 Gemini กำลังประมวลผลคำแนะนำ...' : aiAnalysis}
-          </p>
-        </div>
-
+        // เพิ่มปุ่มให้ผู้ใช้กดวิเคราะห์ หรือจำกัดไม่ให้เรียกซ้ำถ้ายังไม่ได้กด
+<button 
+  onClick={() => sensor && analyzeWithGemini(sensor)}
+  disabled={aiLoading}
+  style={{
+    backgroundColor: '#10b981',
+    color: '#022c22',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    marginTop: '10px'
+  }}
+>
+  {aiLoading ? '🤖 กำลังวิเคราะห์...' : '🔄 วิเคราะห์สดด้วย Gemini'}
+</button>
         <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
           <Link href="/sensors" style={{
             backgroundColor: '#10b981',
