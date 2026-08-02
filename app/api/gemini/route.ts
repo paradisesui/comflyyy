@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,8 +12,12 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY ในระบบ Environment Variables' }, { status: 500 });
+      return NextResponse.json({ error: 'ไม่พบ GEMINI_API_KEY ใน Vercel Environment Variables' }, { status: 500 });
     }
+
+    // เริ่มต้นใช้งาน SDK ของ Google
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const promptText = `
 คุณคือผู้เชี่ยวชาญด้านสุขภาพและสภาพแวดล้อมภายในห้องนอน
@@ -28,66 +33,17 @@ export async function POST(req: NextRequest) {
 ช่วยประเมินภาพรวมสภาพแวดล้อมสั้นๆ ใน 2-3 ประโยค (ตอบเป็นภาษาไทยที่เป็นกันเอง เข้าใจง่าย และให้คำแนะนำที่สามารถปฏิบัติตามได้จริงทันที เช่น เปิดหน้าต่าง เปิดพัดลม หรือปรับแสงไฟ):
     `.trim();
 
-    // รายชื่อโมเดลมาตรฐานในปัจจุบัน และใช้อ้างอิงแบบ REST API v1
-    const modelsToTry = [
-      { name: 'gemini-1.5-flash', version: 'v1' },
-      { name: 'gemini-1.5-flash', version: 'v1beta' },
-      { name: 'gemini-pro', version: 'v1' }
-    ];
+    const result = await model.generateContent(promptText);
+    const responseText = result.response.text();
 
-    let responseText = '';
-    let lastError = '';
-
-    for (const modelConfig of modelsToTry) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/${modelConfig.version}/models/${modelConfig.name}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: promptText,
-                    },
-                  ],
-                },
-              ],
-            }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-          responseText = data.candidates[0].content.parts[0].text;
-          break; // ถ้ายิงผ่านแล้ว ออกจากลูปทันที
-        } else {
-          lastError = data?.error?.message || JSON.stringify(data);
-        }
-      } catch (err: any) {
-        lastError = err?.message || String(err);
-      }
-    }
-
-    if (responseText) {
-      return NextResponse.json({ result: responseText }, { status: 200 });
-    } else {
-      return NextResponse.json(
-        { error: `ไม่สามารถเชื่อมต่อ Gemini API ได้: ${lastError}` },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({ result: responseText }, { status: 200 });
 
   } catch (error: any) {
     console.error('Gemini API Route Error:', error);
     return NextResponse.json(
       { 
-        error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผล Gemini AI'
+        error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผล Gemini AI',
+        details: String(error)
       },
       { status: 500 }
     );
