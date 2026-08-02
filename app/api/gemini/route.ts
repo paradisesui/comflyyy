@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
@@ -11,15 +11,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 400 });
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    // ใช้ GoogleGenerativeAI แบบมาตรฐาน
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    // เปลี่ยนเป็นชื่อโมเดลมาตรฐานล่าสุด gemini-1.5-flash
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: prompt,
-    });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-    return NextResponse.json({ result: response.text });
+    return NextResponse.json({ result: text });
   } catch (error: any) {
     console.error('Gemini API Route Error:', error);
     return NextResponse.json(
