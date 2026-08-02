@@ -1,17 +1,63 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { database } from '@/app/lib/firebase';
 
 export default function AccountPage() {
-  const user = {
-    name: 'Comflyyy User',
-    email: 'user@comflyyy.app',
-    sleepGoal: '8 ชั่วโมง/คืน',
-    avgSleep: '7 ชม. 30 นาที',
-    personaType: 'Noise Sensitive (ไวต่อเสียง)',
-    deviceStatus: 'เชื่อมต่อ ESP32 แล้ว'
+  const [user, setUser] = useState<User | null>(null);
+  const [isRegister, setIsRegister] = useState<boolean>(false);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const auth = getAuth();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [auth]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      if (isRegister) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('อีเมลนี้ถูกใช้งานแล้ว');
+      } else if (err.code === 'auth/weak-password') {
+        setError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+      } else {
+        setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+      }
+    }
   };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#090d16', color: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        กำลังโหลด...
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -31,111 +77,128 @@ export default function AccountPage() {
         borderRadius: '28px',
         border: '1px solid #1e293b',
         padding: '24px',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
         display: 'flex',
         flexDirection: 'column',
         gap: '20px'
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>
-            ← ย้อนกลับ
+            ← กลับหน้าหลัก
           </Link>
-          <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0, color: '#f8fafc' }}>
-            ข้อมูลผู้ใช้งาน (User Profile)
-          </h1>
-          <div style={{ width: '40px' }}></div>
-        </div>
+          <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '700' }}>
+            {user ? 'ข้อมูลผู้ใช้งาน' : isRegister ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+          </h2>
+        </header>
 
-        {/* Profile Card */}
-        <div style={{
-          backgroundColor: '#162032',
-          padding: '20px',
-          borderRadius: '20px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            width: '70px',
-            height: '70px',
-            borderRadius: '50%',
-            backgroundColor: '#10b98120',
-            border: '2px solid #10b981',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '32px'
-          }}>
-            👤
-          </div>
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#f8fafc', margin: 0 }}>{user.name}</h2>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>{user.email}</span>
-          </div>
-        </div>
+        {user ? (
+          /* Profile Screen */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', margin: '10px 0' }}>👤</div>
+            <div style={{ backgroundColor: '#162032', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>เข้าสู่ระบบในชื่อ</span>
+              <span style={{ fontSize: '16px', fontWeight: '600', color: '#34d399' }}>{user.email}</span>
+              <span style={{ fontSize: '10px', color: '#475569', display: 'block', marginTop: '4px' }}>UID: {user.uid}</span>
+            </div>
 
-        {/* User Stats & Goals */}
-        <div style={{
-          backgroundColor: '#162032',
-          padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
-          <h3 style={{ fontSize: '13px', color: '#f1f5f9', margin: 0 }}>🎯 เป้าหมายและสถิติการนอน</h3>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
-            <span style={{ color: '#94a3b8' }}>เป้าหมายการนอน:</span>
-            <span style={{ fontWeight: '600', color: '#f8fafc' }}>{user.sleepGoal}</span>
+            <button
+              onClick={handleLogout}
+              style={{
+                backgroundColor: '#ef4444',
+                color: '#fff',
+                padding: '12px',
+                borderRadius: '14px',
+                border: 'none',
+                fontWeight: '600',
+                cursor: 'pointer',
+                marginTop: '10px'
+              }}
+            >
+              ออกจากระบบ
+            </button>
           </div>
+        ) : (
+          /* Login/Register Form */
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {error && (
+              <div style={{ backgroundColor: '#ef444420', color: '#f87171', border: '1px solid #ef444440', padding: '10px', borderRadius: '10px', fontSize: '12px', textAlign: 'center' }}>
+                {error}
+              </div>
+            )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
-            <span style={{ color: '#94a3b8' }}>เฉลี่ยย้อนหลัง:</span>
-            <span style={{ fontWeight: '600', color: '#34d399' }}>{user.avgSleep}</span>
-          </div>
+            <div>
+              <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>อีเมล (Email)</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  backgroundColor: '#162032',
+                  border: '1px solid #334155',
+                  color: '#fff',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span style={{ color: '#94a3b8' }}> Sleep Persona:</span>
-            <span style={{ fontWeight: '600', color: '#f59e0b' }}>{user.personaType}</span>
-          </div>
-        </div>
+            <div>
+              <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>รหัสผ่าน (Password)</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  backgroundColor: '#162032',
+                  border: '1px solid #334155',
+                  color: '#fff',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
 
-        {/* Device Status */}
-        <div style={{
-          backgroundColor: '#162032',
-          padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>อุปกรณ์เซนเซอร์</span>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#f8fafc' }}>{user.deviceStatus}</span>
-          </div>
-          <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
-        </div>
+            <button
+              type="submit"
+              style={{
+                backgroundColor: '#10b981',
+                color: '#022c22',
+                padding: '12px',
+                borderRadius: '14px',
+                border: 'none',
+                fontWeight: '700',
+                fontSize: '14px',
+                cursor: 'pointer',
+                marginTop: '10px'
+              }}
+            >
+              {isRegister ? 'ยืนยันการสมัครสมาชิก' : 'เข้าสู่ระบบ'}
+            </button>
 
-        {/* Footer Link Back */}
-        <Link href="/" style={{
-          backgroundColor: '#1e293b',
-          color: '#f1f5f9',
-          padding: '12px',
-          borderRadius: '14px',
-          textAlign: 'center',
-          fontWeight: '600',
-          fontSize: '14px',
-          textDecoration: 'none',
-          border: '1px solid #334155'
-        }}>
-          กลับหน้าหลัก
-        </Link>
+            <p
+              onClick={() => setIsRegister(!isRegister)}
+              style={{
+                textAlign: 'center',
+                fontSize: '12px',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                marginTop: '10px'
+              }}
+            >
+              {isRegister ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิก'}
+            </p>
+          </form>
+        )}
       </main>
     </div>
   );
