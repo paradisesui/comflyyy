@@ -33,7 +33,6 @@ export default function AccountPage() {
       }
     } catch (err: any) {
       console.error('Firebase Auth Error:', err);
-      // แสดงข้อความ Error จริงๆ จาก Firebase ออกมา
       if (err.code) {
         setError(`[${err.code}]: ${err.message}`);
       } else {
