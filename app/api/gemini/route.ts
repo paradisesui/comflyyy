@@ -10,8 +10,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 400 });
     }
 
-    // เรียกตรงไปยัง REST API v1 ของ Gemini (ใช้รุ่น gemini-1.5-flash)
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // เรียกผ่าน v1beta และใช้โมเดล gemini-2.5-flash
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const res = await fetch(url, {
       method: 'POST',
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     const data = await res.json();
 
     if (!res.ok) {
+      console.error('Google API Error Response:', data);
       return NextResponse.json({ error: data.error?.message || 'Google API Error' }, { status: res.status });
     }
 
