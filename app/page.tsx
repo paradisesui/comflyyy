@@ -3,130 +3,115 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
-import { ref, query, limitToLast, onValue } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 
 interface SensorData {
-  co2: number;
+  temperature: number;
   humidity: number;
+  co2: number;
   lux: number;
-  pm10: number;
-  pm1_0: number;
   pm2_5: number;
   sound: number;
-  temperature: number;
-  timestamp: number;
 }
 
 export default function Home() {
-  const [sensor, setSensor] = useState<SensorData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [aiAnalysis, setAiAnalysis] = useState<string>('กำลังให้ Gemini AI วิเคราะห์สภาพแวดล้อม...');
-  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [sensor, setSensor] = useState<SensorData>({
+    temperature: 0,
+    humidity: 0,
+    co2: 0,
+    lux: 0,
+    pm2_5: 0,
+    sound: 0,
+  });
 
-  // ฟังก์ชันยิง Direct REST API ไปที่ Gemini (เสถียรสุด)
-  const analyzeWithGemini = async (data: SensorData) => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      setAiAnalysis('ไม่พบ API Key กรุณาตรวจสอบการตั้งค่า Environment Variables');
+  const [aiAdvice, setAiAdvice] = useState<string>('กำลังเตรียมข้อมูลวิเคราะห์...');
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [lastFetchedTime, setLastFetchedTime] = useState<number>(0);
+
+  // 1. ดึงข้อมูล Realtime เซนเซอร์จาก Firebase
+  useEffect(() => {
+    const sensorRef = ref(database, 'current_sensor');
+    const unsubscribe = onValue(sensorRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setSensor(data);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 2. ฟังก์ชันยิงขอคำแนะนำจาก Gemini AI (จำกัดไม่เกิน 1 ครั้งในทุก 2 นาที)
+  const getAiRecommendation = async (force: boolean = false) => {
+    const now = Date.now();
+    // ถ้าไม่ได้กด Manual และยิงไปเมื่อไม่ถึง 2 นาที (120,000 ms) ให้ข้าม
+    if (!force && now - lastFetchedTime < 120000 && lastFetchedTime !== 0) {
       return;
     }
 
-    try {
-      setAiLoading(true);
+    // หากยังไม่มีข้อมูลเซนเซอร์จริง ให้ข้ามไปก่อน
+    if (sensor.temperature === 0 && sensor.co2 === 0) return;
 
-      const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
-โปรดวิเคราะห์ข้อมูลเซนเซอร์สภาพแวดล้อมห้องนอนปัจจุบันดังนี้:
-- อุณหภูมิ: ${data.temperature?.toFixed(1) ?? '--'} °C
-- ความชื้น: ${data.humidity?.toFixed(0) ?? '--'} %
-- คาร์บอนไดออกไซด์ (CO2): ${data.co2 ?? '--'} ppm
-- ฝุ่น PM2.5: ${data.pm2_5 ?? '--'} µg/m³
-- แสงสว่าง: ${data.lux?.toFixed(1) ?? '--'} Lux
-- ระดับเสียง: ${data.sound ?? '--'}
+    setAiLoading(true);
+
+    try {
+      const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านสภาพแวดล้อมการนอน (Sleep Environment Expert)
+โปรดประเมินค่าเซนเซอร์ห้องนอน ณ ปัจจุบันดังนี้:
+- อุณหภูมิ: ${sensor.temperature} °C
+- ความชื้น: ${sensor.humidity} %
+- คาร์บอนไดออกไซด์ (CO2): ${sensor.co2} ppm
+- เสียง: ${sensor.sound} dB
+- แสง: ${sensor.lux} Lux
+- ฝุ่น PM2.5: ${sensor.pm2_5} µg/m³
 
 คำสั่ง:
-1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
-2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
+ให้สรุปสภาพแวดล้อมสั้นๆ ไม่เกิน 2-3 บรรทัด ว่าเหมาะกับการนอนหรือไม่ และควรปรับปรุงสิ่งใดทันทีด้วยน้ำเสียงที่เป็นมิตร`;
 
-      // ยิงตรงไปที่ Gemini 1.5 Flash REST API
-      const res = await fetch(
-        // ✅ แก้เป็น gemini-3-flash-preview
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: promptText }],
-              },
-            ],
-          }),
-        }
-      );
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptText }),
+      });
 
-      const json = await res.json();
+      const data = await res.json();
 
-      if (json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
-        setAiAnalysis(json.candidates[0].content.parts[0].text);
-      } else if (json.error) {
-        console.error('Gemini API Error Response:', json.error);
-        setAiAnalysis(`ข้อผิดพลาดจาก AI: ${json.error.message || 'ไม่สามารถประมวลผลได้'}`);
+      if (res.ok && data.result) {
+        setAiAdvice(data.result);
+        setLastFetchedTime(now);
       } else {
-        setAiAnalysis('ไม่สามารถประมวลผลคำตอบจาก Gemini ได้');
+        // หากติด Quota Exceeded ให้โชว์ข้อความที่เป็นมิตร
+        if (data.error && data.error.includes('quota')) {
+          setAiAdvice('⚠️ ระบบขออภัย โควต้าคำนวณ AI ชั่วคราวเต็มแล้ว กรุณารอประมาณ 1 นาทีแล้วกดลองใหม่อีกครั้ง');
+        } else {
+          setAiAdvice('⚠️ ไม่สามารถดึงข้อมูลวิเคราะห์ได้ในขณะนี้');
+        }
       }
-    } catch (error) {
-      console.error('Fetch Error:', error);
-      setAiAnalysis('เกิดข้อผิดพลาดในการเชื่อมต่อกับ Gemini AI');
+    } catch (err) {
+      console.error(err);
+      setAiAdvice('⚠️ เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
     } finally {
       setAiLoading(false);
     }
   };
 
+  // 3. ยิงขอคำแนะนำเมื่อเซนเซอร์เปลี่ยนแปลงครั้งแรก
   useEffect(() => {
-    try {
-      const logsRef = ref(database, 'logs');
-      const latestLogQuery = query(logsRef, limitToLast(1));
-      const unsubscribe = onValue(
-        latestLogQuery,
-        (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.val();
-            const latestKey = Object.keys(data)[0];
-            const currentSensorData: SensorData = data[latestKey];
-
-            setSensor(currentSensorData);
-            // เรียกใช้ Gemini AI เมื่อได้รับข้อมูลใหม่
-            analyzeWithGemini(currentSensorData);
-          }
-          setLoading(false);
-        },
-        (error) => {
-          console.error('Firebase Error:', error);
-          setLoading(false);
-        }
-      );
-      return () => unsubscribe();
-    } catch (e) {
-      console.error(e);
-      setLoading(false);
+    if (sensor.temperature !== 0 && lastFetchedTime === 0) {
+      getAiRecommendation();
     }
-  }, []);
+  }, [sensor]);
 
-  // คำนวณ Room Score
-  const calculateScore = (data: SensorData | null) => {
-    if (!data) return 97;
+  // คำนวณ Room Score เบื้องต้น
+  const calculateScore = () => {
     let score = 100;
-    if (data.temperature > 25) score -= Math.round((data.temperature - 25) * 2);
-    if (data.co2 > 800) score -= 10;
-    if (data.pm2_5 > 15) score -= 10;
-    if (data.sound > 1000) score -= 5;
-    return Math.max(0, Math.min(100, score));
+    if (sensor.temperature > 26) score -= 10;
+    if (sensor.co2 > 800) score -= 15;
+    if (sensor.humidity > 65 || sensor.humidity < 40) score -= 5;
+    if (sensor.sound > 45) score -= 10;
+    return Math.max(score, 0);
   };
 
-  const score = calculateScore(sensor);
-  const strokeDashoffset = 440 - (440 * score) / 100;
+  const roomScore = calculateScore();
 
   return (
     <div style={{
@@ -151,138 +136,126 @@ export default function Home() {
         flexDirection: 'column',
         gap: '20px'
       }}>
-        {/* Top Bar */}
+        {/* Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: loading ? '#f59e0b' : '#10b981',
-              boxShadow: loading ? '0 0 10px #f59e0b' : '0 0 10px #10b981'
-            }}></span>
-            <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>
-              {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
-            </span>
-          </div>
-          <Link href="/account" style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            backgroundColor: '#1e293b',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textDecoration: 'none',
-            fontSize: '18px',
-            border: '1px solid #334155'
-          }}>
+          <span style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%', display: 'inline-block' }}></span>
+            Live Realtime
+          </span>
+          <Link href="/account" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '18px' }}>
             👤
           </Link>
         </header>
 
-        {/* Circular Score */}
-        <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <div style={{ position: 'relative', width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg transform="rotate(-90)" width="200" height="200" viewBox="0 0 160 160">
-              <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="12" fill="transparent" />
-              <circle
-                cx="80" cy="80" r="70"
-                stroke={score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444'}
-                strokeWidth="12"
-                fill="transparent"
-                strokeDasharray="440"
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
-              />
-            </svg>
-            <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <span style={{ fontSize: '48px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
-              <span style={{ fontSize: '10px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '600' }}>ROOM SCORE</span>
-            </div>
+        {/* Room Score Gauge */}
+        <section style={{ textAlign: 'center', padding: '10px 0' }}>
+          <div style={{
+            width: '150px',
+            height: '150px',
+            borderRadius: '50%',
+            border: '8px solid #10b981',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: '0 auto'
+          }}>
+            <span style={{ fontSize: '36px', fontWeight: '800' }}>{roomScore}%</span>
+            <span style={{ fontSize: '10px', color: '#94a3b8', letterSpacing: '1px' }}>ROOM SCORE</span>
           </div>
-
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-            <h2 style={{ fontSize: '24px', color: score >= 80 ? '#34d399' : '#f59e0b', fontWeight: '700', margin: '2px 0 0 0' }}>
-              {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
-            </h2>
-          </div>
+          <p style={{ marginTop: '12px', fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</p>
+          <h3 style={{ fontSize: '20px', color: '#10b981', margin: '4px 0 0 0', fontWeight: '700' }}>
+            {roomScore >= 80 ? 'ดีเยี่ยม' : roomScore >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
+          </h3>
         </section>
 
-        {/* Realtime Sensors Preview Grid */}
-        <div style={{
+        {/* Quick Sensors Grid */}
+        <section style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr',
           gap: '10px',
           backgroundColor: '#162032',
           padding: '12px',
           borderRadius: '16px',
-          border: '1px solid #1e293b'
+          textAlign: 'center'
         }}>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
-              {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
-            </span>
+          <div>
+            <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
+            <strong style={{ fontSize: '14px' }}>{sensor.temperature}°C</strong>
           </div>
-          <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ความชื้น</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
-              {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
-            </span>
+          <div>
+            <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>ความชื้น</span>
+            <strong style={{ fontSize: '14px' }}>{sensor.humidity}%</strong>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>CO2</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
-              {sensor ? `${sensor.co2} ppm` : '--'}
-            </span>
+          <div>
+            <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>CO2</span>
+            <strong style={{ fontSize: '14px' }}>{sensor.co2} ppm</strong>
           </div>
-        </div>
+        </section>
 
-        {/* Gemini AI Recommendation Box */}
-        <div style={{
+        {/* Gemini AI Box */}
+        <section style={{
           backgroundColor: '#162032',
           padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid #10b98140',
-          position: 'relative'
+          borderRadius: '20px',
+          border: '1px solid #1e293b',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
         }}>
-          <p style={{ fontSize: '14px', fontWeight: '600', color: '#34d399', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            ✨ Gemini AI วิเคราะห์สด
-          </p>
-          <p style={{ fontSize: '13px', color: aiLoading ? '#64748b' : '#cbd5e1', margin: 0, lineHeight: '1.5' }}>
-            {aiLoading ? '🤖 Gemini กำลังประมวลผลคำแนะนำ...' : aiAnalysis}
-          </p>
-        </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#34d399' }}>
+              ✨ Gemini AI วิเคราะห์สด
+            </span>
+            <button
+              onClick={() => getAiRecommendation(true)}
+              disabled={aiLoading}
+              style={{
+                backgroundColor: '#1e293b',
+                color: '#94a3b8',
+                border: '1px solid #334155',
+                padding: '4px 8px',
+                borderRadius: '8px',
+                fontSize: '10px',
+                cursor: 'pointer'
+              }}
+            >
+              {aiLoading ? 'กำลังคิด...' : '🔄 อัปเดต'}
+            </button>
+          </div>
 
-        {/* Buttons */}
-        <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
-          <Link href="/sensors" style={{
+          <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-line' }}>
+            {aiLoading ? 'กำลังประมวลผลคำแนะนำจากสภาพแวดล้อม...' : aiAdvice}
+          </p>
+        </section>
+
+        {/* Navigation Buttons */}
+        <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <Link href="/persona" style={{
             backgroundColor: '#10b981',
             color: '#022c22',
             padding: '12px',
             borderRadius: '14px',
             textAlign: 'center',
             fontWeight: '700',
-            fontSize: '14px',
-            textDecoration: 'none'
+            textDecoration: 'none',
+            fontSize: '14px'
           }}>
-            ดูคะแนนเพิ่มเติม ➔
+            ดูวิเคราะห์ความ Sensitive เฉพาะบุคคล →
           </Link>
-          <Link href="/persona" style={{
-            backgroundColor: '#1e293b',
-            color: '#f1f5f9',
+
+          <Link href="/account" style={{
+            backgroundColor: '#162032',
+            color: '#94a3b8',
             padding: '12px',
             borderRadius: '14px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '14px',
             textDecoration: 'none',
-            border: '1px solid #334155'
+            fontSize: '14px',
+            border: '1px solid #1e293b'
           }}>
-            ประวัติการใช้งาน
+            จัดการบัญชีผู้ใช้งาน
           </Link>
         </footer>
       </main>

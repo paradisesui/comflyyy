@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: data.error?.message || 'Google API Error' }, { status: res.status });
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'ไม่สามารถสร้างเนื้อหาได้';
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'ไม่สามารถวิเคราะห์ได้';
 
     return NextResponse.json({ result: text });
   } catch (error: any) {
