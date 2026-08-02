@@ -13,9 +13,9 @@ export async function POST(req: Request) {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    // เรียกใช้โมเดลมาตรฐาน gemini-2.5-flash
+    // เปลี่ยนเป็นชื่อโมเดลมาตรฐานล่าสุด gemini-1.5-flash
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: prompt,
     });
 
