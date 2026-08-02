@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
@@ -9,10 +10,14 @@ export async function POST(req: Request) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ไม่พบ API Key ในระบบ กรุณาเช็ก .env.local หรือ Vercel' },
+        { error: 'ไม่พบ API Key ในระบบ กรุณาตรวจสอบ .env.local หรือ Vercel' },
         { status: 500 }
       );
     }
+
+    // เรียกใช้ Official SDK
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
 โปรดวิเคราะห์ข้อมูลเซนเซอร์สภาพแวดล้อมห้องนอนปัจจุบันดังนี้:
@@ -27,32 +32,11 @@ export async function POST(req: Request) {
 1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
 2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
 
-    // เรียก REST API แบบ Standard Endpoint (gemini-1.5-flash)
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
-        }),
-      }
-    );
+    const result = await model.generateContent(promptText);
+    const responseText = result.response.text();
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('Gemini API Error Response:', data);
-      return NextResponse.json(
-        { error: data.error?.message || 'เกิดข้อผิดพลาดจาก Gemini API' },
-        { status: response.status }
-      );
-    }
-
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (resultText) {
-      return NextResponse.json({ result: resultText });
+    if (responseText) {
+      return NextResponse.json({ result: responseText });
     } else {
       return NextResponse.json(
         { error: 'ไม่สามารถประมวลผลคำตอบจาก Gemini ได้' },
@@ -60,9 +44,9 @@ export async function POST(req: Request) {
       );
     }
   } catch (error: any) {
-    console.error('Server Error:', error);
+    console.error('Gemini SDK Error:', error);
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในระบบเซิร์ฟเวอร์' },
+      { error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผล Gemini' },
       { status: 500 }
     );
   }
