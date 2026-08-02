@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
 import { ref, query, limitToLast, onValue } from 'firebase/database';
-import { GoogleGenAI } from '@google/genai';
 
 interface SensorData {
   co2: number;
@@ -24,42 +23,61 @@ export default function Home() {
   const [aiAnalysis, setAiAnalysis] = useState<string>('กำลังให้ Gemini AI วิเคราะห์สภาพแวดล้อม...');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
 
-  // เรียกใช้ Gemini API
+  // ฟังก์ชันยิง Direct REST API ไปที่ Gemini (เสถียรสุด)
   const analyzeWithGemini = async (data: SensorData) => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!apiKey) {
-      setAiAnalysis('กรุณาตั้งค่า GEMINI_API_KEY ในไฟล์ .env.local');
+      setAiAnalysis('ไม่พบ API Key กรุณาตรวจสอบการตั้งค่า Environment Variables');
       return;
     }
 
     try {
       setAiLoading(true);
-      const ai = new GoogleGenAI({ apiKey });
-      
-      const prompt = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
+
+      const promptText = `คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนและการจัดสภาพแวดล้อมห้องนอน 
 โปรดวิเคราะห์ข้อมูลเซนเซอร์สภาพแวดล้อมห้องนอนปัจจุบันดังนี้:
-- อุณหภูมิ: ${data.temperature?.toFixed(1)} °C
-- ความชื้น: ${data.humidity?.toFixed(0)} %
-- คาร์บอนไดออกไซด์ (CO2): ${data.co2} ppm
-- ฝุ่น PM2.5: ${data.pm2_5} µg/m³
-- แสงสว่าง: ${data.lux?.toFixed(1)} Lux
-- ระดับเสียง: ${data.sound}
+- อุณหภูมิ: ${data.temperature?.toFixed(1) ?? '--'} °C
+- ความชื้น: ${data.humidity?.toFixed(0) ?? '--'} %
+- คาร์บอนไดออกไซด์ (CO2): ${data.co2 ?? '--'} ppm
+- ฝุ่น PM2.5: ${data.pm2_5 ?? '--'} µg/m³
+- แสงสว่าง: ${data.lux?.toFixed(1) ?? '--'} Lux
+- ระดับเสียง: ${data.sound ?? '--'}
 
 คำสั่ง:
 1. ให้คำแนะนำสั้นๆ สรุปใจความสำคัญ ไม่เกิน 2-3 ประโยค ภาษาไทย เป็นกันเอง ชวนให้นอนหลับสบาย
 2. หากมีค่าใดสุ่มเสี่ยง เช่น Temp > 26, CO2 > 800, Sound > 1500 หรือ แสงสว่าง ให้เจาะจงเตือนค่านั้นและบอกวิธีแก้สั้นๆ`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
+      // ยิงตรงไปที่ Gemini 1.5 Flash REST API
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: promptText }],
+              },
+            ],
+          }),
+        }
+      );
 
-      if (response.text) {
-        setAiAnalysis(response.text);
+      const json = await res.json();
+
+      if (json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
+        setAiAnalysis(json.candidates[0].content.parts[0].text);
+      } else if (json.error) {
+        console.error('Gemini API Error Response:', json.error);
+        setAiAnalysis(`ข้อผิดพลาดจาก AI: ${json.error.message || 'ไม่สามารถประมวลผลได้'}`);
+      } else {
+        setAiAnalysis('ไม่สามารถประมวลผลคำตอบจาก Gemini ได้');
       }
     } catch (error) {
-      console.error('Gemini Error:', error);
-      setAiAnalysis('ไม่สามารถเชื่อมต่อ Gemini AI ได้ในขณะนี้');
+      console.error('Fetch Error:', error);
+      setAiAnalysis('เกิดข้อผิดพลาดในการเชื่อมต่อกับ Gemini AI');
     } finally {
       setAiLoading(false);
     }
@@ -69,24 +87,33 @@ export default function Home() {
     try {
       const logsRef = ref(database, 'logs');
       const latestLogQuery = query(logsRef, limitToLast(1));
-      const unsubscribe = onValue(latestLogQuery, (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const latestKey = Object.keys(data)[0];
-          const currentSensorData: SensorData = data[latestKey];
-          
-          setSensor(currentSensorData);
-          // เรียก Gemini API วิเคราะห์ค่าใหม่
-          analyzeWithGemini(currentSensorData);
+      const unsubscribe = onValue(
+        latestLogQuery,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            const latestKey = Object.keys(data)[0];
+            const currentSensorData: SensorData = data[latestKey];
+
+            setSensor(currentSensorData);
+            // เรียกใช้ Gemini AI เมื่อได้รับข้อมูลใหม่
+            analyzeWithGemini(currentSensorData);
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Firebase Error:', error);
+          setLoading(false);
         }
-        setLoading(false);
-      }, () => setLoading(false));
+      );
       return () => unsubscribe();
     } catch (e) {
+      console.error(e);
       setLoading(false);
     }
   }, []);
 
+  // คำนวณ Room Score
   const calculateScore = (data: SensorData | null) => {
     if (!data) return 97;
     let score = 100;
