@@ -40,7 +40,7 @@ export default function Home() {
         setAiAnalysis(json.result);
       } else {
         console.error('Gemini API Error:', json);
-        setAiAnalysis(json.error || 'ไม่สามารถประมวลผลคำตอบได้');
+        setAiAnalysis(json.error || json.details || 'ไม่สามารถประมวลผลคำตอบได้');
       }
     } catch (error) {
       console.error('Fetch Error:', error);
