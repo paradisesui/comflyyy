@@ -28,37 +28,54 @@ export async function POST(req: NextRequest) {
 ช่วยประเมินภาพรวมสภาพแวดล้อมสั้นๆ ใน 2-3 ประโยค (ตอบเป็นภาษาไทยที่เป็นกันเอง เข้าใจง่าย และให้คำแนะนำที่สามารถปฏิบัติตามได้จริงทันที เช่น เปิดหน้าต่าง เปิดพัดลม หรือปรับแสงไฟ):
     `.trim();
 
-    // รายชื่อโมเดลยิงตรงผ่าน Endpoint เสถียรล่าสุด
-    const response = await fetch(
+    // รายการ Endpoint และ Model ที่จะทดลองยิงตามลำดับ
+    const endpointsToTry = [
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: promptText,
-                },
-              ],
-            },
-          ],
-        }),
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
+    ];
+
+    let responseText = '';
+    let lastError = '';
+
+    for (const url of endpointsToTry) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: promptText,
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          responseText = data.candidates[0].content.parts[0].text;
+          break; // ยิงสำเร็จแล้ว ให้ออกจากลูปทันที
+        } else {
+          lastError = data?.error?.message || JSON.stringify(data);
+        }
+      } catch (err: any) {
+        lastError = err?.message || String(err);
       }
-    );
+    }
 
-    const data = await response.json();
-
-    if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      const responseText = data.candidates[0].content.parts[0].text;
+    if (responseText) {
       return NextResponse.json({ result: responseText }, { status: 200 });
     } else {
-      console.error('Gemini API Fetch Error:', data);
       return NextResponse.json(
-        { error: data?.error?.message || 'ไม่สามารถดึงข้อมูลจาก Gemini API ได้' },
+        { error: `ไม่สามารถเชื่อมต่อ Gemini API ได้: ${lastError}` },
         { status: 500 }
       );
     }
