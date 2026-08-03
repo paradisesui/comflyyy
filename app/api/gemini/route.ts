@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request) {
+export async function POST(req: any) {
   try {
     const body = await req.json();
     const { sensorData } = body;
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
 ช่วยประเมินภาพรวมสภาพแวดล้อมสั้นๆ ใน 2-3 ประโยค (ตอบเป็นภาษาไทยที่เป็นกันเอง เข้าใจง่าย และให้คำแนะนำที่สามารถปฏิบัติตามได้จริงทันที เช่น เปิดหน้าต่าง เปิดพัดลม หรือปรับแสงไฟ):
     `.trim();
 
+    // รายชื่อโมเดลยิงตรงผ่าน REST API
     const endpointsToTry = [
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -65,8 +66,8 @@ export async function POST(req: Request) {
         } else {
           lastError = data?.error?.message || JSON.stringify(data);
         }
-      } catch (err: unknown) {
-        lastError = err instanceof Error ? err.message : String(err);
+      } catch (err: any) {
+        lastError = err?.message || String(err);
       }
     }
 
@@ -79,11 +80,10 @@ export async function POST(req: Request) {
       );
     }
 
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('Gemini API Route Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการประมวลผล Gemini AI';
     return NextResponse.json(
-      { error: errorMessage },
+      { error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผล Gemini AI' },
       { status: 500 }
     );
   }
