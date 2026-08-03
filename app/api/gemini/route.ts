@@ -28,38 +28,52 @@ export async function POST(req: Request) {
 ช่วยประเมินภาพรวมสภาพแวดล้อมสั้นๆ ใน 2-3 ประโยค (ตอบเป็นภาษาไทยที่เป็นกันเอง เข้าใจง่าย และให้คำแนะนำที่สามารถปฏิบัติตามได้จริงทันที เช่น เปิดหน้าต่าง เปิดพัดลม หรือปรับแสงไฟ):
     `.trim();
 
-    // ยิงตรงไปหา gemini-1.5-flash
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
+    // รายการชื่อโมเดลมาตรฐานที่ใช้อยู่ในปัจจุบัน
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-flash', 'gemini-1.5-flash-latest'];
+    let responseText = '';
+    let lastError = '';
+
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [
                 {
-                  text: promptText,
+                  parts: [
+                    {
+                      text: promptText,
+                    },
+                  ],
                 },
               ],
-            },
-          ],
-        }),
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          responseText = data.candidates[0].content.parts[0].text;
+          break; // ถ้าสำเร็จ หลุดจากลูปทันที
+        } else {
+          lastError = data?.error?.message || JSON.stringify(data);
+        }
+      } catch (err: any) {
+        lastError = err?.message || String(err);
       }
-    );
+    }
 
-    const data = await response.json();
-
-    if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      const responseText = data.candidates[0].content.parts[0].text;
+    if (responseText) {
       return NextResponse.json({ result: responseText }, { status: 200 });
     } else {
-      console.error('Gemini API Error Detail:', data);
-      const errMsg = data?.error?.message || 'ไม่สามารถดึงข้อมูลจาก Gemini API ได้';
       return NextResponse.json(
-        { error: `Google API Error: ${errMsg}` },
+        { error: `Google API Error: ${lastError}` },
         { status: 500 }
       );
     }
