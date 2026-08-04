@@ -32,41 +32,58 @@ export async function POST(req: Request) {
       คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
     `;
 
-    // เรียกใช้ gemini-2.5-flash ผ่าน v1beta Endpoint
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: promptText }],
-            },
-          ],
-        }),
-      }
+    // 1. ดึงรายชื่อโมเดลทั้งหมดที่ API Key ตัวนี้สามารถเรียกใช้ได้จริงจาก Google
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      { cache: 'no-store' }
     );
 
-    const data = await response.json();
+    const listData = await listRes.json();
 
-    if (!response.ok) {
-      console.error('Google Gemini API Error response:', data);
-      const rawErrorMessage = data?.error?.message || `HTTP Status: ${response.status}`;
+    if (!listRes.ok) {
       return NextResponse.json(
-        { error: `Google API Error (${response.status}): ${rawErrorMessage}` },
-        { status: response.status }
+        { error: `ไม่สามารถดึงรายชื่อโมเดลได้ (${listRes.status}): ${listData?.error?.message || ''}` },
+        { status: listRes.status }
       );
     }
 
-    const resultText =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      'ไม่สามารถดึงคำแนะนำได้ในขณะนี้';
+    // กรองเอาเฉพาะโมเดลที่รองรับการ generateContent
+    const validModels: string[] = listData.models
+      ?.filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+      ?.map((m: any) => m.name) || [];
 
-    return NextResponse.json({ result: resultText });
+    if (validModels.length === 0) {
+      return NextResponse.json({ error: 'ไม่พบโมเดลที่พร้อมใช้งานกับ API Key นี้' }, { status: 500 });
+    }
+
+    // 2. ลองยิงทีละโมเดลที่มีในบัญชีจริง จนกว่าจะเจอตัวที่ส่งกลับมาสำเร็จ
+    let lastError = '';
+    for (const fullModelName of validModels) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/${fullModelName}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return NextResponse.json({ result: data.candidates[0].content.parts[0].text });
+      }
+
+      lastError = data?.error?.message || `Status ${response.status}`;
+    }
+
+    return NextResponse.json(
+      { error: `ไม่สามารถประมวลผลคำตอบได้: ${lastError}` },
+      { status: 500 }
+    );
   } catch (error: any) {
     console.error('Server Catch Error:', error);
     return NextResponse.json(
