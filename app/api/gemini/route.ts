@@ -6,8 +6,7 @@ export async function POST(req: Request) {
     
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ไม่พบ GEMINI_API_KEY ในระบบ' }, 
-        { status: 500 }
+        { result: '💡 คำแนะนำชั่วคราว: ปรับอุณหภูมิห้องให้อยู่ในช่วง 23-25°C ปิดไฟให้มืดสนิท และแย้มประตูเล็กน้อยเพื่อให้อากาศถ่ายเท' }
       );
     }
 
@@ -20,7 +19,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Prompt คำแนะนำเชิงลึก แบ่งเป็นขั้นตอนสั้นๆ ทำตามได้ทันที
     const promptText = `
       คุณคือโค้ชผู้เชี่ยวชาญด้านสุขภาพและการนอนหลับ (Professional Sleep Coach) ประจำแอป COMFLYY
       
@@ -34,47 +32,45 @@ export async function POST(req: Request) {
       ข้อบังคับในการตอบ:
       1. ห้ามรายงานค่าตัวเลข ห้ามบอกว่าค่าไหนสูงหรือต่ำกี่หน่วยเด็ดขาด
       2. เน้นให้คำแนะนำ Action Plan ว่าต้องปรับเปลี่ยนอะไรในห้องนอนบ้าง โดยแบ่งเป็นข้อๆ สั้นๆ (2-3 ข้อ)
-      3. ให้คำแนะนำครอบคลุมทั้ง:
-         - การปรับสภาพแวดล้อมทันที (เช่น ปรับแอร์, ปิดไฟ, แย้มประตูระบายอากาศ)
-         - ทริคสั้นๆ สำหรับเตรียมตัวเข้านอน (เช่น สวมเสื้อผ้าโปร่งสบาย, ปรับทิศทางลมหมุนเวียน)
+      3. ให้คำแนะนำครอบคลุมการปรับสภาพแวดล้อมและการเตรียมตัวเข้านอน
       4. ใช้น้ำเสียงเป็นกันเอง ใส่ใจ ห่วงใย และอ่านง่าย
     `;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: promptText }],
-            },
-          ],
-        }),
+    // เลือกใช้เฉพาะโมเดลที่มีโควตาใน Dashboard ของคุณ
+    const availableModels = [
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-flash'
+    ];
+
+    for (const modelName of availableModels) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          return NextResponse.json({ result: data.candidates[0].content.parts[0].text });
+        }
+      } catch (err) {
+        console.warn(`Model ${modelName} failed, trying next...`);
       }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('Gemini API Error Detail:', data);
-      return NextResponse.json(
-        { error: data.error?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini API' },
-        { status: response.status }
-      );
     }
 
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'ไม่สามารถสร้างคำแนะนำได้ในขณะนี้';
+    // Fallback เมื่อโควตารายวัน 20 ครั้งหมดลง
+    return NextResponse.json({ 
+      result: '🌙 คำแนะนำสภาวะการนอนปัจจุบัน:\n1. ปรับเครื่องปรับอากาศให้อยู่ในช่วง 24-25°C เพื่อป้องกันอุณหภูมิสะสม\n2. เปิดพัดลมหมุนเวียนอากาศเบาๆ และปิดไฟให้มืดสนิทเพื่อกระตุ้นการหลั่งเมลาโทนิน' 
+    });
 
-    return NextResponse.json({ result: responseText });
   } catch (error: any) {
-    console.error('Gemini Internal Server Error:', error);
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์ในการประมวลผล' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      result: '🌙 คำแนะนำสภาวะการนอนปัจจุบัน:\n1. ปรับเครื่องปรับอากาศให้อยู่ในช่วง 24-25°C เพื่อป้องกันอุณหภูมิสะสม\n2. เปิดพัดลมหมุนเวียนอากาศเบาๆ และปิดไฟให้มืดสนิทเพื่อกระตุ้นการหลั่งเมลาโทนิน' 
+    });
   }
 }
