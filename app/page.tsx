@@ -22,8 +22,18 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(true);
   const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มด้านล่างเพื่อวิเคราะห์สภาพแวดล้อมด้วย Gemini AI');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [cooldown, setCooldown] = useState<number>(0);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
 
   const analyzeWithGemini = async (data: SensorData) => {
+    if (cooldown > 0) return;
+
     try {
       setAiLoading(true);
       setAiAnalysis('🤖 Gemini กำลังประมวลผลคำแนะนำ...');
@@ -47,6 +57,7 @@ export default function Home() {
       setAiAnalysis('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     } finally {
       setAiLoading(false);
+      setCooldown(10);
     }
   };
 
@@ -73,14 +84,28 @@ export default function Home() {
     }
   }, []);
 
+  // คำนวณคะแนนตามเกณฑ์วิจัยจริง
   const calculateScore = (data: SensorData | null) => {
     if (!data) return 97;
     let score = 100;
-    if (data.temperature > 25) score -= Math.round((data.temperature - 25) * 2);
+    
+    // อุณหภูมิ (เกณฑ์วิจัย <= 25°C)
+    if (data.temperature > 25) score -= Math.round((data.temperature - 25) * 3);
+    
+    // ความชื้น (เกณฑ์วิจัย 40% - 60%)
+    if (data.humidity > 60) score -= Math.round((data.humidity - 60) * 0.5);
+    if (data.humidity < 40) score -= Math.round((40 - data.humidity) * 0.5);
+
+    // CO2 (เกณฑ์วิจัย <= 800 ppm)
     if (data.co2 > 800) score -= 10;
+    
+    // PM2.5 (เกณฑ์วิจัย <= 15 µg/m³)
     if (data.pm2_5 > 15) score -= 10;
-    if (data.sound > 1000) score -= 5;
-    return Math.max(0, Math.min(100, score));
+    
+    // แสงสว่าง (เกณฑ์วิจัย < 5 Lux)
+    if (data.lux > 5) score -= 10;
+
+    return Math.max(0, Math.min(100, Math.round(score)));
   };
 
   const score = calculateScore(sensor);
@@ -161,7 +186,7 @@ export default function Home() {
 
           <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-            <h2 style={{ fontSize: '24px', color: score >= 80 ? '#34d399' : '#f59e0b', fontWeight: '700', margin: '2px 0 0 0' }}>
+            <h2 style={{ fontSize: '24px', color: score >= 80 ? '#34d399' : score >= 60 ? '#f59e0b' : '#ef4444', fontWeight: '700', margin: '2px 0 0 0' }}>
               {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
             </h2>
           </div>
@@ -178,19 +203,19 @@ export default function Home() {
         }}>
           <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
               {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
             </span>
           </div>
           <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ความชื้น</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
               {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
             </span>
           </div>
           <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>CO2</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#f1f5f9' }}>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
               {sensor ? `${sensor.co2} ppm` : '--'}
             </span>
           </div>
@@ -213,17 +238,17 @@ export default function Home() {
 
         <button
           onClick={() => sensor && analyzeWithGemini(sensor)}
-          disabled={aiLoading || !sensor}
+          disabled={aiLoading || !sensor || cooldown > 0}
           style={{
             width: '100%',
             padding: '12px',
-            backgroundColor: '#10b981',
-            color: '#022c22',
+            backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
+            color: cooldown > 0 ? '#94a3b8' : '#022c22',
             border: 'none',
             borderRadius: '14px',
             fontWeight: '700',
             fontSize: '14px',
-            cursor: aiLoading ? 'not-allowed' : 'pointer',
+            cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
             opacity: aiLoading ? 0.6 : 1,
             display: 'flex',
             alignItems: 'center',
@@ -231,7 +256,11 @@ export default function Home() {
             gap: '8px'
           }}
         >
-          {aiLoading ? '🔄 กำลังวิเคราะห์...' : '🔄 วิเคราะห์สดด้วย Gemini'}
+          {aiLoading 
+            ? '🔄 กำลังวิเคราะห์...' 
+            : cooldown > 0 
+              ? `⏳ กรุณารอ (${cooldown}s)` 
+              : '🔄 วิเคราะห์สดด้วย Gemini'}
         </button>
 
         <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>

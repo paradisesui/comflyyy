@@ -37,13 +37,59 @@ export default function SensorsPage() {
     }
   }, []);
 
+  // ฟังก์ชันช่วยประเมินสถานะตามเกณฑ์งานวิจัย
+  const getTempInfo = (t?: number) => {
+    if (t === undefined) return { status: 'N/A', color: '#64748b' };
+    if (t <= 25) return { status: 'ปกติ', color: '#10b981' };
+    return { status: 'เฝ้าระวัง', color: '#f59e0b' };
+  };
+
+  const getHumInfo = (h?: number) => {
+    if (h === undefined) return { status: 'N/A', color: '#64748b' };
+    if (h >= 40 && h <= 60) return { status: 'ปกติ', color: '#10b981' };
+    if (h > 60) return { status: 'ชื้นเกินไป', color: '#f59e0b' };
+    return { status: 'แห้งเกินไป', color: '#f59e0b' };
+  };
+
+  const getLuxInfo = (l?: number) => {
+    if (l === undefined) return { status: 'N/A', color: '#64748b' };
+    if (l < 5) return { status: 'มืดสนิท (ดี)', color: '#10b981' };
+    if (l <= 10) return { status: 'พอใช้', color: '#f59e0b' };
+    return { status: 'สว่างไป', color: '#ef4444' };
+  };
+
+  const getCo2Info = (c?: number) => {
+    if (c === undefined) return { status: 'N/A', color: '#64748b' };
+    if (c < 800) return { status: 'ดีมาก', color: '#10b981' };
+    return { status: 'ควรระบายอากาศ', color: '#f59e0b' };
+  };
+
+  const getSoundInfo = (s?: number) => {
+    if (s === undefined) return { status: 'N/A', color: '#64748b' };
+    if (s > 1000) return { status: 'มีเสียงรบกวน', color: '#ef4444' };
+    return { status: 'เงียบสงบ', color: '#10b981' };
+  };
+
+  const getPmInfo = (p?: number) => {
+    if (p === undefined) return { status: 'N/A', color: '#64748b' };
+    if (p <= 15) return { status: 'ดีมาก', color: '#10b981' };
+    return { status: 'มีฝุ่นสะสม', color: '#f59e0b' };
+  };
+
+  const temp = getTempInfo(sensor?.temperature);
+  const hum = getHumInfo(sensor?.humidity);
+  const lux = getLuxInfo(sensor?.lux);
+  const co2 = getCo2Info(sensor?.co2);
+  const sound = getSoundInfo(sensor?.sound);
+  const pm = getPmInfo(sensor?.pm2_5);
+
   const sensors = [
-    { name: 'อุณหภูมิ (SHT31)', value: sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--', status: sensor && sensor.temperature > 26 ? 'เฝ้าระวัง' : 'ปกติ', color: sensor && sensor.temperature > 26 ? '#f59e0b' : '#10b981', icon: '🌡️' },
-    { name: 'ความชื้น (SHT31)', value: sensor ? `${sensor.humidity?.toFixed(0)}%` : '--', status: 'ปกติ', color: '#10b981', icon: '💧' },
-    { name: 'แสงสว่าง (BH1750)', value: sensor ? `${sensor.lux?.toFixed(1)} Lux` : '--', status: sensor && sensor.lux > 50 ? 'สว่างไป' : 'เหมาะกับการนอน', color: sensor && sensor.lux > 50 ? '#f59e0b' : '#10b981', icon: '💡' },
-    { name: 'CO2 (MH-Z19B)', value: sensor ? `${sensor.co2} ppm` : '--', status: sensor && sensor.co2 > 800 ? 'ปานกลาง' : 'ดีมาก', color: sensor && sensor.co2 > 800 ? '#f59e0b' : '#10b981', icon: '🍃' },
-    { name: 'เสียงรบกวน (KY-038)', value: sensor ? `${sensor.sound}` : '--', status: sensor && sensor.sound > 1500 ? 'มีเสียงรบกวน' : 'เงียบสงบ', color: sensor && sensor.sound > 1500 ? '#ef4444' : '#10b981', icon: '🔊' },
-    { name: 'PM2.5 (PMS5003)', value: sensor ? `${sensor.pm2_5} µg/m³` : '--', status: 'ดีมาก', color: '#10b981', icon: '🌫️' },
+    { name: 'อุณหภูมิ (SHT31)', value: sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--', status: temp.status, color: temp.color, icon: '🌡️' },
+    { name: 'ความชื้น (SHT31)', value: sensor ? `${sensor.humidity?.toFixed(0)}%` : '--', status: hum.status, color: hum.color, icon: '💧' },
+    { name: 'แสงสว่าง (BH1750)', value: sensor ? `${sensor.lux?.toFixed(1)} Lux` : '--', status: lux.status, color: lux.color, icon: '💡' },
+    { name: 'CO2 (MH-Z19B)', value: sensor ? `${sensor.co2} ppm` : '--', status: co2.status, color: co2.color, icon: '🍃' },
+    { name: 'เสียงรบกวน (KY-038)', value: sensor ? `${sensor.sound}` : '--', status: sound.status, color: sound.color, icon: '🔊' },
+    { name: 'PM2.5 (PMS5003)', value: sensor ? `${sensor.pm2_5} µg/m³` : '--', status: pm.status, color: pm.color, icon: '🌫️' },
   ];
 
   return (
