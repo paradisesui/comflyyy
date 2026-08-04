@@ -1,87 +1,39 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { sensorData } = body;
+    const { sensorData } = await req.json();
 
     if (!sensorData) {
-      return NextResponse.json({ error: 'ไม่พบข้อมูลเซนเซอร์ที่ส่งมา' }, { status: 400 });
+      return NextResponse.json({ error: 'ไม่พบข้อมูลเซนเซอร์' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY ใน Vercel Environment Variables' }, { status: 500 });
-    }
+    const prompt = `
+      คุณคือผู้เชี่ยวชาญด้านสภาพแวดล้อมการนอน (Sleep Environment Expert)
+      โปรดวิเคราะห์สภาพแวดล้อมในห้องนอนจากข้อมูลเซนเซอร์ดังนี้:
+      - อุณหภูมิ: ${sensorData.temperature}°C
+      - ความชื้น: ${sensorData.humidity}%
+      - คาร์บอนไดออกไซด์ (CO2): ${sensorData.co2} ppm
+      - ฝุ่น PM2.5: ${sensorData.pm2_5 || 'N/A'} µg/m³
+      - แสง: ${sensorData.lux || 'N/A'} Lux
+      - เสียง: ${sensorData.sound || 'N/A'} dB
 
-    const promptText = `
-คุณคือผู้เชี่ยวชาญด้านสุขภาพและสภาพแวดล้อมภายในห้องนอน
-กรุณาวิเคราะห์ค่าจากเซนเซอร์สภาพแวดล้อมในห้องนอนดังต่อไปนี้:
+      คำสั่ง: ให้คำแนะนำสั้นๆ 1-2 ประโยค ว่าสภาพห้องนี้ส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที (เช่น ปรับแอร์, เปิดระบายอากาศ)
+    `;
 
-- อุณหภูมิ: ${sensorData.temperature ?? 'ไม่ทราบ'} °C
-- ความชื้น: ${sensorData.humidity ?? 'ไม่ทราบ'} %
-- ปริมาณ CO2: ${sensorData.co2 ?? 'ไม่ทราบ'} ppm
-- ปริมาณ PM2.5: ${sensorData.pm2_5 ?? 'ไม่ทราบ'} µg/m³
-- ระดับความสว่าง: ${sensorData.lux ?? 'ไม่ทราบ'} lux
-- ระดับเสียง: ${sensorData.sound ?? 'ไม่ทราบ'}
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
 
-ช่วยประเมินภาพรวมสภาพแวดล้อมสั้นๆ ใน 2-3 ประโยค (ตอบเป็นภาษาไทยที่เป็นกันเอง เข้าใจง่าย และให้คำแนะนำที่สามารถปฏิบัติตามได้จริงทันที เช่น เปิดหน้าต่าง เปิดพัดลม หรือปรับแสงไฟ):
-    `.trim();
-
-    // รายการชื่อโมเดลมาตรฐานที่ใช้อยู่ในปัจจุบัน
-    const modelsToTry = ['gemini-2.0-flash', 'gemini-flash', 'gemini-1.5-flash-latest'];
-    let responseText = '';
-    let lastError = '';
-
-    for (const modelName of modelsToTry) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: promptText,
-                    },
-                  ],
-                },
-              ],
-            }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-          responseText = data.candidates[0].content.parts[0].text;
-          break; // ถ้าสำเร็จ หลุดจากลูปทันที
-        } else {
-          lastError = data?.error?.message || JSON.stringify(data);
-        }
-      } catch (err: any) {
-        lastError = err?.message || String(err);
-      }
-    }
-
-    if (responseText) {
-      return NextResponse.json({ result: responseText }, { status: 200 });
-    } else {
-      return NextResponse.json(
-        { error: `Google API Error: ${lastError}` },
-        { status: 500 }
-      );
-    }
-
+    return NextResponse.json({ result: response.text });
   } catch (error: any) {
-    console.error('Gemini API Route Error:', error);
+    console.error('Gemini API Error:', error);
     return NextResponse.json(
-      { error: error?.message || 'เกิดข้อผิดพลาดในการประมวลผล Gemini AI' },
+      { error: 'เกิดข้อผิดพลาดในการประมวลผล', details: error.message },
       { status: 500 }
     );
   }
