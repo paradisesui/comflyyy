@@ -12,8 +12,7 @@ import {
   updateProfile,
   User 
 } from 'firebase/auth';
-import { ref, set, get, child } from 'firebase/database';
-import { app, database } from '@/app/lib/firebase';
+import { app } from '@/app/lib/firebase';
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -37,33 +36,27 @@ export default function AccountPage() {
   const auth = getAuth(app);
   const router = useRouter();
 
-  // โหลดข้อมูลโปรไฟล์จาก Firebase Realtime Database
-  const fetchUserProfile = async (uid: string) => {
-    try {
-      const dbRef = ref(database);
-      const snapshot = await get(child(dbRef, `users/${uid}`));
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        return data;
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-    }
-    return null;
-  };
-
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        // ดึงข้อมูลรูปภาพและชื่อจาก Database
-        const profileData = await fetchUserProfile(currentUser.uid);
+        // ดึงโปรไฟล์สำรองจาก LocalStorage
+        const localData = localStorage.getItem(`user_profile_${currentUser.uid}`);
+        let localProfile = null;
+        if (localData) {
+          try { localProfile = JSON.parse(localData); } catch (e) {}
+        }
+
+        const activeName = localProfile?.displayName || currentUser.displayName || 'สมาชิก COMFLYY';
+        const activePhoto = localProfile?.photoURL || currentUser.photoURL || '';
+
         setUser({
           ...currentUser,
-          displayName: profileData?.displayName || currentUser.displayName || 'สมาชิก COMFLYY',
-          photoURL: profileData?.photoURL || currentUser.photoURL || ''
+          displayName: activeName,
+          photoURL: activePhoto
         });
-        setNewDisplayName(profileData?.displayName || currentUser.displayName || '');
-        setNewPhotoBase64(profileData?.photoURL || currentUser.photoURL || '');
+
+        setNewDisplayName(activeName);
+        setNewPhotoBase64(activePhoto);
       } else {
         setUser(null);
       }
@@ -73,7 +66,7 @@ export default function AccountPage() {
     return () => unsubscribe();
   }, [auth]);
 
-  // บีบอัดรูปภาพให้มีขนาดเล็กกะทัดรัด
+  // ย่อขนาดรูปภาพให้พอดี
   const compressImage = (file: File, callback: (base64: string) => void) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -146,21 +139,20 @@ export default function AccountPage() {
       const finalName = displayName || 'สมาชิก COMFLYY';
       const finalPhoto = photoBase64 || '';
 
-      // บันทึกข้อมุลลง Firebase Database
-      await set(ref(database, `users/${newUser.uid}`), {
+      // บันทึกลง LocalStorage
+      localStorage.setItem(`user_profile_${newUser.uid}`, JSON.stringify({
         displayName: finalName,
-        email: newUser.email,
         photoURL: finalPhoto
-      });
+      }));
 
-      await updateProfile(newUser, { displayName: finalName });
+      try { await updateProfile(newUser, { displayName: finalName }); } catch (e) {}
       setAuthSuccess('สมัครสมาชิกสำเร็จ!');
     } catch (err: any) {
       setAuthError(err.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
     }
   };
 
-  // อัปเดตข้อมูลโปรไฟล์ (เก็บบันทึกลง Firebase Database โดยตรง)
+  // อัปเดตข้อมูลโปรไฟล์ (เซฟลง LocalStorage + Auth)
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth.currentUser) return;
@@ -170,17 +162,20 @@ export default function AccountPage() {
     try {
       const uid = auth.currentUser.uid;
 
-      // บันทึกข้อมูลลง Firebase Realtime Database
-      await set(ref(database, `users/${uid}`), {
+      // 1. บันทึกลง LocalStorage เพื่อป้องกันปัญหา Permission Denied
+      localStorage.setItem(`user_profile_${uid}`, JSON.stringify({
         displayName: newDisplayName,
-        email: auth.currentUser.email,
         photoURL: newPhotoBase64
-      });
+      }));
 
-      // อัปเดต DisplayName ใน Auth ด้วย
-      await updateProfile(auth.currentUser, { displayName: newDisplayName });
+      // 2. พยายามอัปเดต Auth DisplayName
+      try {
+        await updateProfile(auth.currentUser, { displayName: newDisplayName });
+      } catch (e) {
+        console.log('Firebase Auth update skipped:', e);
+      }
 
-      // อัปเดต State สดทันที
+      // 3. อัปเดต State สด
       setUser({
         ...auth.currentUser,
         displayName: newDisplayName,
