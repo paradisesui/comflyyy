@@ -20,7 +20,7 @@ interface SensorData {
 export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มเพื่อวิเคราะห์สภาพแวดล้อมห้องนอนด้วย Gemini AI');
+  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มเพื่อขอรับคำแนะนำการปรับสภาพแวดล้อมห้องนอนจาก AI');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<number>(0);
 
@@ -36,7 +36,7 @@ export default function Home() {
 
     try {
       setAiLoading(true);
-      setAiAnalysis('กำลังประมวลผลคำแนะนำด้วย Gemini AI...');
+      setAiAnalysis('กำลังประมวลผลคำแนะนำ...');
 
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -305,9 +305,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 4 Metrics Grid - จัดระเบียบตัวอักษรเรียบร้อยสมดุล */}
+          {/* 4 Metrics Grid */}
           <div className="metrics-grid">
-            {/* Temperature */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -342,7 +341,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Humidity */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -377,7 +375,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Air Quality (CO2) */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -412,7 +409,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Ambient Light */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -506,7 +502,7 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* AI Insight Bento Card */}
+        {/* AI Sleep Recommendation Bento Card (ปรับเปลี่ยนข้อความพาดหัวเรียบร้อย) */}
         <div style={{
           backgroundColor: '#151c2c',
           padding: '24px 22px',
@@ -518,7 +514,7 @@ export default function Home() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '14px', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              ✨ Gemini AI Sleep Insight
+              ✨ คำแนะนำการนอนหลับจาก AI (Sleep Recommendation)
             </span>
             <button
               onClick={() => sensor && analyzeWithGemini(sensor)}
@@ -535,7 +531,7 @@ export default function Home() {
                 opacity: aiLoading ? 0.7 : 1
               }}
             >
-              {aiLoading ? '🔄...' : cooldown > 0 ? `⏳ (${cooldown}s)` : 'วิเคราะห์สด'}
+              {aiLoading ? '🔄...' : cooldown > 0 ? `⏳ (${cooldown}s)` : 'รับคำแนะนำ'}
             </button>
           </div>
 
