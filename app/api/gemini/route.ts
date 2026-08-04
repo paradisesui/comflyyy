@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
@@ -13,14 +12,10 @@ export async function POST(req: Request) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY ใน Environment Variables' },
+        { error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บน Vercel Environment Variables' },
         { status: 500 }
       );
     }
-
-    // เรียกใช้ SDK มาตรฐานของ Gemini
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const promptText = `
       คุณคือผู้เชี่ยวชาญด้านสภาพแวดล้อมการนอน (Sleep Environment Expert)
@@ -35,15 +30,41 @@ export async function POST(req: Request) {
       คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
     `;
 
-    const result = await model.generateContent(promptText);
-    const response = await result.response;
-    const text = response.text();
+    // ยิงตรงไปที่ Google Gemini API Endpoint แบบ Native Fetch
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: promptText }],
+            },
+          ],
+        }),
+      }
+    );
 
-    return NextResponse.json({ result: text || 'ไม่สามารถดึงคำแนะนำได้ในขณะนี้' });
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Google Gemini API Error response:', data);
+      const apiErrorMessage = data?.error?.message || 'ข้อผิดพลาดจาก Gemini API';
+      return NextResponse.json({ error: apiErrorMessage }, { status: response.status });
+    }
+
+    const resultText =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      'ไม่สามารถดึงคำแนะนำได้ในขณะนี้';
+
+    return NextResponse.json({ result: resultText });
   } catch (error: any) {
     console.error('Server Catch Error:', error);
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการประมวลผลเซิร์ฟเวอร์', details: error.message },
+      { error: `Server Error: ${error.message || 'เกิดข้อผิดพลาดภายในระบบ'}` },
       { status: 500 }
     );
   }
