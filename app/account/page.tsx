@@ -2,13 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { database } from '@/app/lib/firebase';
+import { ref, set, get, child } from 'firebase/database';
 
 export default function AccountPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
 
-  const [userName, setUserName] = useState<string>('ผู้ใช้งาน COMFLYY');
-  const [email, setEmail] = useState<string>('comflyy.user@example.com');
+  // State สำหรับ User ID (สร้างหรือดึงจาก Session)
+  const [userId, setUserId] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const [inputEmail, setInputEmail] = useState<string>('');
@@ -16,66 +20,106 @@ export default function AccountPage() {
   const [inputName, setInputName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
 
+  // 1. ดึงข้อมูล Profile ของ User จาก Firebase Database
+  const fetchUserProfile = async (uid: string) => {
+    try {
+      const dbRef = ref(database);
+      const snapshot = await get(child(dbRef, `users/${uid}`));
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setUserName(data.name || 'ผู้ใช้งาน COMFLYY');
+        setEmail(data.email || '');
+        setProfileImage(data.image || null);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
+
+  // 2. บันทึก/อัปเดต ข้อมูล Profile ลง Firebase Database ตาม UID
+  const saveUserProfileToFirebase = async (uid: string, name: string, mail: string, image: string | null) => {
+    try {
+      await set(ref(database, `users/${uid}`), {
+        name,
+        email: mail,
+        image,
+        updatedAt: Date.now()
+      });
+    } catch (error) {
+      console.error("Error saving user profile:", error);
+    }
+  };
+
+  // ตรวจสอบ Session ล็อกอินจากเครื่อง
   useEffect(() => {
-    const savedUser = localStorage.getItem('comflyy_user');
-    if (savedUser) {
-      const parsed = JSON.parse(savedUser);
-      setUserName(parsed.name || 'ผู้ใช้งาน COMFLYY');
-      setEmail(parsed.email || 'comflyy.user@example.com');
-      setProfileImage(parsed.image || null);
+    const savedUid = localStorage.getItem('comflyy_uid');
+    if (savedUid) {
+      setUserId(savedUid);
       setIsLoggedIn(true);
+      fetchUserProfile(savedUid);
     }
   }, []);
 
-  const saveUserData = (name: string, mail: string, image: string | null) => {
-    const userData = { name, email: mail, image };
-    localStorage.setItem('comflyy_user', JSON.stringify(userData));
-  };
-
-  const handleAuth = (e: React.FormEvent) => {
+  // ฟังก์ชัน เข้าสู่ระบบ / สมัครสมาชิก
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
 
-    const finalName = isRegisterMode ? (inputName || 'ผู้ใช้งานใหม่') : 'ผู้ใช้งาน COMFLYY';
-    setUserName(finalName);
+    // สร้าง UID จาก Email (เพื่อใช้เป็น Key ใน Database)
+    const generatedUid = btoa(inputEmail).replace(/=/g, ''); 
+    const finalName = isRegisterMode ? (inputName || 'ผู้ใช้งานใหม่') : inputEmail.split('@')[0];
+
+    setUserId(generatedUid);
     setEmail(inputEmail);
     setIsLoggedIn(true);
-    saveUserData(finalName, inputEmail, profileImage);
-    
+    localStorage.setItem('comflyy_uid', generatedUid);
+
+    if (isRegisterMode) {
+      setUserName(finalName);
+      await saveUserProfileToFirebase(generatedUid, finalName, inputEmail, profileImage);
+    } else {
+      await fetchUserProfile(generatedUid);
+    }
+
     setInputEmail('');
     setInputPassword('');
     setInputName('');
   };
 
+  // ฟังก์ชัน ออกจากระบบ
   const handleLogout = () => {
-    localStorage.removeItem('comflyy_user');
+    localStorage.removeItem('comflyy_uid');
     setIsLoggedIn(false);
-    setIsEditingName(false);
+    setUserId('');
+    setProfileImage(null);
   };
 
-  const handleSaveName = () => {
-    if (!inputName.trim()) return;
+  // ฟังก์ชัน บันทึกการเปลี่ยนชื่อ
+  const handleSaveName = async () => {
+    if (!inputName.trim() || !userId) return;
     setUserName(inputName);
-    saveUserData(inputName, email, profileImage);
     setIsEditingName(false);
+    await saveUserProfileToFirebase(userId, inputName, email, profileImage);
   };
 
+  // ฟังก์ชัน อัปโหลดและเปลี่ยนรูปโปรไฟล์
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB');
+    if (file && userId) {
+      if (file.size > 1 * 1024 * 1024) { // จำกัดไม่เกิน 1MB สำหรับสตรีมเป็น Base64
+        alert('ขนาดไฟล์รูปภาพต้องไม่เกิน 1MB');
         return;
       }
 
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64String = reader.result as string;
         setProfileImage(base64String);
-        saveUserData(userName, email, base64String);
+        await saveUserProfileToFirebase(userId, userName, email, base64String);
       };
       reader.readAsDataURL(file);
     }
@@ -137,10 +181,6 @@ export default function AccountPage() {
           cursor: pointer;
         }
 
-        .btn-primary:active {
-          transform: scale(0.98);
-        }
-
         .upload-area {
           display: flex;
           flex-direction: column;
@@ -152,16 +192,10 @@ export default function AccountPage() {
           background-color: #0b0f19;
           cursor: pointer;
           margin-top: 10px;
-          transition: border-color 0.2s;
-        }
-
-        .upload-area:hover {
-          border-color: #6366f1;
         }
       `}</style>
 
       <main className="account-container">
-        {/* Header Section */}
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
           <Link href="/" style={{
             color: '#38bdf8',
@@ -250,7 +284,6 @@ export default function AccountPage() {
           </div>
         ) : (
           <>
-            {/* Profile Info Card */}
             <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{
                 width: '68px',
@@ -329,7 +362,6 @@ export default function AccountPage() {
               </div>
             </div>
 
-            {/* Change Profile Picture */}
             <div className="card">
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#818cf8' }}>
                 🖼️ เปลี่ยนรูปโปรไฟล์ (Upload Photo)
@@ -341,7 +373,7 @@ export default function AccountPage() {
                   กดเพื่อเลือกรูปภาพจากมือถือหรือคอมพิวเตอร์
                 </span>
                 <span style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                  รองรับไฟล์ PNG, JPG หรือ GIF (ไม่เกิน 2MB)
+                  รองรับไฟล์ PNG หรือ JPG (ไม่เกิน 1MB)
                 </span>
               </label>
 
@@ -354,7 +386,6 @@ export default function AccountPage() {
               />
             </div>
 
-            {/* Logout Button */}
             <button
               onClick={handleLogout}
               style={{
