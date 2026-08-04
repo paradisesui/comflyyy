@@ -17,254 +17,124 @@ interface SensorData {
   timestamp: number;
 }
 
-export default function SensorsPage() {
+export default function AllSensorsPage() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
-  const [historyLogs, setHistoryLogs] = useState<SensorData[]>([]);
 
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
-      const latestLogQuery = query(logsRef, limitToLast(15));
+      const latestLogQuery = query(logsRef, limitToLast(1));
       const unsubscribe = onValue(latestLogQuery, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
-          const items: SensorData[] = Object.keys(data).map((key) => data[key]);
-          setHistoryLogs(items);
-          setSensor(items[items.length - 1]);
+          const latestKey = Object.keys(data)[0];
+          setSensor(data[latestKey]);
         }
       });
       return () => unsubscribe();
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   }, []);
-
-  const getTempInfo = (t?: number) => {
-    if (t === undefined) return { status: 'N/A', color: '#64748b' };
-    if (t <= 25) return { status: 'ปกติ', color: '#10b981' };
-    return { status: 'เฝ้าระวัง', color: '#f59e0b' };
-  };
-
-  const getHumInfo = (h?: number) => {
-    if (h === undefined) return { status: 'N/A', color: '#64748b' };
-    if (h >= 40 && h <= 60) return { status: 'ปกติ', color: '#10b981' };
-    if (h > 60) return { status: 'ชื้นเกินไป', color: '#f59e0b' };
-    return { status: 'แห้งเกินไป', color: '#f59e0b' };
-  };
-
-  const getLuxInfo = (l?: number) => {
-    if (l === undefined) return { status: 'N/A', color: '#64748b' };
-    if (l < 5) return { status: 'มืดสนิท (ดี)', color: '#10b981' };
-    if (l <= 10) return { status: 'พอใช้', color: '#f59e0b' };
-    return { status: 'สว่างไป', color: '#ef4444' };
-  };
-
-  const getCo2Info = (c?: number) => {
-    if (c === undefined) return { status: 'N/A', color: '#64748b' };
-    if (c < 800) return { status: 'ดีมาก', color: '#10b981' };
-    return { status: 'ควรระบายอากาศ', color: '#f59e0b' };
-  };
-
-  const getSoundInfo = (s?: number) => {
-    if (s === undefined) return { status: 'N/A', color: '#64748b' };
-    if (s > 1000) return { status: 'มีเสียงรบกวน', color: '#ef4444' };
-    return { status: 'เงียบสงบ', color: '#10b981' };
-  };
-
-  const getPmInfo = (p?: number) => {
-    if (p === undefined) return { status: 'N/A', color: '#64748b' };
-    if (p <= 15) return { status: 'ดีมาก', color: '#10b981' };
-    return { status: 'มีฝุ่นสะสม', color: '#f59e0b' };
-  };
-
-  const temp = getTempInfo(sensor?.temperature);
-  const hum = getHumInfo(sensor?.humidity);
-  const lux = getLuxInfo(sensor?.lux);
-  const co2 = getCo2Info(sensor?.co2);
-  const sound = getSoundInfo(sensor?.sound);
-  const pm = getPmInfo(sensor?.pm2_5);
-
-  const sensors = [
-    { name: 'อุณหภูมิ (SHT31)', value: sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--', status: temp.status, color: temp.color, icon: '🌡️' },
-    { name: 'ความชื้น (SHT31)', value: sensor ? `${sensor.humidity?.toFixed(0)}%` : '--', status: hum.status, color: hum.color, icon: '💧' },
-    { name: 'แสงสว่าง (BH1750)', value: sensor ? `${sensor.lux?.toFixed(1)} Lux` : '--', status: lux.status, color: lux.color, icon: '💡' },
-    { name: 'CO2 (MH-Z19B)', value: sensor ? `${sensor.co2} ppm` : '--', status: co2.status, color: co2.color, icon: '🍃' },
-    { name: 'เสียงรบกวน (KY-038)', value: sensor ? `${sensor.sound}` : '--', status: sound.status, color: sound.color, icon: '🔊' },
-    { name: 'PM2.5 (PMS5003)', value: sensor ? `${sensor.pm2_5} µg/m³` : '--', status: pm.status, color: pm.color, icon: '🌫️' },
-  ];
-
-  // คำนวณเส้น SVG Path กราฟอุณหภูมิย้อนหลัง
-  const generateSvgPoints = (key: 'temperature' | 'humidity', width: number, height: number) => {
-    if (historyLogs.length < 2) return '';
-    const values = historyLogs.map((item) => item[key] ?? 0);
-    const min = Math.min(...values) - 1;
-    const max = Math.max(...values) + 1;
-    
-    return values.map((val, idx) => {
-      const x = (idx / (values.length - 1)) * width;
-      const y = height - ((val - min) / (max - min || 1)) * height;
-      return `${x},${y}`;
-    }).join(' ');
-  };
 
   return (
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#090d16',
-      color: '#ffffff',
+      backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 60%)',
+      color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       display: 'flex',
       justifyContent: 'center',
-      alignItems: 'center',
-      padding: '20px'
+      padding: '20px 12px'
     }}>
-      <style jsx>{`
-        .sensors-container {
-          width: 100%;
-          max-width: 1200px;
-          background-color: #0f172a;
-          border-radius: 32px;
-          border: 1px solid #1e293b;
-          padding: 28px;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-
-        .cards-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 16px;
-        }
-
-        .charts-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 16px;
-        }
-
-        @media (min-width: 768px) {
-          .charts-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-        }
-      `}</style>
-
-      <main className="sensors-container">
+      <main style={{
+        width: '100%',
+        maxWidth: '1000px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>
-            ← ย้อนกลับหน้าหลัก
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link href="/" style={{ color: '#818cf8', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
+            ← กลับหน้าหลัก
           </Link>
-          <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0, color: '#f8fafc' }}>
-            รายละเอียดเซนเซอร์สด & แนวโน้ม
+          <span style={{ fontSize: '11px', color: '#64748b' }}>ESP32 Sensor Array</span>
+        </div>
+
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
+            📡 รายละเอียดค่าเซนเซอร์ทั้งหมด
           </h1>
-          <div style={{ width: '40px' }}></div>
+          <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+            แสดงผลข้อมูลสภาพแวดล้อมห้องนอนแบบละเอียดทุกพารามิเตอร์
+          </p>
         </div>
 
-        {/* Realtime Sensors Cards */}
-        <div className="cards-grid">
-          {sensors.map((s, i) => (
-            <div key={i} style={{
-              backgroundColor: '#162032',
-              padding: '16px',
-              borderRadius: '20px',
-              border: '1px solid #1e293b',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '24px' }}>{s.icon}</span>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  color: s.color,
-                  backgroundColor: `${s.color}20`,
-                  padding: '3px 10px',
-                  borderRadius: '12px'
-                }}>{s.status}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>{s.name}</span>
-                <span style={{ fontSize: '20px', fontWeight: '800', color: '#fff' }}>{s.value}</span>
-              </div>
+        {/* Sensor Bento Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '14px'
+        }}>
+          <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>🌡️ อุณหภูมิ (Temperature)</span>
+            <div style={{ fontSize: '26px', fontWeight: '800', margin: '6px 0', color: '#f8fafc' }}>
+              {sensor ? `${sensor.temperature?.toFixed(1)} °C` : '--'}
             </div>
-          ))}
-        </div>
-
-        {/* Realtime Trend Charts */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#38bdf8', margin: 0 }}>
-            📈 กราฟแนวโน้มย้อนหลังสด (Firebase Realtime Trend)
-          </h2>
-
-          <div className="charts-grid">
-            {/* Chart 1: Temperature */}
-            <div style={{
-              backgroundColor: '#162032',
-              padding: '20px',
-              borderRadius: '20px',
-              border: '1px solid #1e293b',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: '#f1f5f9' }}>🌡️ แนวโน้มอุณหภูมิ (°C)</span>
-                <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: '700' }}>
-                  {sensor?.temperature?.toFixed(1)}°C
-                </span>
-              </div>
-              <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
-                <polyline
-                  fill="none"
-                  stroke="#f59e0b"
-                  strokeWidth="3"
-                  points={generateSvgPoints('temperature', 300, 100)}
-                />
-              </svg>
-            </div>
-
-            {/* Chart 2: Humidity */}
-            <div style={{
-              backgroundColor: '#162032',
-              padding: '20px',
-              borderRadius: '20px',
-              border: '1px solid #1e293b',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: '#f1f5f9' }}>💧 แนวโน้มความชื้น (%)</span>
-                <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '700' }}>
-                  {sensor?.humidity?.toFixed(0)}%
-                </span>
-              </div>
-              <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
-                <polyline
-                  fill="none"
-                  stroke="#38bdf8"
-                  strokeWidth="3"
-                  points={generateSvgPoints('humidity', 300, 100)}
-                />
-              </svg>
-            </div>
+            <span style={{ fontSize: '11px', color: '#34d399' }}>เกณฑ์มาตรฐาน: 22 - 25 °C</span>
           </div>
-        </section>
+
+          <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>💧 ความชื้น (Humidity)</span>
+            <div style={{ fontSize: '26px', fontWeight: '800', margin: '6px 0', color: '#f8fafc' }}>
+              {sensor ? `${sensor.humidity?.toFixed(0)} %` : '--'}
+            </div>
+            <span style={{ fontSize: '11px', color: '#34d399' }}>เกณฑ์มาตรฐาน: 40 - 60 %</span>
+          </div>
+
+          <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>🍃 คาร์บอนไดออกไซด์ (CO2)</span>
+            <div style={{ fontSize: '26px', fontWeight: '800', margin: '6px 0', color: '#f8fafc' }}>
+              {sensor ? `${sensor.co2} ppm` : '--'}
+            </div>
+            <span style={{ fontSize: '11px', color: '#38bdf8' }}>เกณฑ์ปลอดภัย: &lt; 800 ppm</span>
+          </div>
+
+          <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>💡 ความสว่างแสง (Lux)</span>
+            <div style={{ fontSize: '26px', fontWeight: '800', margin: '6px 0', color: '#f8fafc' }}>
+              {sensor ? `${sensor.lux?.toFixed(1)} Lux` : '--'}
+            </div>
+            <span style={{ fontSize: '11px', color: '#34d399' }}>เกณฑ์หลับสนิท: &lt; 5 Lux</span>
+          </div>
+
+          <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>🌫️ ฝุ่น PM 2.5</span>
+            <div style={{ fontSize: '26px', fontWeight: '800', margin: '6px 0', color: '#f8fafc' }}>
+              {sensor ? `${sensor.pm2_5} µg/m³` : '--'}
+            </div>
+            <span style={{ fontSize: '11px', color: '#34d399' }}>เกณฑ์ปลอดภัย: &lt; 15 µg/m³</span>
+          </div>
+
+          <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>🔊 ระดับเสียง (Noise Sound)</span>
+            <div style={{ fontSize: '26px', fontWeight: '800', margin: '6px 0', color: '#f8fafc' }}>
+              {sensor ? `${sensor.sound}` : '--'}
+            </div>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>Analog Signal Baseline</span>
+          </div>
+        </div>
 
         <Link href="/" style={{
-          backgroundColor: '#1e293b',
-          color: '#f1f5f9',
+          backgroundColor: '#151c2c',
+          color: '#f8fafc',
           padding: '14px',
           borderRadius: '16px',
           textAlign: 'center',
           fontWeight: '600',
-          fontSize: '14px',
+          fontSize: '13px',
           textDecoration: 'none',
-          border: '1px solid #334155'
+          border: '1px solid #1e293b'
         }}>
           กลับหน้าหลัก
         </Link>

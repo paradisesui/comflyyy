@@ -5,111 +5,39 @@ import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
 import { ref, query, limitToLast, onValue } from 'firebase/database';
 
-interface SensorData {
-  co2?: number;
-  humidity?: number;
-  lux?: number;
-  pm10?: number;
-  pm1_0?: number;
-  pm2_5?: number;
-  sound?: number;
-  temperature?: number;
-  timestamp?: number;
-}
-
 interface SleepLogItem {
-  id: string;
-  timestamp: number;
-  timeString: string;
-  dateString: string;
-  temperature: number;
+  co2: number;
   humidity: number;
   lux: number;
-  co2: number;
-  sound: number;
   pm2_5: number;
-  disruptionCause: string;
-  isDisrupted: boolean;
+  sound: number;
+  temperature: number;
+  timestamp: number;
 }
 
 export default function HistoryPage() {
-  const [logs, setLogs] = useState<SleepLogItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [logs, setLogs] = useState<{ id: string; data: SleepLogItem }[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
-      const latestLogsQuery = query(logsRef, limitToLast(30));
+      const latestLogsQuery = query(logsRef, limitToLast(20));
 
-      const unsubscribe = onValue(
-        latestLogsQuery,
-        (snapshot) => {
-          if (snapshot.exists()) {
-            const rawData = snapshot.val();
-            const parsedLogs: SleepLogItem[] = Object.keys(rawData).map((key) => {
-              const item: SensorData = rawData[key];
-              
-              const logTime = item.timestamp ? new Date(item.timestamp) : new Date();
-              const timeStr = logTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-              const dateStr = logTime.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-
-              const temp = item.temperature ?? 0;
-              const lux = item.lux ?? 0;
-              const sound = item.sound ?? 0;
-              const hum = item.humidity ?? 0;
-
-              let causeList: string[] = [];
-              let isDisrupted = false;
-
-              if (temp > 25) {
-                causeList.push('อุณหภูมิร้อนเกินไป');
-                isDisrupted = true;
-              }
-              if (lux > 5) {
-                causeList.push('แสงสว่างรบกวน');
-                isDisrupted = true;
-              }
-              if (sound > 1000) {
-                causeList.push('เสียงรบกวนสะดุ้งตื่น');
-                isDisrupted = true;
-              }
-              if (hum > 60) {
-                causeList.push('ความชื้นสูงเกินเกณฑ์');
-              }
-
-              const disruptionCause = causeList.length > 0 ? causeList.join(' • ') : 'สภาพแวดล้อมดี เหมาะกับการนอนหลับ';
-
-              return {
-                id: key,
-                timestamp: item.timestamp || Date.now(),
-                timeString: timeStr,
-                dateString: dateStr,
-                temperature: temp,
-                humidity: hum,
-                lux: lux,
-                co2: item.co2 ?? 0,
-                sound: sound,
-                pm2_5: item.pm2_5 ?? 0,
-                disruptionCause,
-                isDisrupted
-              };
-            });
-
-            setLogs(parsedLogs.reverse());
-          } else {
-            setLogs([]);
-          }
-          setLoading(false);
-        },
-        (error) => {
-          console.error('Firebase Logs Error:', error);
-          setLoading(false);
+      const unsubscribe = onValue(latestLogsQuery, (snapshot) => {
+        if (snapshot.exists()) {
+          const rawData = snapshot.val();
+          const parsed = Object.keys(rawData).map((key) => ({
+            id: key,
+            data: rawData[key],
+          })).reverse();
+          setLogs(parsed);
         }
-      );
+        setLoading(false);
+      }, () => setLoading(false));
 
       return () => unsubscribe();
     } catch (e) {
-      console.error(e);
       setLoading(false);
     }
   }, []);
@@ -118,145 +46,109 @@ export default function HistoryPage() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#090d16',
-      color: '#ffffff',
+      backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 60%)',
+      color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       display: 'flex',
       justifyContent: 'center',
-      alignItems: 'flex-start',
-      padding: '24px 14px'
+      padding: '20px 12px'
     }}>
-      <style jsx>{`
-        .history-container {
-          width: 100%;
-          max-width: 1600px;
-          background-color: #0f172a;
-          border-radius: 24px;
-          border: 1px solid #1e293b;
-          padding: 20px 16px;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .header-box {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .logs-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 14px;
-        }
-
-        @media (min-width: 900px) {
-          .history-container {
-            width: 96vw;
-            padding: 40px;
-            gap: 28px;
-            margin-top: 40px;
-            border-radius: 32px;
-          }
-          .header-box {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-          }
-          .logs-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-          }
-        }
-      `}</style>
-
-      <main className="history-container">
-        <div className="header-box">
-          <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '13px', fontWeight: 500 }}>
-            ← ย้อนกลับหน้าหลัก
+      <main style={{
+        width: '100%',
+        maxWidth: '1000px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link href="/" style={{ color: '#818cf8', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
+            ← กลับหน้าหลัก
           </Link>
-          <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: '#f8fafc' }}>
-            ประวัติการตรวจวัดย้อนหลัง (Firebase)
-          </h1>
+          <span style={{ fontSize: '11px', color: '#64748b' }}>Firebase Logs History</span>
         </div>
 
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
+            📜 ประวัติสภาพแวดล้อมย้อนหลัง
+          </h1>
+          <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+            บันทึกสถิติอุณหภูมิ แสง เสียง และค่า CO2 ล่าสุดในห้องนอน
+          </p>
+        </div>
+
+        {/* Logs Container */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '14px' }}>
-              ⏳ กำลังดึงข้อมูลประวัติจาก Firebase...
+            <div style={{ backgroundColor: '#151c2c', padding: '24px', borderRadius: '18px', textAlign: 'center', color: '#64748b', border: '1px solid #1e293b' }}>
+              กำลังโหลดประวัติข้อมูล...
             </div>
           ) : logs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', backgroundColor: '#162032', borderRadius: '20px' }}>
-              ยังไม่มีข้อมูลบันทึกประวัติในระบบ Firebase
+            <div style={{ backgroundColor: '#151c2c', padding: '24px', borderRadius: '18px', textAlign: 'center', color: '#64748b', border: '1px solid #1e293b' }}>
+              ไม่พบประวัติข้อมูลย้อนหลัง
             </div>
           ) : (
-            <div className="logs-grid">
-              {logs.map((log) => (
-                <div key={log.id} style={{
-                  backgroundColor: '#162032',
-                  padding: '18px',
-                  borderRadius: '20px',
-                  border: log.isDisrupted ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid #1e293b',
+            logs.map((item) => {
+              const dateStr = item.data.timestamp
+                ? new Date(item.data.timestamp).toLocaleString('th-TH')
+                : 'ไม่ระบุเวลา';
+
+              return (
+                <div key={item.id} style={{
+                  backgroundColor: '#151c2c',
+                  padding: '16px 18px',
+                  borderRadius: '18px',
+                  border: '1px solid #1e293b',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '8px'
+                  gap: '10px'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>
-                      ⏱️ {log.dateString} - {log.timeString} น.
-                    </span>
-                    <span style={{
-                      fontSize: '10px',
-                      padding: '2px 8px',
-                      borderRadius: '8px',
-                      backgroundColor: log.isDisrupted ? '#ef444420' : '#10b98120',
-                      color: log.isDisrupted ? '#f87171' : '#34d399',
-                      fontWeight: '700'
-                    }}>
-                      {log.isDisrupted ? 'มีปัจจัยรบกวน' : 'สภาวะปกติ'}
-                    </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#818cf8', fontWeight: '700' }}>
+                    <span>⏱️ {dateStr}</span>
+                    <span style={{ color: '#34d399' }}>Logged</span>
                   </div>
-
-                  <p style={{ fontSize: '13px', margin: 0, fontWeight: '600', color: '#f1f5f9' }}>
-                    {log.disruptionCause}
-                  </p>
 
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 1fr',
-                    gap: '6px',
-                    fontSize: '11px',
-                    color: '#94a3b8',
-                    marginTop: '2px',
-                    backgroundColor: '#0f172a',
-                    padding: '10px',
-                    borderRadius: '12px'
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+                    gap: '10px'
                   }}>
-                    <div>🌡️ <span style={{ color: '#fff', fontWeight: '600' }}>{log.temperature.toFixed(1)}°C</span></div>
-                    <div>💧 <span style={{ color: '#fff', fontWeight: '600' }}>{log.humidity.toFixed(0)}%</span></div>
-                    <div>💡 <span style={{ color: '#fff', fontWeight: '600' }}>{log.lux.toFixed(1)}Lx</span></div>
-                    <div>🍃 <span style={{ color: '#fff', fontWeight: '600' }}>{log.co2}ppm</span></div>
-                    <div>🔊 <span style={{ color: '#fff', fontWeight: '600' }}>{log.sound}</span></div>
-                    <div>🌫️ <span style={{ color: '#fff', fontWeight: '600' }}>{log.pm2_5}µg</span></div>
+                    <div style={{ backgroundColor: '#0f172a', padding: '8px 12px', borderRadius: '12px' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
+                      <strong style={{ fontSize: '14px', color: '#f8fafc' }}>{item.data.temperature?.toFixed(1) ?? '--'} °C</strong>
+                    </div>
+
+                    <div style={{ backgroundColor: '#0f172a', padding: '8px 12px', borderRadius: '12px' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>ความชื้น</span>
+                      <strong style={{ fontSize: '14px', color: '#f8fafc' }}>{item.data.humidity?.toFixed(0) ?? '--'} %</strong>
+                    </div>
+
+                    <div style={{ backgroundColor: '#0f172a', padding: '8px 12px', borderRadius: '12px' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>CO2</span>
+                      <strong style={{ fontSize: '14px', color: '#f8fafc' }}>{item.data.co2 ?? '--'} ppm</strong>
+                    </div>
+
+                    <div style={{ backgroundColor: '#0f172a', padding: '8px 12px', borderRadius: '12px' }}>
+                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>แสงสว่าง</span>
+                      <strong style={{ fontSize: '14px', color: '#f8fafc' }}>{item.data.lux?.toFixed(1) ?? '--'} Lux</strong>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })
           )}
-        </section>
+        </div>
 
         <Link href="/" style={{
-          backgroundColor: '#1e293b',
-          color: '#f1f5f9',
-          padding: '16px',
-          borderRadius: '18px',
+          backgroundColor: '#151c2c',
+          color: '#f8fafc',
+          padding: '14px',
+          borderRadius: '16px',
           textAlign: 'center',
           fontWeight: '600',
-          fontSize: '14px',
+          fontSize: '13px',
           textDecoration: 'none',
-          border: '1px solid #334155',
-          marginTop: 'auto'
+          border: '1px solid #1e293b'
         }}>
           กลับหน้าหลัก
         </Link>

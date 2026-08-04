@@ -102,21 +102,21 @@ export default function Home() {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       display: 'flex',
       justifyContent: 'center',
-      padding: '32px 20px'
+      padding: '20px 12px'
     }}>
       <style jsx>{`
         .bento-container {
           width: 100%;
-          max-width: 1400px;
+          max-width: 1350px;
           display: flex;
           flex-direction: column;
-          gap: 22px;
+          gap: 16px;
         }
 
         .header-container {
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px;
         }
 
         .header-top {
@@ -128,31 +128,32 @@ export default function Home() {
         .header-bottom {
           display: flex;
           align-items: center;
-          justify-content: flex-end;
-          gap: 12px;
+          justify-content: space-between;
+          gap: 10px;
         }
 
         .hero-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 20px;
+          gap: 14px;
         }
 
         .metrics-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 16px;
+          gap: 10px;
         }
 
         .bottom-nav-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 16px;
+          gap: 10px;
         }
 
         @media (min-width: 900px) {
           .bento-container {
-            gap: 26px;
+            gap: 22px;
+            padding: 10px 0;
           }
 
           .header-container {
@@ -162,60 +163,78 @@ export default function Home() {
           }
 
           .header-bottom {
-            gap: 16px;
+            justify-content: flex-end;
+            gap: 14px;
           }
 
           .hero-grid {
-            grid-template-columns: 440px 1fr;
-            gap: 24px;
+            grid-template-columns: 420px 1fr;
+            gap: 22px;
           }
 
           .metrics-grid {
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 18px;
           }
 
           .bottom-nav-grid {
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 18px;
           }
         }
       `}</style>
 
       <main className="bento-container">
-        {/* Header Section */}
-        <header className="header-container" style={{ padding: '0 4px' }}>
-          {/* Logo & Brand Name */}
+        {/* Header */}
+        <header className="header-container" style={{ padding: '0 2px' }}>
           <div className="header-top">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '14px',
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
                 background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 6px 16px rgba(99, 102, 241, 0.4)'
+                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
               }}>
-                <span style={{ fontSize: '24px' }}>🌙</span>
+                <span style={{ fontSize: '20px' }}>🌙</span>
               </div>
               <div>
-                <h1 style={{ fontSize: '24px', fontWeight: '800', margin: 0, color: '#f8fafc', letterSpacing: '0.5px' }}>
+                <h1 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: '#f8fafc', letterSpacing: '0.5px' }}>
                   COMFLYY
                 </h1>
-                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', display: 'block', marginTop: '2px' }}>
-                  SLEEP ENVIRONMENT DASHBOARD
+                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', display: 'block' }}>
+                  SLEEP ENVIRONMENT
                 </span>
               </div>
             </div>
+
+            {/* Desktop Only Profile Button */}
+            <div className="desktop-only-profile" style={{ display: 'none' }}>
+              <Link href="/account" style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                backgroundColor: '#151c2c',
+                color: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                fontSize: '18px',
+                border: '1px solid #334155'
+              }}>
+                👤
+              </Link>
+            </div>
           </div>
 
-          {/* Quick Menu & Account Button */}
           <div className="header-bottom">
             <span style={{
-              fontSize: '13px',
-              padding: '8px 16px',
+              fontSize: '11px',
+              padding: '6px 12px',
               borderRadius: '20px',
               backgroundColor: loading ? '#f59e0b15' : '#10b98115',
               color: loading ? '#f59e0b' : '#34d399',
@@ -226,62 +245,59 @@ export default function Home() {
               {loading ? '• Connecting...' : '• Realtime Active'}
             </span>
 
-            {/* Smart Watch Button */}
-            <Link href="/persona" style={{
-              padding: '10px 18px',
-              borderRadius: '14px',
-              backgroundColor: '#151c2c',
-              color: '#38bdf8',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: '600',
-              border: '1px solid #1e293b',
-              whiteSpace: 'nowrap'
-            }}>
-              ⌚ Smart Watch
-            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Link href="/persona" style={{
+                padding: '8px 14px',
+                borderRadius: '12px',
+                backgroundColor: '#151c2c',
+                color: '#38bdf8',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                textDecoration: 'none',
+                fontSize: '12px',
+                fontWeight: '600',
+                border: '1px solid #1e293b',
+                whiteSpace: 'nowrap'
+              }}>
+                ⌚ Smart Watch
+              </Link>
 
-            {/* Account Button */}
-            <Link href="/account" style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '14px',
-              backgroundColor: '#151c2c',
-              color: '#f8fafc',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textDecoration: 'none',
-              fontSize: '20px',
-              border: '1px solid #334155',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-              flexShrink: 0
-            }}>
-              👤
-            </Link>
+              <Link href="/account" style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                backgroundColor: '#151c2c',
+                color: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                fontSize: '18px',
+                border: '1px solid #334155',
+                flexShrink: 0
+              }}>
+                👤
+              </Link>
+            </div>
           </div>
         </header>
 
-        {/* Primary Hero Section */}
+        {/* Hero Section */}
         <div className="hero-grid">
-          {/* Room Score Card */}
           <div style={{
             backgroundColor: '#151c2c',
-            borderRadius: '24px',
-            padding: '36px 24px',
+            borderRadius: '22px',
+            padding: '28px 18px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '18px',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.3)'
+            gap: '16px'
           }}>
-            <div style={{ position: 'relative', width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg transform="rotate(-90)" width="220" height="220" viewBox="0 0 160 160">
+            <div style={{ position: 'relative', width: '190px', height: '190px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg transform="rotate(-90)" width="190" height="190" viewBox="0 0 160 160">
                 <circle cx="80" cy="80" r="70" stroke="#0f172a" strokeWidth="10" fill="transparent" />
                 <circle
                   cx="80" cy="80" r="70"
@@ -295,120 +311,116 @@ export default function Home() {
                 />
               </svg>
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '58px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
-                <span style={{ fontSize: '11px', color: '#64748b', letterSpacing: '2px', marginTop: '6px', fontWeight: '700' }}>SLEEP QUALITY</span>
+                <span style={{ fontSize: '50px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
+                <span style={{ fontSize: '10px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '700' }}>SLEEP QUALITY</span>
               </div>
             </div>
 
             <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#94a3b8' }}>สภาวะห้องนอนปัจจุบัน</span>
-              <h2 style={{ fontSize: '26px', color: statusColor, fontWeight: '700', margin: '4px 0 0 0' }}>
+              <span style={{ fontSize: '12px', color: '#94a3b8' }}>สภาวะห้องนอนปัจจุบัน</span>
+              <h2 style={{ fontSize: '22px', color: statusColor, fontWeight: '700', margin: '2px 0 0 0' }}>
                 {score >= 80 ? 'ดีเยี่ยม หลับสนิท' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
               </h2>
             </div>
           </div>
 
-          {/* 4 Metrics Grid */}
           <div className="metrics-grid">
-            <div style={{ backgroundColor: '#151c2c', padding: '24px', borderRadius: '22px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>🌡️ Temperature</span>
-              <div style={{ margin: '14px 0' }}>
-                <span style={{ fontSize: '32px', fontWeight: '800', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f8fafc' }}>
+            <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '20px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>🌡️ Temperature</span>
+              <div style={{ margin: '10px 0' }}>
+                <span style={{ fontSize: '28px', fontWeight: '800', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f8fafc' }}>
                   {sensor ? `${sensor.temperature?.toFixed(1)}°` : '--'}
                 </span>
-                <span style={{ fontSize: '16px', color: '#64748b' }}>C</span>
+                <span style={{ fontSize: '14px', color: '#64748b' }}>C</span>
               </div>
-              <span style={{ fontSize: '12px', color: (sensor?.temperature ?? 0) <= 25 ? '#34d399' : '#f59e0b' }}>
-                {(sensor?.temperature ?? 0) <= 25 ? '• เย็นสบาย เหมาะแก่การนอน' : '• อุณหภูมิค่อนข้างสูง'}
+              <span style={{ fontSize: '11px', color: (sensor?.temperature ?? 0) <= 25 ? '#34d399' : '#f59e0b' }}>
+                {(sensor?.temperature ?? 0) <= 25 ? '• เย็นสบาย' : '• ค่อนข้างสูง'}
               </span>
             </div>
 
-            <div style={{ backgroundColor: '#151c2c', padding: '24px', borderRadius: '22px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>💧 Humidity</span>
-              <div style={{ margin: '14px 0' }}>
-                <span style={{ fontSize: '32px', fontWeight: '800', color: '#f8fafc' }}>
+            <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '20px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>💧 Humidity</span>
+              <div style={{ margin: '10px 0' }}>
+                <span style={{ fontSize: '28px', fontWeight: '800', color: '#f8fafc' }}>
                   {sensor ? `${sensor.humidity?.toFixed(0)}` : '--'}
                 </span>
-                <span style={{ fontSize: '16px', color: '#64748b' }}>%</span>
+                <span style={{ fontSize: '14px', color: '#64748b' }}>%</span>
               </div>
-              <span style={{ fontSize: '12px', color: '#34d399' }}>• อยู่ในช่วงเกณฑ์มาตรฐาน</span>
+              <span style={{ fontSize: '11px', color: '#34d399' }}>• อยู่ในเกณฑ์</span>
             </div>
 
-            <div style={{ backgroundColor: '#151c2c', padding: '24px', borderRadius: '22px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>🍃 Air Quality (CO2)</span>
-              <div style={{ margin: '14px 0' }}>
-                <span style={{ fontSize: '32px', fontWeight: '800', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f8fafc' }}>
+            <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '20px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>🍃 Air Quality (CO2)</span>
+              <div style={{ margin: '10px 0' }}>
+                <span style={{ fontSize: '28px', fontWeight: '800', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f8fafc' }}>
                   {sensor ? `${sensor.co2}` : '--'}
                 </span>
-                <span style={{ fontSize: '13px', color: '#64748b', marginLeft: '4px' }}>ppm</span>
+                <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '2px' }}>ppm</span>
               </div>
-              <span style={{ fontSize: '12px', color: (sensor?.co2 ?? 0) < 800 ? '#34d399' : '#f59e0b' }}>
+              <span style={{ fontSize: '11px', color: (sensor?.co2 ?? 0) < 800 ? '#34d399' : '#f59e0b' }}>
                 {(sensor?.co2 ?? 0) < 800 ? '• อากาศถ่ายเทดี' : '• ควรระบายอากาศ'}
               </span>
             </div>
 
-            <div style={{ backgroundColor: '#151c2c', padding: '24px', borderRadius: '22px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>💡 Ambient Light</span>
-              <div style={{ margin: '14px 0' }}>
-                <span style={{ fontSize: '32px', fontWeight: '800', color: '#f8fafc' }}>
+            <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '20px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>💡 Ambient Light</span>
+              <div style={{ margin: '10px 0' }}>
+                <span style={{ fontSize: '28px', fontWeight: '800', color: '#f8fafc' }}>
                   {sensor ? `${sensor.lux?.toFixed(1)}` : '--'}
                 </span>
-                <span style={{ fontSize: '13px', color: '#64748b', marginLeft: '4px' }}>Lux</span>
+                <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '2px' }}>Lux</span>
               </div>
-              <span style={{ fontSize: '12px', color: '#34d399' }}>• มืดสนิท ปลอดภัยต่อเมลาโทนิน</span>
+              <span style={{ fontSize: '11px', color: '#34d399' }}>• มืดสนิท</span>
             </div>
           </div>
         </div>
 
-        {/* Feature Link Card (เอาป้ายคำว่า FEATURE เด่น ออกแล้ว) */}
+        {/* Feature Link */}
         <Link href="/sensitivity" style={{ textDecoration: 'none' }}>
           <div style={{
             background: 'linear-gradient(135deg, #1e1b4b 0%, #151c2c 100%)',
-            padding: '24px 22px',
-            borderRadius: '22px',
+            padding: '18px 16px',
+            borderRadius: '20px',
             border: '1px solid rgba(129, 140, 248, 0.4)',
-            boxShadow: '0 10px 28px rgba(99, 102, 241, 0.15)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '16px',
-            cursor: 'pointer'
+            gap: '12px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '18px',
+                width: '46px',
+                height: '46px',
+                borderRadius: '14px',
                 backgroundColor: '#312e81',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '28px',
+                fontSize: '22px',
                 border: '1px solid #4338ca',
                 flexShrink: 0
               }}>
                 🎯
               </div>
               <div>
-                <span style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', display: 'block', marginBottom: '4px' }}>
+                <span style={{ fontSize: '14px', fontWeight: '800', color: '#f8fafc', display: 'block', marginBottom: '2px' }}>
                   วิเคราะห์จุดอ่อนความไวการนอน (AI Sensitivity Profile)
                 </span>
-                <p style={{ fontSize: '13px', color: '#a5b4fc', margin: 0, lineHeight: '1.4' }}>
-                  คำนวณจากประวัติการสะดุ้งตื่นจริงคู่กับเซนเซอร์: พบคุณไวต่อ <strong style={{ color: '#fbbf24' }}>อุณหภูมิ (High Sensitivity)</strong> มากที่สุด
+                <p style={{ fontSize: '12px', color: '#a5b4fc', margin: 0, lineHeight: '1.4' }}>
+                  คำนวณจากประวัติสะดุ้งตื่นจริงคู่เซนเซอร์: พบคุณไวต่อ <strong style={{ color: '#fbbf24' }}>อุณหภูมิ (High Temp Sensitivity)</strong>
                 </p>
               </div>
             </div>
-
             <div style={{
-              width: '38px',
-              height: '38px',
+              width: '32px',
+              height: '32px',
               borderRadius: '50%',
               backgroundColor: '#4338ca',
               color: '#fff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
+              fontSize: '15px',
               fontWeight: '700',
               flexShrink: 0
             }}>
@@ -417,30 +429,30 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* AI Insight Bento Card */}
+        {/* AI Insight Card */}
         <div style={{
           backgroundColor: '#151c2c',
-          padding: '26px 22px',
-          borderRadius: '22px',
+          padding: '20px 16px',
+          borderRadius: '20px',
           border: '1px solid rgba(99, 102, 241, 0.3)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px'
+          gap: '14px'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '15px', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
               ✨ Gemini AI Sleep Insight
             </span>
             <button
               onClick={() => sensor && analyzeWithGemini(sensor)}
               disabled={aiLoading || !sensor || cooldown > 0}
               style={{
-                padding: '8px 16px',
-                borderRadius: '12px',
+                padding: '6px 14px',
+                borderRadius: '10px',
                 backgroundColor: cooldown > 0 ? '#334155' : '#6366f1',
                 color: '#fff',
                 border: 'none',
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: '600',
                 cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
                 opacity: aiLoading ? 0.7 : 1
@@ -450,19 +462,19 @@ export default function Home() {
             </button>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <p style={{ fontSize: '14px', color: '#cbd5e1', margin: 0, lineHeight: '1.6', flex: 1 }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: '1.5', flex: 1 }}>
               {aiAnalysis}
             </p>
             <div style={{
-              width: '68px',
-              height: '68px',
-              borderRadius: '18px',
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
               backgroundColor: '#0f172a',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '34px',
+              fontSize: '28px',
               border: '1px solid #1e293b',
               flexShrink: 0
             }}>
@@ -471,16 +483,16 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Navigation Grid */}
+        {/* Nav Links */}
         <footer className="bottom-nav-grid">
           <Link href="/sensors" style={{
             backgroundColor: '#151c2c',
             color: '#f8fafc',
-            padding: '18px',
-            borderRadius: '18px',
+            padding: '16px',
+            borderRadius: '16px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '14px',
+            fontSize: '13px',
             textDecoration: 'none',
             border: '1px solid #1e293b'
           }}>
@@ -489,11 +501,11 @@ export default function Home() {
           <Link href="/history" style={{
             backgroundColor: '#151c2c',
             color: '#f8fafc',
-            padding: '18px',
-            borderRadius: '18px',
+            padding: '16px',
+            borderRadius: '16px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '14px',
+            fontSize: '13px',
             textDecoration: 'none',
             border: '1px solid #1e293b'
           }}>
