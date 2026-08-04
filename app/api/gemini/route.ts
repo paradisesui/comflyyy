@@ -38,8 +38,10 @@ export async function POST(req: Request) {
       5. ใช้น้ำเสียงเป็นกันเอง ใส่ใจ และอ่านง่าย
     `;
 
+    // ใช้รายชื่อโมเดลที่มีโควต้าใช้งานได้จริงตาม Dashboard
     const availableModels = [
-      'gemini-2.5-flash-lite',
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
       'gemini-2.5-flash'
     ];
 
@@ -61,15 +63,14 @@ export async function POST(req: Request) {
         if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
           return NextResponse.json({ result: data.candidates[0].content.parts[0].text });
         } else {
-          // ดึงข้อความ Error จริงจากระบบของ Google
-          lastErrorMessage = data.error?.message || `HTTP ${response.status}: ${JSON.stringify(data)}`;
+          lastErrorMessage = `[${modelName}] ${data.error?.message || JSON.stringify(data)}`;
         }
       } catch (err: any) {
-        lastErrorMessage = err.message || 'Network failure when reaching Gemini API';
+        lastErrorMessage = `[${modelName}] ${err.message || 'Network failure'}`;
       }
     }
 
-    // หากยิงไม่ผ่าน จะส่งรายละเอียด Error จริงกลับไปแสดงผลทันที
+    // หากโมเดลทั้งหมดมีปัญหา ส่งรายละเอียด Error จริงกลับไปทันที
     return NextResponse.json({ 
       error: `Gemini API Error: ${lastErrorMessage}` 
     }, { status: 500 });
