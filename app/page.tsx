@@ -118,48 +118,47 @@ export default function Home() {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'flex-start',
-      padding: '40px 16px'
+      padding: '16px 12px'
     }}>
       <style jsx>{`
         .dashboard-container {
           width: 100%;
           max-width: 1600px;
           background-color: #0f172a;
-          border-radius: 28px;
+          border-radius: 24px;
           border: 1px solid #1e293b;
-          padding: 24px;
+          padding: 16px;
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 14px;
         }
 
         .dashboard-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 20px;
+          gap: 14px;
         }
 
         .nav-links-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 16px;
+          gap: 10px;
         }
 
+        /* บนมือถือให้ซ่อน Widget ล่างสุดเพื่อไม่ให้ยาวแน่นเกินไป */
         .footer-widgets-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 16px;
+          display: none;
         }
 
         .sensor-val {
-          font-size: 18px;
+          font-size: 17px;
           font-weight: 700;
           white-space: nowrap;
         }
 
         .score-num {
-          font-size: 56px;
+          font-size: 48px;
           font-weight: 800;
           line-height: 1;
           color: #fff;
@@ -182,7 +181,9 @@ export default function Home() {
             grid-template-columns: 1fr 1fr;
             gap: 20px;
           }
+          /* แสดง Widget ล่างสุดเฉพาะบนคอมพิวเตอร์ */
           .footer-widgets-grid {
+            display: grid;
             grid-template-columns: 1.2fr 1fr;
             gap: 20px;
           }
@@ -207,23 +208,23 @@ export default function Home() {
               backgroundColor: loading ? '#f59e0b' : '#10b981',
               boxShadow: loading ? '0 0 10px #f59e0b' : '0 0 10px #10b981'
             }}></span>
-            <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>
+            <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>
               {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
             </span>
           </div>
 
           {/* Header Quick Menu */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link href="/persona" style={{
-              padding: '8px 14px',
-              borderRadius: '20px',
+              padding: '6px 12px',
+              borderRadius: '16px',
               backgroundColor: '#1e293b',
               color: '#38bdf8',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '4px',
               textDecoration: 'none',
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: '600',
               border: '1px solid #334155'
             }}>
@@ -231,8 +232,8 @@ export default function Home() {
             </Link>
 
             <Link href="/account" style={{
-              width: '42px',
-              height: '42px',
+              width: '36px',
+              height: '36px',
               borderRadius: '50%',
               backgroundColor: '#1e293b',
               color: '#f8fafc',
@@ -240,7 +241,7 @@ export default function Home() {
               alignItems: 'center',
               justifyContent: 'center',
               textDecoration: 'none',
-              fontSize: '18px',
+              fontSize: '16px',
               border: '1px solid #334155'
             }}>
               👤
@@ -253,17 +254,17 @@ export default function Home() {
           {/* Left Column: Room Score Circular Chart */}
           <section style={{
             backgroundColor: '#162032',
-            borderRadius: '24px',
-            padding: '48px 24px',
+            borderRadius: '20px',
+            padding: '24px 16px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '24px'
+            gap: '16px'
           }}>
-            <div style={{ position: 'relative', width: '280px', height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg transform="rotate(-90)" width="280" height="280" viewBox="0 0 160 160">
+            <div style={{ position: 'relative', width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg transform="rotate(-90)" width="200" height="200" viewBox="0 0 160 160">
                 <circle cx="80" cy="80" r="70" stroke="#0f172a" strokeWidth="12" fill="transparent" />
                 <circle
                   cx="80" cy="80" r="70"
@@ -278,44 +279,44 @@ export default function Home() {
               </svg>
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span className="score-num">{score}%</span>
-                <span style={{ fontSize: '12px', color: '#64748b', letterSpacing: '2px', marginTop: '8px', fontWeight: '600' }}>ROOM SCORE</span>
+                <span style={{ fontSize: '10px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '600' }}>ROOM SCORE</span>
               </div>
             </div>
 
             <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '14px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-              <h2 style={{ fontSize: '32px', color: statusColor, fontWeight: '700', margin: '4px 0 0 0' }}>
+              <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
+              <h2 style={{ fontSize: '24px', color: statusColor, fontWeight: '700', margin: '2px 0 0 0' }}>
                 {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
               </h2>
             </div>
           </section>
 
           {/* Right Column: Key Sensors & AI Recommendation */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', justifyContent: 'space-between' }}>
             {/* Primary Sensors Card */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '12px',
+              gap: '6px',
               backgroundColor: '#162032',
-              padding: '22px 16px',
-              borderRadius: '24px',
+              padding: '16px 8px',
+              borderRadius: '18px',
               border: '1px solid #1e293b'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#64748b', display: 'block', marginBottom: '6px' }}>อุณหภูมิ</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>อุณหภูมิ</span>
                 <span className="sensor-val" style={{ color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
                 </span>
               </div>
               <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '13px', color: '#64748b', display: 'block', marginBottom: '6px' }}>ความชื้น</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>ความชื้น</span>
                 <span className="sensor-val" style={{ color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
                 </span>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#64748b', display: 'block', marginBottom: '6px' }}>CO2</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>CO2</span>
                 <span className="sensor-val" style={{ color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.co2} ppm` : '--'}
                 </span>
@@ -325,31 +326,30 @@ export default function Home() {
             {/* AI Recommendation Box */}
             <div style={{
               backgroundColor: '#162032',
-              padding: '24px',
-              borderRadius: '24px',
+              padding: '16px',
+              borderRadius: '18px',
               border: '1px solid rgba(16, 185, 129, 0.3)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px',
-              flexGrow: 1,
-              minHeight: '160px'
+              gap: '8px',
+              flexGrow: 1
             }}>
               <p style={{
-                fontSize: '16px',
+                fontSize: '14px',
                 fontWeight: '700',
                 color: '#34d399',
                 margin: 0,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '6px'
               }}>
                 💡 คำแนะนำเฉพาะคุณ
               </p>
               <p style={{
-                fontSize: '15px',
+                fontSize: '13px',
                 color: aiLoading ? '#64748b' : '#cbd5e1',
                 margin: 0,
-                lineHeight: '1.6'
+                lineHeight: '1.5'
               }}>
                 {aiAnalysis}
               </p>
@@ -361,13 +361,13 @@ export default function Home() {
               disabled={aiLoading || !sensor || cooldown > 0}
               style={{
                 width: '100%',
-                padding: '18px',
+                padding: '14px',
                 backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
                 color: cooldown > 0 ? '#94a3b8' : '#022c22',
                 border: 'none',
-                borderRadius: '18px',
+                borderRadius: '16px',
                 fontWeight: '700',
-                fontSize: '15px',
+                fontSize: '14px',
                 cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
                 opacity: aiLoading ? 0.7 : 1,
                 display: 'flex',
@@ -390,11 +390,11 @@ export default function Home() {
           <Link href="/sensors" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '18px',
-            borderRadius: '18px',
+            padding: '14px',
+            borderRadius: '16px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '15px',
+            fontSize: '13px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
@@ -403,11 +403,11 @@ export default function Home() {
           <Link href="/history" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '18px',
-            borderRadius: '18px',
+            padding: '14px',
+            borderRadius: '16px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '15px',
+            fontSize: '13px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
@@ -415,9 +415,8 @@ export default function Home() {
           </Link>
         </footer>
 
-        {/* [SELECTED] Sleep Quality & Hardware Status Widgets */}
+        {/* Widgets เพิ่มเติม (จะแสดงผลเฉพาะบน Desktop เท่านั้น บนมือถือจะซ่อนอัตโนมัติ) */}
         <div className="footer-widgets-grid">
-          {/* Widget 1: Sleep Quality Index & Heart Rate Sync Summary */}
           <div style={{
             backgroundColor: '#162032',
             padding: '18px 20px',
@@ -449,7 +448,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Widget 2: Hardware Status Board (บอร์ดควบคุมสถานะฮาร์ดแวร์) */}
           <div style={{
             backgroundColor: '#162032',
             padding: '18px 20px',
