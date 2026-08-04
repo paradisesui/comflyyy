@@ -23,6 +23,7 @@ export default function Home() {
   const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มเพื่อวิเคราะห์สภาพแวดล้อมห้องนอนด้วย Gemini AI');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<number>(0);
+  const [activeMode, setActiveMode] = useState<string>('sleep');
 
   useEffect(() => {
     if (cooldown > 0) {
@@ -96,12 +97,13 @@ export default function Home() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#0b0f19',
+      backgroundColor: '#090d16',
+      backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 60%), radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 50%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       display: 'flex',
       justifyContent: 'center',
-      padding: '24px 16px'
+      padding: '32px 16px'
     }}>
       <style jsx>{`
         .bento-container {
@@ -130,6 +132,12 @@ export default function Home() {
           gap: 12px;
         }
 
+        .ai-card-content {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
         @media (min-width: 900px) {
           .hero-grid {
             grid-template-columns: 380px 1fr;
@@ -143,42 +151,72 @@ export default function Home() {
             grid-template-columns: 1fr 1fr;
             gap: 16px;
           }
+          .ai-card-content {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+          }
         }
       `}</style>
 
       <main className="bento-container">
-        {/* Header Section */}
+        {/* Header with App Logo */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
-          <div>
-            <span style={{ fontSize: '12px', color: '#64748b', display: 'block', fontWeight: '600' }}>SLEEP ENVIRONMENT</span>
-            <h1 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: '#f8fafc' }}>Dashboard</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)'
+            }}>
+              <span style={{ fontSize: '20px' }}>🌙</span>
+            </div>
+            <div>
+              <h1 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: '#f8fafc', letterSpacing: '0.5px' }}>
+                COMFLYY
+              </h1>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>SLEEP ENVIRONMENT DASHBOARD</span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{
               fontSize: '11px',
-              padding: '4px 10px',
+              padding: '6px 12px',
               borderRadius: '20px',
-              backgroundColor: loading ? '#f59e0b15' : '#6366f115',
-              color: loading ? '#f59e0b' : '#818cf8',
-              border: `1px solid ${loading ? '#f59e0b30' : '#6366f130'}`,
+              backgroundColor: loading ? '#f59e0b15' : '#10b98115',
+              color: loading ? '#f59e0b' : '#34d399',
+              border: `1px solid ${loading ? '#f59e0b30' : '#10b98130'}`,
               fontWeight: '600'
             }}>
-              {loading ? '• Syncing...' : '• Realtime Active'}
+              {loading ? '• Connecting...' : '• Realtime Active'}
             </span>
 
             <Link href="/persona" style={{
-              width: '38px', height: '38px', borderRadius: '12px', backgroundColor: '#1e293b',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', border: '1px solid #334155'
+              padding: '8px 14px',
+              borderRadius: '12px',
+              backgroundColor: '#151c2c',
+              color: '#38bdf8',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              textDecoration: 'none',
+              fontSize: '12px',
+              fontWeight: '600',
+              border: '1px solid #1e293b'
             }}>
-              ⌚
+              ⌚ Smart Watch
             </Link>
           </div>
         </header>
 
         {/* Primary Hero Section */}
         <div className="hero-grid">
-          {/* Main Score Card (Minimal Clean Ring) */}
+          {/* Main Score Card */}
           <div style={{
             backgroundColor: '#151c2c',
             borderRadius: '24px',
@@ -188,7 +226,8 @@ export default function Home() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '16px'
+            gap: '16px',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
           }}>
             <div style={{ position: 'relative', width: '190px', height: '190px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg transform="rotate(-90)" width="190" height="190" viewBox="0 0 160 160">
@@ -220,7 +259,6 @@ export default function Home() {
 
           {/* 4 Metrics Bento Grid */}
           <div className="metrics-grid">
-            {/* Temperature */}
             <div style={{ backgroundColor: '#151c2c', padding: '20px', borderRadius: '20px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>🌡️ Temperature</span>
               <div style={{ margin: '12px 0' }}>
@@ -234,7 +272,6 @@ export default function Home() {
               </span>
             </div>
 
-            {/* Humidity */}
             <div style={{ backgroundColor: '#151c2c', padding: '20px', borderRadius: '20px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>💧 Humidity</span>
               <div style={{ margin: '12px 0' }}>
@@ -246,7 +283,6 @@ export default function Home() {
               <span style={{ fontSize: '11px', color: '#34d399' }}>• อยู่ในช่วงเกณฑ์มาตรฐาน</span>
             </div>
 
-            {/* Air Quality (CO2) */}
             <div style={{ backgroundColor: '#151c2c', padding: '20px', borderRadius: '20px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>🍃 Air Quality (CO2)</span>
               <div style={{ margin: '12px 0' }}>
@@ -260,7 +296,6 @@ export default function Home() {
               </span>
             </div>
 
-            {/* Light Level */}
             <div style={{ backgroundColor: '#151c2c', padding: '20px', borderRadius: '20px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>💡 Ambient Light</span>
               <div style={{ margin: '12px 0' }}>
@@ -274,7 +309,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* AI Insight Bento Card */}
+        {/* AI Insight Bento Card with Graphic Vector */}
         <div style={{
           backgroundColor: '#151c2c',
           padding: '24px',
@@ -282,7 +317,8 @@ export default function Home() {
           border: '1px solid rgba(99, 102, 241, 0.3)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px'
+          gap: '16px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '14px', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -306,9 +342,92 @@ export default function Home() {
               {aiLoading ? '🔄 กำลังวิเคราะห์...' : cooldown > 0 ? `⏳ รอ (${cooldown}s)` : 'วิเคราะห์สด'}
             </button>
           </div>
-          <p style={{ fontSize: '14px', color: '#cbd5e1', margin: 0, lineHeight: '1.6' }}>
-            {aiAnalysis}
-          </p>
+
+          <div className="ai-card-content">
+            <p style={{ fontSize: '14px', color: '#cbd5e1', margin: 0, lineHeight: '1.6', flex: 1 }}>
+              {aiAnalysis}
+            </p>
+            {/* Visual Vector Icon */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '20px',
+              backgroundColor: '#0f172a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '40px',
+              border: '1px solid #1e293b',
+              flexShrink: 0
+            }}>
+              🛏️
+            </div>
+          </div>
+        </div>
+
+        {/* Interactive Room Mode Selector (เพื่อเติมเต็มพื้นที่ด้านล่าง) */}
+        <div style={{
+          backgroundColor: '#151c2c',
+          padding: '16px 20px',
+          borderRadius: '20px',
+          border: '1px solid #1e293b',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>🎛️ BEDROOM ENVIRONMENT PRESET</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+            <button
+              onClick={() => setActiveMode('sleep')}
+              style={{
+                padding: '12px',
+                borderRadius: '14px',
+                backgroundColor: activeMode === 'sleep' ? '#6366f120' : '#0f172a',
+                color: activeMode === 'sleep' ? '#818cf8' : '#94a3b8',
+                border: '1px solid',
+                borderColor: activeMode === 'sleep' ? '#6366f1' : '#334155',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              🌙 Sleep Mode
+            </button>
+
+            <button
+              onClick={() => setActiveMode('relax')}
+              style={{
+                padding: '12px',
+                borderRadius: '14px',
+                backgroundColor: activeMode === 'relax' ? '#38bdf820' : '#0f172a',
+                color: activeMode === 'relax' ? '#38bdf8' : '#94a3b8',
+                border: '1px solid',
+                borderColor: activeMode === 'relax' ? '#38bdf8' : '#334155',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              📖 Relax & Read
+            </button>
+
+            <button
+              onClick={() => setActiveMode('wakeup')}
+              style={{
+                padding: '12px',
+                borderRadius: '14px',
+                backgroundColor: activeMode === 'wakeup' ? '#f59e0b20' : '#0f172a',
+                color: activeMode === 'wakeup' ? '#f59e0b' : '#94a3b8',
+                border: '1px solid',
+                borderColor: activeMode === 'wakeup' ? '#f59e0b' : '#334155',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              ☀️ Wake Up
+            </button>
+          </div>
         </div>
 
         {/* Navigation Grid */}
