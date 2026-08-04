@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const { sensorData } = await req.json();
@@ -30,7 +32,6 @@ export async function POST(req: Request) {
       คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
     `;
 
-    // ใช้ gemini-2.0-flash โมเดลหลักปัจจุบัน
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
 
       if (response.status === 429) {
         return NextResponse.json(
-          { error: '⏳ ติดข้อจำกัดโควต้าการใช้งานชั่วคราว (Rate Limit) กรุณาเว้นช่วงประมาณ 1 นาทีแล้วกดลองใหม่อีกครั้งครับ' },
+          { error: '⏳ โควต้าการใช้งาน API Key นี้เต็มแล้ว กรุณาสร้าง Key ใหม่ใน Google AI Studio' },
           { status: 429 }
         );
       }
