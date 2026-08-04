@@ -19,20 +19,23 @@ export async function POST(req: Request) {
       );
     }
 
+    // Prompt แบบกระชับและบังคับ Format ให้ตอบสั้นทันที
     const promptText = `
-      คุณคือผู้เชี่ยวชาญด้านสภาพแวดล้อมการนอน (Sleep Environment Expert)
-      โปรดวิเคราะห์สภาพแวดล้อมในห้องนอนจากข้อมูลเซนเซอร์ดังนี้:
-      - อุณหภูมิ: ${sensorData.temperature ?? 'N/A'}°C
-      - ความชื้น: ${sensorData.humidity ?? 'N/A'}%
-      - คาร์บอนไดออกไซด์ (CO2): ${sensorData.co2 ?? 'N/A'} ppm
-      - ฝุ่น PM2.5: ${sensorData.pm2_5 ?? 'N/A'} µg/m³
-      - แสง: ${sensorData.lux ?? 'N/A'} Lux
-      - เสียง: ${sensorData.sound ?? 'N/A'} dB
+คุณคือ AI วิเคราะห์สภาพแวดล้อมห้องนอน หน้าที่ของคุณคือให้คำแนะนำสั้นๆ แก่ผู้ใช้เท่านั้น
+ห้ามคิดวิเคราะห์หรือพิมพ์กระบวนการคิดออกมาเด็ดขาด ให้ตอบเฉพาะผลลัพธ์สุดท้ายเป็นภาษาไทยเท่านั้น
 
-      คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
+ข้อมูลเซนเซอร์:
+- อุณหภูมิ: ${sensorData.temperature ?? 'N/A'} °C
+- ความชื้น: ${sensorData.humidity ?? 'N/A'} %
+- CO2: ${sensorData.co2 ?? 'N/A'} ppm
+- ฝุ่น PM2.5: ${sensorData.pm2_5 ?? 'N/A'} µg/m³
+- แสง: ${sensorData.lux ?? 'N/A'} Lux
+- เสียง: ${sensorData.sound ?? 'N/A'} dB
+
+คำสั่ง: สรุปผลกระทบต่อการนอนและคำแนะนำการปรับปรุงสั้นๆ รวมกันไม่เกิน 2 ประโยคเท่านั้น (ห้ามเกิน 2 ประโยค)
     `;
 
-    // 1. ดึงรายชื่อโมเดลทั้งหมดที่ API Key ตัวนี้สามารถเรียกใช้ได้จริงจาก Google
+    // 1. ดึงรายชื่อโมเดลที่ใช้งานได้จริง
     const listRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
       { cache: 'no-store' }
@@ -47,7 +50,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // กรองเอาเฉพาะโมเดลที่รองรับการ generateContent
     const validModels: string[] = listData.models
       ?.filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
       ?.map((m: any) => m.name) || [];
@@ -56,7 +58,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'ไม่พบโมเดลที่พร้อมใช้งานกับ API Key นี้' }, { status: 500 });
     }
 
-    // 2. ลองยิงทีละโมเดลที่มีในบัญชีจริง จนกว่าจะเจอตัวที่ส่งกลับมาสำเร็จ
+    // 2. เรียกใช้โมเดลและตัดคำตอบให้เหลือเฉพาะเนื้อหาคำแนะนำ
     let lastError = '';
     for (const fullModelName of validModels) {
       const response = await fetch(
@@ -74,7 +76,8 @@ export async function POST(req: Request) {
       const data = await response.json();
 
       if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        return NextResponse.json({ result: data.candidates[0].content.parts[0].text });
+        let cleanResult = data.candidates[0].content.parts[0].text.trim();
+        return NextResponse.json({ result: cleanResult });
       }
 
       lastError = data?.error?.message || `Status ${response.status}`;
