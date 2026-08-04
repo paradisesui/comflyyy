@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req: Request) {
   try {
@@ -18,8 +17,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-
     const promptText = `
       คุณคือผู้เชี่ยวชาญด้านสภาพแวดล้อมการนอน (Sleep Environment Expert)
       โปรดวิเคราะห์สภาพแวดล้อมในห้องนอนจากข้อมูลเซนเซอร์ดังนี้:
@@ -33,19 +30,50 @@ export async function POST(req: Request) {
       คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
     `;
 
-    // เรียกใช้โมเดล gemini-2.0-flash
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: promptText,
-    });
+    // ยิงตรงไปที่ gemini-1.5-flash เพื่อประหยัด quota และเสถียรที่สุดบน Free Tier
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: promptText }],
+            },
+          ],
+        }),
+      }
+    );
 
-    const resultText = response.text || 'ไม่สามารถดึงคำแนะนำได้ในขณะนี้';
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Google Gemini API Error response:', data);
+      
+      if (response.status === 429) {
+        return NextResponse.json(
+          { error: 'API Key ติดโควต้าจำกัดการใช้งานชั่วคราว (Rate Limit Exceeded) กรุณารอประมาณ 1 นาทีแล้วลองใหม่อีกครั้ง' },
+          { status: 429 }
+        );
+      }
+
+      const apiErrorMessage = data?.error?.message || `API Error (${response.status})`;
+      return NextResponse.json({ error: apiErrorMessage }, { status: response.status });
+    }
+
+    const resultText =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      'ไม่สามารถดึงคำแนะนำได้ในขณะนี้';
 
     return NextResponse.json({ result: resultText });
   } catch (error: any) {
     console.error('Server Catch Error:', error);
     return NextResponse.json(
-      { error: `Gemini API Error: ${error.message || 'เกิดข้อผิดพลาดในการประมวลผล'}` },
+      { error: `Server Error: ${error.message || 'เกิดข้อผิดพลาดภายในระบบ'}` },
       { status: 500 }
     );
   }
