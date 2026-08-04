@@ -30,46 +30,48 @@ export async function POST(req: Request) {
       คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
     `;
 
-    // ยิงตรงไปที่ gemini-1.5-flash เพื่อประหยัด quota และเสถียรที่สุดบน Free Tier
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: promptText }],
-            },
-          ],
-        }),
+    // รายชื่อโมเดลมาตรฐานที่รองรับบน REST API Endpoint
+    const candidateModels = [
+      'gemini-1.5-flash-8b',
+      'gemini-2.0-flash',
+      'gemini-1.5-pro',
+    ];
+
+    let lastErrorMessage = '';
+
+    for (const modelName of candidateModels) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: promptText }],
+              },
+            ],
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        const resultText = data.candidates[0].content.parts[0].text;
+        return NextResponse.json({ result: resultText });
       }
-    );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('Google Gemini API Error response:', data);
-      
-      if (response.status === 429) {
-        return NextResponse.json(
-          { error: 'API Key ติดโควต้าจำกัดการใช้งานชั่วคราว (Rate Limit Exceeded) กรุณารอประมาณ 1 นาทีแล้วลองใหม่อีกครั้ง' },
-          { status: 429 }
-        );
-      }
-
-      const apiErrorMessage = data?.error?.message || `API Error (${response.status})`;
-      return NextResponse.json({ error: apiErrorMessage }, { status: response.status });
+      lastErrorMessage = data?.error?.message || `HTTP ${response.status}`;
     }
 
-    const resultText =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      'ไม่สามารถดึงคำแนะนำได้ในขณะนี้';
-
-    return NextResponse.json({ result: resultText });
+    return NextResponse.json(
+      { error: `ไม่สามารถดึงข้อมูลจาก Gemini API ได้: ${lastErrorMessage}` },
+      { status: 500 }
+    );
   } catch (error: any) {
     console.error('Server Catch Error:', error);
     return NextResponse.json(
