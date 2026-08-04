@@ -20,7 +20,7 @@ interface SensorData {
 export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มด้านล่างเพื่อรับคำแนะนำการปรับสภาพห้องนอน');
+  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มเพื่อวิเคราะห์สภาพแวดล้อมห้องนอนด้วย Gemini AI');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<number>(0);
 
@@ -111,190 +111,224 @@ export default function Home() {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: '20px'
+      padding: '24px'
     }}>
       <main style={{
         width: '100%',
-        maxWidth: '420px',
+        maxWidth: '1000px', // ขยายความกว้างรองรับหน้าจอคอมพิวเตอร์
         backgroundColor: '#0f172a',
         borderRadius: '28px',
         border: '1px solid #1e293b',
-        padding: '24px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+        padding: '28px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px'
+        gap: '24px'
       }}>
+        {/* Top Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{
-              width: '10px',
-              height: '10px',
+              width: '12px',
+              height: '12px',
               borderRadius: '50%',
               backgroundColor: loading ? '#f59e0b' : '#10b981',
-              boxShadow: loading ? '0 0 10px #f59e0b' : '0 0 10px #10b981'
+              boxShadow: loading ? '0 0 12px #f59e0b' : '0 0 12px #10b981'
             }}></span>
-            <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>
-              {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
+            <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 500 }}>
+              {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime System'}
             </span>
           </div>
           <Link href="/account" style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
+            padding: '8px 16px',
+            borderRadius: '20px',
             backgroundColor: '#1e293b',
+            color: '#f8fafc',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: '8px',
             textDecoration: 'none',
-            fontSize: '18px',
+            fontSize: '14px',
+            fontWeight: '600',
             border: '1px solid #334155'
           }}>
-            👤
+            👤 บัญชีผู้ใช้
           </Link>
         </header>
 
-        <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <div style={{ position: 'relative', width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg transform="rotate(-90)" width="200" height="200" viewBox="0 0 160 160">
-              <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="12" fill="transparent" />
-              <circle
-                cx="80" cy="80" r="70"
-                stroke={statusColor}
-                strokeWidth="12"
-                fill="transparent"
-                strokeDasharray="440"
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
-              />
-            </svg>
-            <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <span style={{ fontSize: '48px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
-              <span style={{ fontSize: '10px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '600' }}>ROOM SCORE</span>
-            </div>
-          </div>
-
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-            <h2 style={{ fontSize: '24px', color: statusColor, fontWeight: '700', margin: '2px 0 0 0' }}>
-              {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
-            </h2>
-          </div>
-        </section>
-
+        {/* Responsive Grid Section */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '10px',
-          backgroundColor: '#162032',
-          padding: '12px',
-          borderRadius: '16px',
-          border: '1px solid #1e293b'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '24px',
+          alignItems: 'stretch'
         }}>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
-              {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
-            </span>
-          </div>
-          <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ความชื้น</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
-              {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
-            </span>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>CO2</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
-              {sensor ? `${sensor.co2} ppm` : '--'}
-            </span>
-          </div>
-        </div>
-
-        <div style={{
-          backgroundColor: '#162032',
-          padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid rgba(16, 185, 129, 0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px'
-        }}>
-          <p style={{
-            fontSize: '14px',
-            fontWeight: '700',
-            color: '#34d399',
-            margin: 0,
+          {/* Card 1: Score & Overview */}
+          <section style={{
+            backgroundColor: '#162032',
+            borderRadius: '20px',
+            padding: '24px',
+            border: '1px solid #1e293b',
             display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            💡 คำแนะนำ
-          </p>
-          <p style={{
-            fontSize: '13px',
-            color: aiLoading ? '#64748b' : '#cbd5e1',
-            margin: 0,
-            lineHeight: '1.5'
-          }}>
-            {aiAnalysis}
-          </p>
-        </div>
-
-        <button
-          onClick={() => sensor && analyzeWithGemini(sensor)}
-          disabled={aiLoading || !sensor || cooldown > 0}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
-            color: cooldown > 0 ? '#94a3b8' : '#022c22',
-            border: 'none',
-            borderRadius: '14px',
-            fontWeight: '700',
-            fontSize: '14px',
-            cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
-            opacity: aiLoading ? 0.7 : 1,
-            display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          {aiLoading 
-            ? '🔄 กำลังวิเคราะห์...' 
-            : cooldown > 0 
-              ? `⏳ กรุณารอ (${cooldown}s)` 
-              : '🔄 วิเคราะห์สดด้วย Gemini'}
-        </button>
+            gap: '16px'
+          }}>
+            <div style={{ position: 'relative', width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg transform="rotate(-90)" width="180" height="180" viewBox="0 0 160 160">
+                <circle cx="80" cy="80" r="70" stroke="#0f172a" strokeWidth="12" fill="transparent" />
+                <circle
+                  cx="80" cy="80" r="70"
+                  stroke={statusColor}
+                  strokeWidth="12"
+                  fill="transparent"
+                  strokeDasharray="440"
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
+                />
+              </svg>
+              <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '44px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
+                <span style={{ fontSize: '10px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '600' }}>ROOM SCORE</span>
+              </div>
+            </div>
 
-        <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
+              <h2 style={{ fontSize: '22px', color: statusColor, fontWeight: '700', margin: '2px 0 0 0' }}>
+                {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
+              </h2>
+            </div>
+          </section>
+
+          {/* Card 2: Sensors & AI Analysis */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'space-between' }}>
+            {/* Quick Sensors Metrics */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '12px',
+              backgroundColor: '#162032',
+              padding: '16px',
+              borderRadius: '20px',
+              border: '1px solid #1e293b'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
+                <span style={{ fontSize: '16px', fontWeight: '700', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
+                  {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
+                </span>
+              </div>
+              <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
+                <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>ความชื้น</span>
+                <span style={{ fontSize: '16px', fontWeight: '700', color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
+                  {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
+                </span>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>CO2</span>
+                <span style={{ fontSize: '16px', fontWeight: '700', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
+                  {sensor ? `${sensor.co2} ppm` : '--'}
+                </span>
+              </div>
+            </div>
+
+            {/* AI Recommendation Box */}
+            <div style={{
+              backgroundColor: '#162032',
+              padding: '20px',
+              borderRadius: '20px',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              flexGrow: 1
+            }}>
+              <p style={{
+                fontSize: '15px',
+                fontWeight: '700',
+                color: '#34d399',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                💡 คำแนะนำเฉพาะคุณ
+              </p>
+              <p style={{
+                fontSize: '14px',
+                color: aiLoading ? '#64748b' : '#cbd5e1',
+                margin: 0,
+                lineHeight: '1.6'
+              }}>
+                {aiAnalysis}
+              </p>
+            </div>
+
+            {/* Analyze Button */}
+            <button
+              onClick={() => sensor && analyzeWithGemini(sensor)}
+              disabled={aiLoading || !sensor || cooldown > 0}
+              style={{
+                width: '100%',
+                padding: '14px',
+                backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
+                color: cooldown > 0 ? '#94a3b8' : '#022c22',
+                border: 'none',
+                borderRadius: '16px',
+                fontWeight: '700',
+                fontSize: '15px',
+                cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
+                opacity: aiLoading ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              {aiLoading 
+                ? '🔄 กำลังวิเคราะห์...' 
+                : cooldown > 0 
+                  ? `⏳ กรุณารอ (${cooldown}s)` 
+                  : '🔄 วิเคราะห์สดด้วย Gemini'}
+            </button>
+          </div>
+        </div>
+
+        {/* Footer Quick Links */}
+        <footer style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '12px',
+          marginTop: '8px'
+        }}>
           <Link href="/sensors" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '12px',
-            borderRadius: '14px',
+            padding: '14px',
+            borderRadius: '16px',
             textAlign: 'center',
             fontWeight: '600',
             fontSize: '14px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
-            ดูคะแนนเพิ่มเติม ➔
+            ดูรายละเอียดเซนเซอร์ทั้งหมด ➔
           </Link>
           <Link href="/persona" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '12px',
-            borderRadius: '14px',
+            padding: '14px',
+            borderRadius: '16px',
             textAlign: 'center',
             fontWeight: '600',
             fontSize: '14px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
-            ประวัติการใช้งาน
+            ประวัติการใช้งาน & Smart Watch
           </Link>
         </footer>
       </main>
