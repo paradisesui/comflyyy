@@ -24,6 +24,15 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<number>(0);
 
+  // 1. ดึงข้อมูล Caching จาก sessionStorage มาแสดงทันทีที่เปิดหน้าเว็บ
+  useEffect(() => {
+    const cachedRecommendation = sessionStorage.getItem('comflyy_ai_recommendation');
+    if (cachedRecommendation) {
+      setAiAnalysis(cachedRecommendation);
+    }
+  }, []);
+
+  // ตัวนับถอยหลัง Cooldown
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -31,6 +40,7 @@ export default function Home() {
     }
   }, [cooldown]);
 
+  // 2. ฟังก์ชันวิเคราะห์พร้อมระบบ Caching + Cooldown 30 วินาที
   const analyzeWithGemini = async (data: SensorData) => {
     if (cooldown > 0) return;
 
@@ -48,6 +58,8 @@ export default function Home() {
 
       if (res.ok && json.result) {
         setAiAnalysis(json.result);
+        // 💾 เซฟผลลัพธ์ลง Caching ของเบราว์เซอร์
+        sessionStorage.setItem('comflyy_ai_recommendation', json.result);
       } else {
         setAiAnalysis(json.error || json.details || 'ไม่สามารถประมวลผลคำแนะนำได้ในขณะนี้');
       }
@@ -55,7 +67,7 @@ export default function Home() {
       setAiAnalysis('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     } finally {
       setAiLoading(false);
-      setCooldown(10);
+      setCooldown(30); // ตั้ง Cooldown 30 วินาที เพื่อป้องกันการยิง API ถี่เกินไป
     }
   };
 
@@ -307,6 +319,7 @@ export default function Home() {
 
           {/* 4 Metrics Grid */}
           <div className="metrics-grid">
+            {/* Temperature */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -341,6 +354,7 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Humidity */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -375,6 +389,7 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Air Quality (CO2) */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -409,6 +424,7 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Ambient Light */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -502,7 +518,7 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* AI Sleep Recommendation Bento Card (ปรับเปลี่ยนข้อความพาดหัวเรียบร้อย) */}
+        {/* AI Sleep Recommendation Bento Card */}
         <div style={{
           backgroundColor: '#151c2c',
           padding: '24px 22px',
@@ -536,7 +552,7 @@ export default function Home() {
           </div>
 
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: '1.6', flex: 1 }}>
+            <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: '1.6', flex: 1, whiteSpace: 'pre-line' }}>
               {aiAnalysis}
             </p>
             <div style={{
