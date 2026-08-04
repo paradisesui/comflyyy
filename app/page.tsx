@@ -24,7 +24,7 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<number>(0);
 
-  // 1. ดึงข้อมูล Caching จาก sessionStorage มาแสดงทันทีที่เปิดหน้าเว็บ
+  // โหลดค่าที่เคยบันทึกไว้เฉพาะตอนเปิดหน้าเว็บครั้งแรกเท่านั้น
   useEffect(() => {
     const cachedRecommendation = sessionStorage.getItem('comflyy_ai_recommendation');
     if (cachedRecommendation) {
@@ -32,7 +32,6 @@ export default function Home() {
     }
   }, []);
 
-  // ตัวนับถอยหลัง Cooldown
   useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -40,13 +39,13 @@ export default function Home() {
     }
   }, [cooldown]);
 
-  // 2. ฟังก์ชันวิเคราะห์พร้อมระบบ Caching + Cooldown 30 วินาที
+  // เมื่อกดปุ่ม -> บังคับยิง API ไปหา Gemini เพื่อดึงคำแนะนำใหม่สดๆ เสมอ
   const analyzeWithGemini = async (data: SensorData) => {
     if (cooldown > 0) return;
 
     try {
       setAiLoading(true);
-      setAiAnalysis('กำลังประมวลผลคำแนะนำ...');
+      setAiAnalysis('กำลังประมวลผลคำแนะนำใหม่...');
 
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -58,7 +57,7 @@ export default function Home() {
 
       if (res.ok && json.result) {
         setAiAnalysis(json.result);
-        // 💾 เซฟผลลัพธ์ลง Caching ของเบราว์เซอร์
+        // อัปเดต Cache ล่าสุดไว้แสดงผลตอนสลับหน้ากลับมา
         sessionStorage.setItem('comflyy_ai_recommendation', json.result);
       } else {
         setAiAnalysis(json.error || json.details || 'ไม่สามารถประมวลผลคำแนะนำได้ในขณะนี้');
@@ -67,7 +66,7 @@ export default function Home() {
       setAiAnalysis('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     } finally {
       setAiLoading(false);
-      setCooldown(30); // ตั้ง Cooldown 30 วินาที เพื่อป้องกันการยิง API ถี่เกินไป
+      setCooldown(30);
     }
   };
 
@@ -319,7 +318,6 @@ export default function Home() {
 
           {/* 4 Metrics Grid */}
           <div className="metrics-grid">
-            {/* Temperature */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -354,7 +352,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Humidity */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -389,7 +386,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Air Quality (CO2) */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
@@ -424,7 +420,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Ambient Light */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '24px 22px',
