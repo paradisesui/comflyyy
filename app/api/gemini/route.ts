@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บน Vercel Environment Variables' },
+        { error: 'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บน Environment Variables' },
         { status: 500 }
       );
     }
@@ -30,51 +30,63 @@ export async function POST(req: Request) {
       คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
     `;
 
-    // รายชื่อโมเดลเรียงตามลำดับเวอร์ชันปัจจุบัน
-    const modelsToTry = [
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-lite-preview-02-05',
-      'gemini-1.5-flash-latest',
-    ];
+    // 1. ค้นหา Model Name ที่ใช้งานได้จริงกับ API Key นี้แบบ Dynamic
+    let targetModel = 'gemini-1.5-flash';
+    try {
+      const listRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      );
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const availableModels: string[] = listData.models
+          ?.filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+          ?.map((m: any) => m.name.replace('models/', '')) || [];
 
-    let lastErrorDetails = null;
-
-    for (const modelName of modelsToTry) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [{ text: promptText }],
-                },
-              ],
-            }),
-          }
+        // เลือกโมเดลตระกูล flash ที่ใช้งานได้
+        const foundFlash = availableModels.find(
+          (name) => name.includes('flash') && !name.includes('latest')
         );
-
-        const data = await response.json();
-
-        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          const resultText = data.candidates[0].content.parts[0].text;
-          return NextResponse.json({ result: resultText });
+        if (foundFlash) {
+          targetModel = foundFlash;
+        } else if (availableModels.length > 0) {
+          targetModel = availableModels[0];
         }
-
-        lastErrorDetails = data?.error?.message || 'Unknown error';
-      } catch (err: any) {
-        lastErrorDetails = err.message;
       }
+    } catch (e) {
+      console.warn('Could not list models, falling back to default:', e);
     }
 
-    return NextResponse.json(
-      { error: `Gemini API Error: ${lastErrorDetails}` },
-      { status: 500 }
+    // 2. ยิง Request ไปยัง Gemini API ด้วย Model ที่ค้นพบ
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: promptText }],
+            },
+          ],
+        }),
+      }
     );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Google Gemini API Error response:', data);
+      const apiErrorMessage = data?.error?.message || `API Error (${response.status})`;
+      return NextResponse.json({ error: apiErrorMessage }, { status: response.status });
+    }
+
+    const resultText =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      'ไม่สามารถดึงคำแนะนำได้ในขณะนี้';
+
+    return NextResponse.json({ result: resultText });
   } catch (error: any) {
     console.error('Server Catch Error:', error);
     return NextResponse.json(
