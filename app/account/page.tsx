@@ -4,22 +4,18 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function AccountPage() {
-  // State สำหรับจัดการ Session ผู้ใช้
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
 
-  // State ข้อมูลผู้ใช้
   const [userName, setUserName] = useState<string>('ผู้ใช้งาน COMFLYY');
   const [email, setEmail] = useState<string>('comflyy.user@example.com');
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
-  // State ฟอร์มแก้ไข / เข้าสู่ระบบ
   const [inputEmail, setInputEmail] = useState<string>('');
   const [inputPassword, setInputPassword] = useState<string>('');
   const [inputName, setInputName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
 
-  // โหลดข้อมูลผู้ใช้จาก LocalStorage
   useEffect(() => {
     const savedUser = localStorage.getItem('comflyy_user');
     if (savedUser) {
@@ -31,13 +27,11 @@ export default function AccountPage() {
     }
   }, []);
 
-  // ฟังก์ชัน บันทึกข้อมูลลง LocalStorage
   const saveUserData = (name: string, mail: string, image: string | null) => {
     const userData = { name, email: mail, image };
     localStorage.setItem('comflyy_user', JSON.stringify(userData));
   };
 
-  // ฟังก์ชัน เข้าสู่ระบบ / สมัครสมาชิก
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) {
@@ -56,14 +50,12 @@ export default function AccountPage() {
     setInputName('');
   };
 
-  // ฟังก์ชัน ออกจากระบบ
   const handleLogout = () => {
     localStorage.removeItem('comflyy_user');
     setIsLoggedIn(false);
     setIsEditingName(false);
   };
 
-  // ฟังก์ชัน บันทึกการเปลี่ยนชื่อ
   const handleSaveName = () => {
     if (!inputName.trim()) return;
     setUserName(inputName);
@@ -71,7 +63,6 @@ export default function AccountPage() {
     setIsEditingName(false);
   };
 
-  // ฟังก์ชัน อัปโหลดไฟล์รูปภาพ (แปลงเป็น Base64)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -150,20 +141,6 @@ export default function AccountPage() {
           transform: scale(0.98);
         }
 
-        .menu-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 12px 14px;
-          background-color: #0b0f19;
-          border: 1px solid #1e293b;
-          border-radius: 12px;
-          color: #f8fafc;
-          text-decoration: none;
-          font-size: 13px;
-          font-weight: 600;
-        }
-
         .upload-area {
           display: flex;
           flex-direction: column;
@@ -207,7 +184,6 @@ export default function AccountPage() {
           <div style={{ width: '80px' }} />
         </header>
 
-        {/* กรณีที่ 1: ยังไม่ได้เข้าสู่ระบบ (แสดง ฟอร์ม Login / Register) */}
         {!isLoggedIn ? (
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ textAlign: 'center', marginBottom: '8px' }}>
@@ -273,11 +249,9 @@ export default function AccountPage() {
             </div>
           </div>
         ) : (
-          /* กรณีที่ 2: เข้าสู่ระบบเรียบร้อยแล้ว (แสดง หน้าข้อมูลส่วนตัว + อัปโหลดรูป + Logout) */
           <>
             {/* Profile Info Card */}
             <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              {/* แสดงรูปโปรไฟล์ที่อัปโหลด หรือ Default Icon */}
               <div style={{
                 width: '68px',
                 height: '68px',
@@ -355,7 +329,7 @@ export default function AccountPage() {
               </div>
             </div>
 
-            {/* Change Profile Picture (Upload from Computer / Mobile) */}
+            {/* Change Profile Picture */}
             <div className="card">
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#818cf8' }}>
                 🖼️ เปลี่ยนรูปโปรไฟล์ (Upload Photo)
@@ -378,34 +352,6 @@ export default function AccountPage() {
                 onChange={handleImageUpload}
                 style={{ display: 'none' }}
               />
-            </div>
-
-            {/* Quick Links */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#818cf8' }}>
-                ⚙️ การตั้งค่าระบบ
-              </span>
-
-              <Link href="/sensors" className="menu-item">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  📡 เซนเซอร์ห้องนอน
-                </span>
-                <span style={{ color: '#64748b' }}>➔</span>
-              </Link>
-
-              <Link href="/persona" className="menu-item">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  ⌚ Smart Watch
-                </span>
-                <span style={{ color: '#64748b' }}>➔</span>
-              </Link>
-
-              <Link href="/sensitivity" className="menu-item">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  🎯 ความไวการนอน (Sensitivity)
-                </span>
-                <span style={{ color: '#64748b' }}>➔</span>
-              </Link>
             </div>
 
             {/* Logout Button */}
