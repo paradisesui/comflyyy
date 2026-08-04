@@ -146,9 +146,10 @@ export default function Home() {
           gap: 10px;
         }
 
-        /* บนมือถือให้ซ่อน Widget ล่างสุดเพื่อไม่ให้ยาวแน่นเกินไป */
         .footer-widgets-grid {
-          display: none;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
         }
 
         .sensor-val {
@@ -181,9 +182,7 @@ export default function Home() {
             grid-template-columns: 1fr 1fr;
             gap: 20px;
           }
-          /* แสดง Widget ล่างสุดเฉพาะบนคอมพิวเตอร์ */
           .footer-widgets-grid {
-            display: grid;
             grid-template-columns: 1.2fr 1fr;
             gap: 20px;
           }
@@ -251,7 +250,7 @@ export default function Home() {
 
         {/* Main Dashboard Grid */}
         <div className="dashboard-grid">
-          {/* Left Column: Room Score Circular Chart */}
+          {/* Room Score Circular Chart */}
           <section style={{
             backgroundColor: '#162032',
             borderRadius: '20px',
@@ -291,7 +290,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Right Column: Key Sensors & AI Recommendation */}
+          {/* Key Sensors & AI Recommendation */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', justifyContent: 'space-between' }}>
             {/* Primary Sensors Card */}
             <div style={{
@@ -415,70 +414,69 @@ export default function Home() {
           </Link>
         </footer>
 
-        {/* Widgets เพิ่มเติม (จะแสดงผลเฉพาะบน Desktop เท่านั้น บนมือถือจะซ่อนอัตโนมัติ) */}
+        {/* Widgets ส่วนล่าง - จัดระเบียบใหม่ให้อ่านง่ายทั้งบนมือถือและคอมฯ */}
         <div className="footer-widgets-grid">
+          {/* Widget 1: Heart Rate & Sleep Quality Sync */}
           <div style={{
             backgroundColor: '#162032',
-            padding: '18px 20px',
-            borderRadius: '20px',
+            padding: '14px 16px',
+            borderRadius: '18px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '12px'
+            gap: '10px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#38bdf8', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                ❤️ Sleep Quality & Heart Rate Sync
+              <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '700' }}>
+                ❤️ Heart Rate & Sleep Sync
               </span>
-              <span style={{ fontSize: '11px', color: '#34d399', backgroundColor: '#10b98120', padding: '2px 8px', borderRadius: '10px', fontWeight: '700' }}>
-                Garmin / Apple Health
+              <span style={{ fontSize: '10px', color: '#34d399', backgroundColor: '#10b98120', padding: '2px 6px', borderRadius: '8px', fontWeight: '700' }}>
+                Garmin / Apple
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', backgroundColor: '#0f172a', padding: '12px 16px', borderRadius: '14px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', color: '#64748b' }}>RESTING HR Target</span>
-                <span style={{ fontSize: '18px', fontWeight: '800', color: '#f43f5e' }}>58-64 <span style={{ fontSize: '11px', fontWeight: '400' }}>BPM</span></span>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '12px', backgroundColor: '#0f172a', padding: '10px 12px', borderRadius: '12px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: '1px solid #1e293b', paddingRight: '8px' }}>
+                <span style={{ fontSize: '9px', color: '#64748b' }}>Resting HR</span>
+                <span style={{ fontSize: '15px', fontWeight: '800', color: '#f43f5e' }}>58-64 <span style={{ fontSize: '10px' }}>BPM</span></span>
               </div>
-              <div style={{ width: '1px', height: '28px', backgroundColor: '#334155' }}></div>
-              <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.4' }}>
-                อุณหภูมิห้อง <strong style={{ color: '#fff' }}>{sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}</strong> ช่วยให้หัวใจทำงานผ่อนคลายและเข้าสู่ภาวะหลับสนิทได้เร็วขึ้น
+              <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: '1.4' }}>
+                อุณหภูมิห้อง <strong style={{ color: '#fff' }}>{sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}</strong> ช่วยให้หัวใจทำงานผ่อนคลาย หลับสนิทง่ายขึ้น
               </div>
             </div>
           </div>
 
+          {/* Widget 2: Device Health Status */}
           <div style={{
             backgroundColor: '#162032',
-            padding: '18px 20px',
-            borderRadius: '20px',
+            padding: '14px 16px',
+            borderRadius: '18px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '12px'
+            gap: '10px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                📡 สถานะอุปกรณ์และฮาร์ดแวร์ (Device Health)
+              <span style={{ fontSize: '12px', color: '#f8fafc', fontWeight: '700' }}>
+                📡 สถานะฮาร์ดแวร์ (Device Health)
               </span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>ESP32 Node</span>
+              <span style={{ fontSize: '10px', color: '#64748b' }}>ESP32</span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div style={{ backgroundColor: '#0f172a', padding: '8px 12px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>เซนเซอร์ห้องนอน</span>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#34d399' }}>🟢 Online</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ backgroundColor: '#0f172a', padding: '6px 10px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>เซนเซอร์</span>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#34d399' }}>🟢 Online</span>
               </div>
-              <div style={{ backgroundColor: '#0f172a', padding: '8px 12px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>Firebase Database</span>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#38bdf8' }}>⚡ Syncing</span>
+              <div style={{ backgroundColor: '#0f172a', padding: '6px 10px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>Firebase</span>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#38bdf8' }}>⚡ Syncing</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
-              <span>Smart Room Controller v1.0</span>
-              <span>อัปเดตล่าสุด: {lastUpdated} น.</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748b' }}>
+              <span>Smart Room v1.0</span>
+              <span>อัปเดต: {lastUpdated} น.</span>
             </div>
           </div>
         </div>
