@@ -1,22 +1,84 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-export default function AccountPage() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState({
-    name: 'คุณผู้ใช้งาน COMFLYY',
-    email: 'user@comflyy.app',
-    sleepGoal: '7-8 ชั่วโมง / คืน',
-    targetTemp: '24.0°C',
-    targetHumidity: '50%',
-    sensitivity: 'อุณหภูมิ (High)'
-  });
+// ตัวเลือก Avatar โปรไฟล์
+const AVATARS = ['👤', '🌙', '💤', '🤖', '👑', '🦊', '🚀', '🦉'];
 
-  const handleSave = (e: React.FormEvent) => {
+export default function AccountPage() {
+  // State สำหรับจัดการ Session ผู้ใช้
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
+
+  // State ข้อมูลผู้ใช้
+  const [userName, setUserName] = useState<string>('ผู้ใช้งาน COMFLYY');
+  const [email, setEmail] = useState<string>('comflyy.user@example.com');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('👤');
+
+  // State ฟอร์มแก้ไข / เข้าสู่ระบบ
+  const [inputEmail, setInputEmail] = useState<string>('');
+  const [inputPassword, setInputPassword] = useState<string>('');
+  const [inputName, setInputName] = useState<string>('');
+  const [isEditingName, setIsEditingName] = useState<boolean>(false);
+
+  // โหลดข้อมูลผู้ใช้จาก LocalStorage (ถ้ามี)
+  useEffect(() => {
+    const savedUser = localStorage.getItem('comflyy_user');
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      setUserName(parsed.name || 'ผู้ใช้งาน COMFLYY');
+      setEmail(parsed.email || 'comflyy.user@example.com');
+      setSelectedAvatar(parsed.avatar || '👤');
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  // ฟังก์ชัน บันทึกข้อมูลลง LocalStorage
+  const saveUserData = (name: string, mail: string, avatar: string) => {
+    const userData = { name, email: mail, avatar };
+    localStorage.setItem('comflyy_user', JSON.stringify(userData));
+  };
+
+  // ฟังก์ชัน เข้าสู่ระบบ / สมัครสมาชิก
+  const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsEditing(false);
+    if (!inputEmail || !inputPassword) {
+      alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+      return;
+    }
+
+    const finalName = isRegisterMode ? (inputName || 'ผู้ใช้งานใหม่') : 'ผู้ใช้งาน COMFLYY';
+    setUserName(finalName);
+    setEmail(inputEmail);
+    setIsLoggedIn(true);
+    saveUserData(finalName, inputEmail, selectedAvatar);
+    
+    setInputEmail('');
+    setInputPassword('');
+    setInputName('');
+  };
+
+  // ฟังก์ชัน ออกจากระบบ
+  const handleLogout = () => {
+    localStorage.removeItem('comflyy_user');
+    setIsLoggedIn(false);
+    setIsEditingName(false);
+  };
+
+  // ฟังก์ชัน บันทึกการเปลี่ยนชื่อ
+  const handleSaveName = () => {
+    if (!inputName.trim()) return;
+    setUserName(inputName);
+    saveUserData(inputName, email, selectedAvatar);
+    setIsEditingName(false);
+    setInputName('');
+  };
+
+  // ฟังก์ชัน เปลี่ยน รูปโปรไฟล์
+  const handleSelectAvatar = (avatar: string) => {
+    setSelectedAvatar(avatar);
+    saveUserData(userName, email, avatar);
   };
 
   return (
@@ -33,253 +95,328 @@ export default function AccountPage() {
       <style jsx>{`
         .account-container {
           width: 100%;
-          max-width: 800px;
+          max-width: 500px;
           display: flex;
           flex-direction: column;
-          gap: 18px;
+          gap: 16px;
         }
 
-        .info-grid {
+        .card {
+          background-color: #151c2c;
+          border: 1px solid #1e293b;
+          border-radius: 20px;
+          padding: 20px 16px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+        }
+
+        .input-field {
+          width: 100%;
+          padding: 12px 14px;
+          border-radius: 12px;
+          background-color: #0b0f19;
+          border: 1px solid #1e293b;
+          color: #f8fafc;
+          font-size: 13px;
+          outline: none;
+          box-sizing: border-box;
+        }
+
+        .input-field:focus {
+          border-color: #6366f1;
+        }
+
+        .btn-primary {
+          width: 100%;
+          padding: 12px;
+          border-radius: 12px;
+          background-color: #6366f1;
+          color: #fff;
+          border: none;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .btn-primary:active {
+          transform: scale(0.98);
+        }
+
+        .menu-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 14px;
+          background-color: #0b0f19;
+          border: 1px solid #1e293b;
+          border-radius: 12px;
+          color: #f8fafc;
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        .avatar-grid {
           display: grid;
-          grid-template-columns: 1fr;
-          gap: 12px;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin-top: 10px;
         }
 
-        @media (min-width: 640px) {
-          .info-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-          }
+        .avatar-btn {
+          width: 100%;
+          aspect-ratio: 1;
+          border-radius: 14px;
+          background-color: #0b0f19;
+          border: 1px solid #1e293b;
+          font-size: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .avatar-btn.selected {
+          border-color: #6366f1;
+          background-color: #6366f120;
         }
       `}</style>
 
       <main className="account-container">
         {/* Header Section */}
-        <header style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '4px'
-        }}>
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
           <Link href="/" style={{
+            color: '#38bdf8',
+            textDecoration: 'none',
+            fontSize: '12px',
+            fontWeight: '600',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            color: '#818cf8',
-            textDecoration: 'none',
-            fontSize: '13px',
-            fontWeight: '600'
+            gap: '6px',
+            backgroundColor: '#151c2c',
+            padding: '8px 14px',
+            borderRadius: '12px',
+            border: '1px solid #1e293b'
           }}>
             ← กลับหน้าหลัก
           </Link>
           <h1 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#f8fafc' }}>
-            ตั้งค่าบัญชีผู้ใช้
+            {isLoggedIn ? 'จัดการบัญชี' : isRegisterMode ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
           </h1>
-          <div style={{ width: '60px' }}></div>
+          <div style={{ width: '80px' }} />
         </header>
 
-        {/* Profile Card */}
-        <div style={{
-          backgroundColor: '#151c2c',
-          borderRadius: '20px',
-          padding: '24px 18px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '14px',
-          boxShadow: '0 10px 28px rgba(0, 0, 0, 0.25)'
-        }}>
-          <div style={{
-            width: '72px',
-            height: '72px',
-            borderRadius: '22px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '36px',
-            boxShadow: '0 8px 20px rgba(99, 102, 241, 0.35)'
-          }}>
-            👤
-          </div>
+        {/* กรณีที่ 1: ยังไม่ได้เข้าสู่ระบบ (แสดง ฟอร์ม Login / Register) */}
+        {!isLoggedIn ? (
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '40px' }}>🌙</span>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '8px 0 2px 0' }}>
+                {isRegisterMode ? 'สร้างบัญชี COMFLYY' : 'ยินดีต้อนรับกลับมา'}
+              </h2>
+              <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+                {isRegisterMode ? 'กรอกข้อมูลเพื่อเริ่มต้นติดตามสภาวะการนอน' : 'ลงชื่อเข้าใช้เพื่อดูประวัติและตั้งค่าสภาวะการนอน'}
+              </p>
+            </div>
 
-          <div style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
-              {profile.name}
-            </h2>
-            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
-              {profile.email}
-            </span>
-          </div>
-
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            style={{
-              padding: '8px 18px',
-              borderRadius: '12px',
-              backgroundColor: isEditing ? '#334155' : '#6366f1',
-              color: '#fff',
-              border: 'none',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            {isEditing ? 'ยกเลิก' : '✏️ แก้ไขข้อมูล'}
-          </button>
-        </div>
-
-        {/* Preferences & Settings */}
-        <div style={{
-          backgroundColor: '#151c2c',
-          borderRadius: '20px',
-          padding: '20px 18px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px'
-        }}>
-          <span style={{ fontSize: '14px', fontWeight: '700', color: '#818cf8' }}>
-            ⚙️ ค่ากำหนดสภาพแวดล้อมการนอน (Sleep Preferences)
-          </span>
-
-          <form onSubmit={handleSave} className="info-grid">
-            <div style={{
-              backgroundColor: '#0b0f19',
-              padding: '12px 14px',
-              borderRadius: '14px',
-              border: '1px solid #1e293b'
-            }}>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>ชื่อผู้ใช้งาน</span>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                  style={{
-                    width: '100%',
-                    backgroundColor: '#151c2c',
-                    border: '1px solid #334155',
-                    color: '#fff',
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    fontSize: '13px'
-                  }}
-                />
-              ) : (
-                <span style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc' }}>{profile.name}</span>
+            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {isRegisterMode && (
+                <div>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>ชื่อแสดงผล</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="เช่น สมชาย สายหลับ"
+                    value={inputName}
+                    onChange={(e) => setInputName(e.target.value)}
+                  />
+                </div>
               )}
-            </div>
 
-            <div style={{
-              backgroundColor: '#0b0f19',
-              padding: '12px 14px',
-              borderRadius: '14px',
-              border: '1px solid #1e293b'
-            }}>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>เป้าหมายการนอน</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>{profile.sleepGoal}</span>
-            </div>
-
-            <div style={{
-              backgroundColor: '#0b0f19',
-              padding: '12px 14px',
-              borderRadius: '14px',
-              border: '1px solid #1e293b'
-            }}>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>อุณหภูมิห้องเป้าหมาย</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#34d399' }}>{profile.targetTemp}</span>
-            </div>
-
-            <div style={{
-              backgroundColor: '#0b0f19',
-              padding: '12px 14px',
-              borderRadius: '14px',
-              border: '1px solid #1e293b'
-            }}>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>ความชื้นเป้าหมาย</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#34d399' }}>{profile.targetHumidity}</span>
-            </div>
-
-            <div style={{
-              backgroundColor: '#0b0f19',
-              padding: '12px 14px',
-              borderRadius: '14px',
-              border: '1px solid #1e293b',
-              gridColumn: '1 / -1'
-            }}>
-              <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>จุดอ่อนความไวรบกวน (Sensitivity)</span>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#fbbf24' }}>{profile.sensitivity}</span>
-            </div>
-
-            {isEditing && (
-              <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
-                <button
-                  type="submit"
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '12px',
-                    backgroundColor: '#10b981',
-                    color: '#fff',
-                    border: 'none',
-                    fontSize: '13px',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  บันทึกการเปลี่ยนแปลง
-                </button>
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>อีเมล</label>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="name@example.com"
+                  value={inputEmail}
+                  onChange={(e) => setInputEmail(e.target.value)}
+                  required
+                />
               </div>
-            )}
-          </form>
-        </div>
 
-        {/* System Settings & Actions */}
-        <div style={{
-          backgroundColor: '#151c2c',
-          borderRadius: '20px',
-          padding: '14px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
-        }}>
-          <button style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '12px',
-            backgroundColor: '#0b0f19',
-            color: '#f8fafc',
-            border: '1px solid #1e293b',
-            fontSize: '12px',
-            fontWeight: '600',
-            textAlign: 'left',
-            display: 'flex',
-            justifyContent: 'space-between',
-            cursor: 'pointer'
-          }}>
-            <span>🔔 การแจ้งเตือนสภาวะห้องนอน</span>
-            <span style={{ color: '#34d399' }}>เปิดใช้งาน</span>
-          </button>
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>รหัสผ่าน</label>
+                <input
+                  type="password"
+                  className="input-field"
+                  placeholder="••••••••"
+                  value={inputPassword}
+                  onChange={(e) => setInputPassword(e.target.value)}
+                  required
+                />
+              </div>
 
-          <button style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '12px',
-            backgroundColor: '#1f1315',
-            color: '#ef4444',
-            border: '1px solid #450a0a',
-            fontSize: '12px',
-            fontWeight: '600',
-            textAlign: 'center',
-            cursor: 'pointer',
-            marginTop: '6px'
-          }}>
-            ออกจากระบบ
-          </button>
-        </div>
+              <button type="submit" className="btn-primary" style={{ marginTop: '6px' }}>
+                {isRegisterMode ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', marginTop: '8px' }}>
+              <button
+                onClick={() => setIsRegisterMode(!isRegisterMode)}
+                style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}
+              >
+                {isRegisterMode ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกที่นี่'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* กรณีที่ 2: เข้าสู่ระบบเรียบร้อยแล้ว (แสดง หน้าข้อมูลส่วนตัว + ปุ่มแก้ไข + Logout) */
+          <>
+            {/* Profile Info Card */}
+            <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px',
+                border: '2px solid #818cf8',
+                flexShrink: 0
+              }}>
+                {selectedAvatar}
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {isEditingName ? (
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="ใส่ชื่อใหม่"
+                      value={inputName}
+                      onChange={(e) => setInputName(e.target.value)}
+                      style={{ padding: '6px 10px', fontSize: '12px' }}
+                    />
+                    <button
+                      onClick={handleSaveName}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: '#10b981',
+                        color: '#fff',
+                        border: 'none',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      บันทึก
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '800', margin: 0, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {userName}
+                    </h2>
+                    <button
+                      onClick={() => { setIsEditingName(true); setInputName(userName); }}
+                      style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+                    >
+                      ✏️
+                    </button>
+                  </div>
+                )}
+
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0 0' }}>
+                  {email}
+                </p>
+                <span style={{
+                  display: 'inline-block',
+                  marginTop: '6px',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  color: '#34d399',
+                  backgroundColor: '#10b98115',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  border: '1px solid #10b98130'
+                }}>
+                  • Active Member
+                </span>
+              </div>
+            </div>
+
+            {/* Change Profile Picture (Avatar) */}
+            <div className="card">
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#818cf8' }}>
+                🖼️ เปลี่ยนรูปโปรไฟล์ (Profile Avatar)
+              </span>
+              <div className="avatar-grid">
+                {AVATARS.map((avatar) => (
+                  <button
+                    key={avatar}
+                    className={`avatar-btn ${selectedAvatar === avatar ? 'selected' : ''}`}
+                    onClick={() => handleSelectAvatar(avatar)}
+                  >
+                    {avatar}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#818cf8' }}>
+                ⚙️ การตั้งค่าระบบ
+              </span>
+
+              <Link href="/sensors" className="menu-item">
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  📡 เซนเซอร์ห้องนอน
+                </span>
+                <span style={{ color: '#64748b' }}>➔</span>
+              </Link>
+
+              <Link href="/persona" className="menu-item">
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  ⌚ Smart Watch
+                </span>
+                <span style={{ color: '#64748b' }}>➔</span>
+              </Link>
+
+              <Link href="/sensitivity" className="menu-item">
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🎯 ความไวการนอน (Sensitivity)
+                </span>
+                <span style={{ color: '#64748b' }}>➔</span>
+              </Link>
+            </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '14px',
+                backgroundColor: '#ef444415',
+                color: '#f87171',
+                border: '1px solid #ef444430',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                marginTop: '4px'
+              }}
+            >
+              🚪 ออกจากระบบ (Log Out)
+            </button>
+          </>
+        )}
       </main>
     </div>
   );
