@@ -19,22 +19,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // กรองค่าเสียงที่เพี้ยนเกินจริง (เช่น > 120 dB) ให้แสดงผลเป็นปกติ
+    // กรองค่าเสียงที่เพี้ยนจากเซนเซอร์
     const rawSound = sensorData.sound ?? 0;
-    const soundStatus = rawSound > 120 ? 'มีความชื้น/เสียงรบกวน' : `${rawSound} dB`;
+    const soundText = rawSound > 120 ? 'ปกติ' : `${rawSound} dB`;
 
-    const systemInstruction = "คุณเป็นระบบ AI วิเคราะห์สภาพแวดล้อมห้องนอน ตอบเป็นภาษาไทยสั้นๆ ไม่เกิน 2 ประโยคเท่านั้น ห้ามพิมพ์ภาษาอังกฤษ ห้ามพิมพ์กระบวนการคิด ห้ามมีดอกจัน (*)";
+    const promptText = `
+คุณคือ AI ผู้เชี่ยวชาญด้านการวิเคราะห์สภาพแวดล้อมห้องนอน
+จงวิเคราะห์ข้อมูลเซนเซอร์และตอบเป็นข้อความภาษาไทยความยาว 1-2 ประโยคสั้นๆ ที่เข้าใจง่ายเท่านั้น
 
-    const userPrompt = `
 ข้อมูลเซนเซอร์:
 - อุณหภูมิ: ${sensorData.temperature ?? 'N/A'} °C
 - ความชื้น: ${sensorData.humidity ?? 'N/A'} %
-- CO2: ${sensorData.co2 ?? 'N/A'} ppm
+- คาร์บอนไดออกไซด์ (CO2): ${sensorData.co2 ?? 'N/A'} ppm
 - ฝุ่น PM2.5: ${sensorData.pm2_5 ?? 'N/A'} µg/m³
 - แสง: ${sensorData.lux ?? 'N/A'} Lux
-- เสียง: ${soundStatus}
+- เสียง: ${soundText}
 
-สรุปผลกระทบต่อการนอนและคำแนะนำสั้นๆ 1-2 ประโยคเท่านั้น:
+คำสั่ง: ตอบเฉพาะคำแนะนำและผลกระทบสั้นๆ ไม่เกิน 2 ประโยค (ห้ามมีภาษาอังกฤษ, ห้ามมีขั้นตอนการคิด, ห้ามมีดอกจัน)
     `;
 
     const listRes = await fetch(
@@ -68,13 +69,10 @@ export async function POST(req: Request) {
           headers: { 'Content-Type': 'application/json' },
           cache: 'no-store',
           body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstruction }]
-            },
-            contents: [{ parts: [{ text: userPrompt }] }],
+            contents: [{ parts: [{ text: promptText }] }],
             generationConfig: {
-              temperature: 0.2, // ลดความฟุ้งซ่านของ AI
-              maxOutputTokens: 150
+              temperature: 0.1,
+              maxOutputTokens: 200
             }
           }),
         }
@@ -84,17 +82,8 @@ export async function POST(req: Request) {
 
       if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
         let text = data.candidates[0].content.parts[0].text.trim();
-
-        // Regex ดักกรอง: ถ้ามีภาษาอังกฤษผสมยาวๆ ให้เลือกเฉพาะประโยคภาษาไทยช่วงท้าย
-        const thaiMatches = text.match(/[\u0E00-\u0E7F\s0-9.,°-]+/g);
-        if (thaiMatches) {
-          const combinedThai = thaiMatches.join('').trim();
-          const cleanThai = combinedThai.replace(/\*+/g, '').replace(/\s+/g, ' ');
-          if (cleanThai.length > 5) {
-            text = cleanThai;
-          }
-        }
-
+        // ทำความสะอาดข้อความ ลบดอกจันและช่องว่างส่วนเกิน
+        text = text.replace(/\*/g, '').replace(/\s+/g, ' ');
         return NextResponse.json({ result: text });
       }
 
