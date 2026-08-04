@@ -49,25 +49,54 @@ export default function AccountPage() {
     return () => unsubscribe();
   }, [auth]);
 
-  // ฟังก์ชันแปลงไฟล์ภาพจากคอมพิวเตอร์เป็น Base64
+  // ฟังก์ชันย่อขนาดรูปภาพ (Resize Image) ให้สั้นพอสำหรับ Firebase Auth photoURL
+  const compressImage = (file: File, callback: (base64: string) => void) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 128;
+        const MAX_HEIGHT = 128;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // บีบอัดรูปภาพเป็น JPEG คุณภาพ 0.7 (ไฟล์เล็กจิ๋ว ส่งผ่านแน่นอน)
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        callback(compressedBase64);
+      };
+    };
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, isRegister: boolean) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // จำกัดขนาดไฟล์ไม่เกิน 2MB
-        setAuthError('ขนาดไฟล์ภาพต้องไม่เกิน 2MB');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
+      compressImage(file, (compressedBase64) => {
         if (isRegister) {
-          setPhotoBase64(base64String);
+          setPhotoBase64(compressedBase64);
         } else {
-          setNewPhotoBase64(base64String);
+          setNewPhotoBase64(compressedBase64);
         }
-      };
-      reader.readAsDataURL(file);
+      });
     }
   };
 
@@ -101,7 +130,7 @@ export default function AccountPage() {
     }
   };
 
-  // อัปเดตข้อมูลโปรไฟล์ (เปลี่ยนชื่อ / รูปภาพจากคอมฯ)
+  // อัปเดตข้อมูลโปรไฟล์ (แก้ไขชื่อ / รูปภาพ)
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth.currentUser) return;
@@ -113,11 +142,14 @@ export default function AccountPage() {
         displayName: newDisplayName,
         photoURL: newPhotoBase64
       });
+      
+      // บังคับอัปเดต State สด
       setUser({ ...auth.currentUser });
       setIsEditing(false);
       setAuthSuccess('อัปเดตข้อมูลโปรไฟล์เรียบร้อยแล้ว!');
     } catch (err: any) {
-      setAuthError('ไม่สามารถอัปเดตข้อมูลได้');
+      console.error('Update profile error:', err);
+      setAuthError('ไม่สามารถอัปเดตข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -172,7 +204,7 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* CASE 1: Logged In */}
+        {/* Logged In User Profile */}
         {user ? (
           <div style={{ backgroundColor: '#151c2c', borderRadius: '22px', padding: '24px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -201,7 +233,7 @@ export default function AccountPage() {
               </button>
             </div>
 
-            {/* Edit Form with Local File Picker */}
+            {/* Form Edit */}
             {isEditing && (
               <form onSubmit={handleUpdateProfile} style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <span style={{ fontSize: '13px', color: '#818cf8', fontWeight: '700' }}>แก้ไขข้อมูลส่วนตัว</span>
@@ -217,23 +249,13 @@ export default function AccountPage() {
                   />
                 </div>
 
-                {/* Local File Picker Input */}
                 <div>
                   <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>เลือกรูปภาพจากคอมพิวเตอร์</label>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleFileChange(e, false)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '10px',
-                      backgroundColor: '#151c2c',
-                      border: '1px solid #334155',
-                      color: '#94a3b8',
-                      fontSize: '12px',
-                      cursor: 'pointer'
-                    }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '10px', backgroundColor: '#151c2c', border: '1px solid #334155', color: '#94a3b8', fontSize: '12px', cursor: 'pointer' }}
                   />
                   {newPhotoBase64 && (
                     <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -257,7 +279,7 @@ export default function AccountPage() {
             </button>
           </div>
         ) : (
-          /* CASE 2: Login / Register Form */
+          /* Login / Register */
           <div style={{ backgroundColor: '#151c2c', borderRadius: '22px', padding: '24px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
