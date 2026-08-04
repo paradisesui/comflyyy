@@ -3,9 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// ตัวเลือก Avatar โปรไฟล์
-const AVATARS = ['👤', '🌙', '💤', '🤖', '👑', '🦊', '🚀', '🦉'];
-
 export default function AccountPage() {
   // State สำหรับจัดการ Session ผู้ใช้
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -14,7 +11,7 @@ export default function AccountPage() {
   // State ข้อมูลผู้ใช้
   const [userName, setUserName] = useState<string>('ผู้ใช้งาน COMFLYY');
   const [email, setEmail] = useState<string>('comflyy.user@example.com');
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('👤');
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   // State ฟอร์มแก้ไข / เข้าสู่ระบบ
   const [inputEmail, setInputEmail] = useState<string>('');
@@ -22,21 +19,21 @@ export default function AccountPage() {
   const [inputName, setInputName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
 
-  // โหลดข้อมูลผู้ใช้จาก LocalStorage (ถ้ามี)
+  // โหลดข้อมูลผู้ใช้จาก LocalStorage
   useEffect(() => {
     const savedUser = localStorage.getItem('comflyy_user');
     if (savedUser) {
       const parsed = JSON.parse(savedUser);
       setUserName(parsed.name || 'ผู้ใช้งาน COMFLYY');
       setEmail(parsed.email || 'comflyy.user@example.com');
-      setSelectedAvatar(parsed.avatar || '👤');
+      setProfileImage(parsed.image || null);
       setIsLoggedIn(true);
     }
   }, []);
 
   // ฟังก์ชัน บันทึกข้อมูลลง LocalStorage
-  const saveUserData = (name: string, mail: string, avatar: string) => {
-    const userData = { name, email: mail, avatar };
+  const saveUserData = (name: string, mail: string, image: string | null) => {
+    const userData = { name, email: mail, image };
     localStorage.setItem('comflyy_user', JSON.stringify(userData));
   };
 
@@ -52,7 +49,7 @@ export default function AccountPage() {
     setUserName(finalName);
     setEmail(inputEmail);
     setIsLoggedIn(true);
-    saveUserData(finalName, inputEmail, selectedAvatar);
+    saveUserData(finalName, inputEmail, profileImage);
     
     setInputEmail('');
     setInputPassword('');
@@ -70,15 +67,27 @@ export default function AccountPage() {
   const handleSaveName = () => {
     if (!inputName.trim()) return;
     setUserName(inputName);
-    saveUserData(inputName, email, selectedAvatar);
+    saveUserData(inputName, email, profileImage);
     setIsEditingName(false);
-    setInputName('');
   };
 
-  // ฟังก์ชัน เปลี่ยน รูปโปรไฟล์
-  const handleSelectAvatar = (avatar: string) => {
-    setSelectedAvatar(avatar);
-    saveUserData(userName, email, avatar);
+  // ฟังก์ชัน อัปโหลดไฟล์รูปภาพ (แปลงเป็น Base64)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfileImage(base64String);
+        saveUserData(userName, email, base64String);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -155,29 +164,22 @@ export default function AccountPage() {
           font-weight: 600;
         }
 
-        .avatar-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
-          margin-top: 10px;
-        }
-
-        .avatar-btn {
-          width: 100%;
-          aspect-ratio: 1;
-          border-radius: 14px;
-          background-color: #0b0f19;
-          border: 1px solid #1e293b;
-          font-size: 24px;
+        .upload-area {
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
+          padding: 20px;
+          border: 2px dashed #334155;
+          border-radius: 16px;
+          background-color: #0b0f19;
           cursor: pointer;
+          margin-top: 10px;
+          transition: border-color 0.2s;
         }
 
-        .avatar-btn.selected {
+        .upload-area:hover {
           border-color: #6366f1;
-          background-color: #6366f120;
         }
       `}</style>
 
@@ -271,15 +273,16 @@ export default function AccountPage() {
             </div>
           </div>
         ) : (
-          /* กรณีที่ 2: เข้าสู่ระบบเรียบร้อยแล้ว (แสดง หน้าข้อมูลส่วนตัว + ปุ่มแก้ไข + Logout) */
+          /* กรณีที่ 2: เข้าสู่ระบบเรียบร้อยแล้ว (แสดง หน้าข้อมูลส่วนตัว + อัปโหลดรูป + Logout) */
           <>
             {/* Profile Info Card */}
             <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {/* แสดงรูปโปรไฟล์ที่อัปโหลด หรือ Default Icon */}
               <div style={{
-                width: '64px',
-                height: '64px',
+                width: '68px',
+                height: '68px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+                background: profileImage ? `url(${profileImage}) center/cover no-repeat` : 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -287,7 +290,7 @@ export default function AccountPage() {
                 border: '2px solid #818cf8',
                 flexShrink: 0
               }}>
-                {selectedAvatar}
+                {!profileImage && '👤'}
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -325,7 +328,8 @@ export default function AccountPage() {
                     </h2>
                     <button
                       onClick={() => { setIsEditingName(true); setInputName(userName); }}
-                      style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+                      style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '13px', cursor: 'pointer', padding: 0 }}
+                      title="แก้ไขชื่อ"
                     >
                       ✏️
                     </button>
@@ -351,22 +355,29 @@ export default function AccountPage() {
               </div>
             </div>
 
-            {/* Change Profile Picture (Avatar) */}
+            {/* Change Profile Picture (Upload from Computer / Mobile) */}
             <div className="card">
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#818cf8' }}>
-                🖼️ เปลี่ยนรูปโปรไฟล์ (Profile Avatar)
+                🖼️ เปลี่ยนรูปโปรไฟล์ (Upload Photo)
               </span>
-              <div className="avatar-grid">
-                {AVATARS.map((avatar) => (
-                  <button
-                    key={avatar}
-                    className={`avatar-btn ${selectedAvatar === avatar ? 'selected' : ''}`}
-                    onClick={() => handleSelectAvatar(avatar)}
-                  >
-                    {avatar}
-                  </button>
-                ))}
-              </div>
+
+              <label htmlFor="profile-upload" className="upload-area">
+                <span style={{ fontSize: '28px', marginBottom: '6px' }}>📁</span>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#f8fafc' }}>
+                  กดเพื่อเลือกรูปภาพจากมือถือหรือคอมพิวเตอร์
+                </span>
+                <span style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
+                  รองรับไฟล์ PNG, JPG หรือ GIF (ไม่เกิน 2MB)
+                </span>
+              </label>
+
+              <input
+                id="profile-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+              />
             </div>
 
             {/* Quick Links */}
