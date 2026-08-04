@@ -128,8 +128,8 @@ export default function Home() {
         .header-bottom {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 8px;
+          justify-content: flex-end;
+          gap: 10px;
         }
 
         .hero-grid {
@@ -162,7 +162,6 @@ export default function Home() {
           }
 
           .header-bottom {
-            justify-content: flex-end;
             gap: 12px;
           }
 
@@ -184,13 +183,14 @@ export default function Home() {
       `}</style>
 
       <main className="bento-container">
-        {/* Header */}
+        {/* Header Section */}
         <header className="header-container" style={{ padding: '0 2px' }}>
+          {/* Logo & Brand Name (Left) */}
           <div className="header-top">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
-                width: '36px',
-                height: '36px',
+                width: '38px',
+                height: '38px',
                 borderRadius: '10px',
                 background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
                 display: 'flex',
@@ -209,51 +209,58 @@ export default function Home() {
                 </span>
               </div>
             </div>
-
-            <Link href="/account" style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              backgroundColor: '#151c2c',
-              color: '#f8fafc',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textDecoration: 'none',
-              fontSize: '15px',
-              border: '1px solid #1e293b'
-            }}>
-              👤
-            </Link>
           </div>
 
+          {/* Quick Menu & Account Button (Right Side) */}
           <div className="header-bottom">
             <span style={{
               fontSize: '11px',
-              padding: '5px 10px',
+              padding: '6px 12px',
               borderRadius: '20px',
               backgroundColor: loading ? '#f59e0b15' : '#10b98115',
               color: loading ? '#f59e0b' : '#34d399',
               border: `1px solid ${loading ? '#f59e0b30' : '#10b98130'}`,
-              fontWeight: '600'
+              fontWeight: '600',
+              whiteSpace: 'nowrap'
             }}>
               {loading ? '• Connecting...' : '• Realtime Active'}
             </span>
 
+            {/* Smart Watch Link Button */}
             <Link href="/persona" style={{
-              padding: '6px 12px',
-              borderRadius: '10px',
+              padding: '8px 14px',
+              borderRadius: '12px',
               backgroundColor: '#151c2c',
               color: '#38bdf8',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               textDecoration: 'none',
-              fontSize: '11px',
+              fontSize: '12px',
               fontWeight: '600',
-              border: '1px solid #1e293b'
+              border: '1px solid #1e293b',
+              whiteSpace: 'nowrap'
             }}>
               ⌚ Smart Watch
+            </Link>
+
+            {/* Account Profile Button (ขยายใหญ่ขึ้น อยู่ขวาสุด) */}
+            <Link href="/account" style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              backgroundColor: '#151c2c',
+              color: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+              fontSize: '18px',
+              border: '1px solid #334155',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+              flexShrink: 0
+            }}>
+              👤
             </Link>
           </div>
         </header>
@@ -352,7 +359,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* [NEW] FEATURE HIGHLIGHT: Sensor-based Sleep Sensitivity Profile */}
+        {/* Feature Highlight Card */}
         <Link href="/sensitivity" style={{ textDecoration: 'none' }}>
           <div style={{
             background: 'linear-gradient(135deg, #1e1b4b 0%, #151c2c 100%)',
