@@ -9,98 +9,85 @@ interface SensorData {
   co2: number;
   humidity: number;
   lux: number;
-  pm10: number;
-  pm1_0: number;
   pm2_5: number;
   sound: number;
   temperature: number;
   timestamp: number;
 }
 
-export default function Home() {
-  const [sensor, setSensor] = useState<SensorData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มด้านล่างเพื่อรับคำแนะนำการปรับสภาพห้องนอน');
-  const [aiLoading, setAiLoading] = useState<boolean>(false);
-  const [cooldown, setCooldown] = useState<number>(0);
+interface SmartWatchData {
+  heartRate: number;
+  sleepStage: 'Deep' | 'Light' | 'REM' | 'Awake';
+  movement: 'Quiet' | 'Restless';
+  isArousal: boolean; // มีภาวะสะดุ้งตื่น/หัวใจเต้นเร็วผิดปกติ
+}
 
-  useEffect(() => {
-    if (cooldown > 0) {
-      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [cooldown]);
+interface SleepDisruptionLog {
+  id: string;
+  timeString: string;
+  disruptionCause: string;
+  watchData: SmartWatchData;
+  sensorData: Partial<SensorData>;
+}
 
-  const analyzeWithGemini = async (data: SensorData) => {
-    if (cooldown > 0) return;
+export default function PersonaPage() {
+  const [sensitivity, setSensitivity] = useState({
+    temperature: 'High', // High, Medium, Low
+    sound: 'High',
+    light: 'Medium',
+  });
 
-    try {
-      setAiLoading(true);
-      setAiAnalysis('กำลังวิเคราะห์สภาพแวดล้อมเพื่อสร้างคำแนะนำ...');
+  const [isWatchConnected, setIsWatchConnected] = useState<boolean>(true);
+  const [logs, setLogs] = useState<SleepDisruptionLog[]>([]);
 
-      const res = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sensorData: data }),
-      });
-
-      const json = await res.json();
-
-      if (res.ok && json.result) {
-        setAiAnalysis(json.result);
-      } else {
-        console.error('Gemini API Error:', json);
-        setAiAnalysis(json.error || json.details || 'ไม่สามารถประมวลผลคำแนะนำได้ในขณะนี้');
-      }
-    } catch (error) {
-      console.error('Fetch Error:', error);
-      setAiAnalysis('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-    } finally {
-      setAiLoading(false);
-      setCooldown(10);
-    }
-  };
-
+  // จำลองดึงข้อมูลประวัติการสะดุ้งตื่นที่ Timestamp ตรงกันระหว่าง Smart Watch และ Sensor
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
-      const latestLogQuery = query(logsRef, limitToLast(1));
-      const unsubscribe = onValue(latestLogQuery, (snapshot) => {
+      const latestLogsQuery = query(logsRef, limitToLast(5));
+
+      const unsubscribe = onValue(latestLogsQuery, (snapshot) => {
         if (snapshot.exists()) {
-          const data = snapshot.val();
-          const latestKey = Object.keys(data)[0];
-          const currentSensorData: SensorData = data[latestKey];
-          setSensor(currentSensorData);
+          const rawData = snapshot.val();
+          const mockDisruptionLogs: SleepDisruptionLog[] = Object.keys(rawData).map((key, index) => {
+            const item = rawData[key];
+            const date = item.timestamp ? new Date(item.timestamp) : new Date();
+            const timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+            // สุ่มระบุสาเหตุรบกวนตามค่าเซนเซอร์ที่เกินเกณฑ์
+            let cause = 'สภาพแวดล้อมปกติ';
+            if (item.temperature > 25) cause = 'อุณหภูมิห้องสูงเกินไป';
+            else if (item.lux > 5) cause = 'แสงสว่างรบกวนตา';
+            else if (item.sound > 1000) cause = 'เสียงรบกวนสะดุ้งตื่น';
+
+            return {
+              id: key,
+              timeString: timeStr,
+              disruptionCause: cause,
+              watchData: {
+                heartRate: 72 + (index * 4),
+                sleepStage: item.temperature > 25 ? 'Light' : 'Deep',
+                movement: item.sound > 1000 ? 'Restless' : 'Quiet',
+                isArousal: item.temperature > 25 || item.sound > 1000,
+              },
+              sensorData: {
+                temperature: item.temperature,
+                lux: item.lux,
+                sound: item.sound,
+                humidity: item.humidity,
+              }
+            };
+          });
+
+          setLogs(mockDisruptionLogs.reverse());
         }
-        setLoading(false);
-      }, (error) => {
-        console.error('Firebase Error:', error);
-        setLoading(false);
       });
+
       return () => unsubscribe();
     } catch (e) {
       console.error(e);
-      setLoading(false);
     }
   }, []);
-
-  const calculateScore = (data: SensorData | null) => {
-    if (!data) return 97;
-    let score = 100;
-    
-    if (data.temperature > 25) score -= Math.round((data.temperature - 25) * 3);
-    if (data.humidity > 60) score -= Math.round((data.humidity - 60) * 0.5);
-    if (data.humidity < 40) score -= Math.round((40 - data.humidity) * 0.5);
-    if (data.co2 > 800) score -= 10;
-    if (data.pm2_5 > 15) score -= 10;
-    if (data.lux > 5) score -= 10;
-
-    return Math.max(0, Math.min(100, Math.round(score)));
-  };
-
-  const score = calculateScore(sensor);
-  const strokeDashoffset = 440 - (440 * score) / 100;
-  const statusColor = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444';
 
   return (
     <div style={{
@@ -120,184 +107,187 @@ export default function Home() {
         borderRadius: '28px',
         border: '1px solid #1e293b',
         padding: '24px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
         display: 'flex',
         flexDirection: 'column',
         gap: '20px'
       }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: loading ? '#f59e0b' : '#10b981',
-              boxShadow: loading ? '0 0 10px #f59e0b' : '0 0 10px #10b981'
-            }}></span>
-            <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>
-              {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
-            </span>
-          </div>
-          <Link href="/account" style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            backgroundColor: '#1e293b',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textDecoration: 'none',
-            fontSize: '18px',
-            border: '1px solid #334155'
-          }}>
-            👤
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>
+            ← ย้อนกลับ
           </Link>
-        </header>
-
-        <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-          <div style={{ position: 'relative', width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg transform="rotate(-90)" width="200" height="200" viewBox="0 0 160 160">
-              <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="12" fill="transparent" />
-              <circle
-                cx="80" cy="80" r="70"
-                stroke={statusColor}
-                strokeWidth="12"
-                fill="transparent"
-                strokeDasharray="440"
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
-              />
-            </svg>
-            <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <span style={{ fontSize: '48px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
-              <span style={{ fontSize: '10px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '600' }}>ROOM SCORE</span>
-            </div>
-          </div>
-
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-            <h2 style={{ fontSize: '24px', color: statusColor, fontWeight: '700', margin: '2px 0 0 0' }}>
-              {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
-            </h2>
-          </div>
-        </section>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: '10px',
-          backgroundColor: '#162032',
-          padding: '12px',
-          borderRadius: '16px',
-          border: '1px solid #1e293b'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
-              {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
-            </span>
-          </div>
-          <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>ความชื้น</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
-              {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
-            </span>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>CO2</span>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
-              {sensor ? `${sensor.co2} ppm` : '--'}
-            </span>
-          </div>
+          <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0, color: '#f8fafc' }}>
+            Sleep Persona & Sync
+          </h1>
+          <div style={{ width: '40px' }}></div>
         </div>
 
-        {/* กล่องคำแนะนำปรับใหม่ สบายตาเข้ากับธีม */}
-        <div style={{
+        {/* สถานะ Smart Watch */}
+        <section style={{
           backgroundColor: '#162032',
           padding: '16px',
           borderRadius: '16px',
-          border: '1px solid rgba(16, 185, 129, 0.3)',
+          border: '1px solid #1e293b',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '6px'
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          <p style={{
-            fontSize: '14px',
-            fontWeight: '700',
-            color: '#34d399',
-            margin: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            💡 คำแนะนำ
-          </p>
-          <p style={{
-            fontSize: '13px',
-            color: aiLoading ? '#64748b' : '#cbd5e1',
-            margin: 0,
-            lineHeight: '1.5'
-          }}>
-            {aiAnalysis}
-          </p>
-        </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '24px' }}>⌚</span>
+            <div>
+              <span style={{ fontSize: '14px', fontWeight: '700', display: 'block' }}>Smart Watch Sync</span>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                {isWatchConnected ? 'เชื่อมต่อแล้ว (Apple Watch / Garmin)' : 'ยังไม่ได้เชื่อมต่อ'}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsWatchConnected(!isWatchConnected)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '20px',
+              border: 'none',
+              backgroundColor: isWatchConnected ? '#10b98120' : '#334155',
+              color: isWatchConnected ? '#34d399' : '#94a3b8',
+              fontSize: '11px',
+              fontWeight: '700',
+              cursor: 'pointer'
+            }}
+          >
+            {isWatchConnected ? '• Live Sync' : 'Connect'}
+          </button>
+        </section>
 
-        <button
-          onClick={() => sensor && analyzeWithGemini(sensor)}
-          disabled={aiLoading || !sensor || cooldown > 0}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
-            color: cooldown > 0 ? '#94a3b8' : '#022c22',
-            border: 'none',
-            borderRadius: '14px',
-            fontWeight: '700',
-            fontSize: '14px',
-            cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
-            opacity: aiLoading ? 0.7 : 1,
+        {/* ตั้งค่าความไวเฉพาะบุคคล (Sensitivity Profile) */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h2 style={{ fontSize: '14px', color: '#94a3b8', margin: 0, fontWeight: '600' }}>
+            🎯 ความไวต่อสิ่งรบกวนเฉพาะบุคคล (Sensitivity)
+          </h2>
+          <div style={{
+            backgroundColor: '#162032',
+            padding: '16px',
+            borderRadius: '16px',
+            border: '1px solid #1e293b',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          {aiLoading 
-            ? '🔄 กำลังวิเคราะห์...' 
-            : cooldown > 0 
-              ? `⏳ กรุณารอ (${cooldown}s)` 
-              : '🔄 วิเคราะห์สดด้วย Gemini'}
-        </button>
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#cbd5e1' }}>🌡️ ตื่นง่ายเมื่อร้อน/อุ่น</span>
+              <select
+                value={sensitivity.temperature}
+                onChange={(e) => setSensitivity({ ...sensitivity, temperature: e.target.value })}
+                style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+              >
+                <option value="High">ไวมาก (High)</option>
+                <option value="Medium">ปานกลาง</option>
+                <option value="Low">ทนได้ดี</option>
+              </select>
+            </div>
 
-        <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
-          <Link href="/sensors" style={{
-            backgroundColor: '#1e293b',
-            color: '#f1f5f9',
-            padding: '12px',
-            borderRadius: '14px',
-            textAlign: 'center',
-            fontWeight: '600',
-            fontSize: '14px',
-            textDecoration: 'none',
-            border: '1px solid #334155'
-          }}>
-            ดูคะแนนเพิ่มเติม ➔
-          </Link>
-          <Link href="/persona" style={{
-            backgroundColor: '#1e293b',
-            color: '#f1f5f9',
-            padding: '12px',
-            borderRadius: '14px',
-            textAlign: 'center',
-            fontWeight: '600',
-            fontSize: '14px',
-            textDecoration: 'none',
-            border: '1px solid #334155'
-          }}>
-            ประวัติการใช้งาน
-          </Link>
-        </footer>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#cbd5e1' }}>🔊 สะดุ้งตื่นเมื่อมีเสียง</span>
+              <select
+                value={sensitivity.sound}
+                onChange={(e) => setSensitivity({ ...sensitivity, sound: e.target.value })}
+                style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+              >
+                <option value="High">ไวมาก (High)</option>
+                <option value="Medium">ปานกลาง</option>
+                <option value="Low">ทนได้ดี</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#cbd5e1' }}>💡 ตอบสนองต่อแสงสว่าง</span>
+              <select
+                value={sensitivity.light}
+                onChange={(e) => setSensitivity({ ...sensitivity, light: e.target.value })}
+                style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+              >
+                <option value="High">ไวมาก (High)</option>
+                <option value="Medium">ปานกลาง (Medium)</option>
+                <option value="Low">ทนได้ดี</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* ประวัติการตื่นย้อนหลัง (Disruption Log) */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h2 style={{ fontSize: '14px', color: '#94a3b8', margin: 0, fontWeight: '600' }}>
+            📊 ประวัติการตื่น timestamp กับค่าเซนเซอร์
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {logs.length === 0 ? (
+              <p style={{ fontSize: '12px', color: '#64748b', textAlign: 'center' }}>กำลังดึงข้อมูลประวัติ...</p>
+            ) : (
+              logs.map((log) => (
+                <div key={log.id} style={{
+                  backgroundColor: '#162032',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  border: log.watchData.isArousal ? '1px solid #ef444450' : '1px solid #1e293b',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#38bdf8' }}>
+                      ⏱️ {log.timeString}
+                    </span>
+                    <span style={{
+                      fontSize: '10px',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      backgroundColor: log.watchData.isArousal ? '#ef444420' : '#10b98120',
+                      color: log.watchData.isArousal ? '#f87171' : '#34d399',
+                      fontWeight: '700'
+                    }}>
+                      {log.watchData.isArousal ? 'สะดุ้งตื่น / ตื่นตัว' : 'หลับสนิท'}
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '13px', margin: 0, fontWeight: '600', color: '#f1f5f9' }}>
+                    สาเหตุ: {log.disruptionCause}
+                  </p>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '6px',
+                    fontSize: '11px',
+                    color: '#94a3b8',
+                    marginTop: '4px',
+                    backgroundColor: '#0f172a',
+                    padding: '8px',
+                    borderRadius: '10px'
+                  }}>
+                    <div>⌚ หัวใจ: <strong style={{ color: '#fff' }}>{log.watchData.heartRate} bpm</strong></div>
+                    <div>⌚ สถานะ: <strong style={{ color: '#fff' }}>{log.watchData.sleepStage} Sleep</strong></div>
+                    <div>🌡️ อุณหภูมิ: <strong style={{ color: '#fff' }}>{log.sensorData.temperature?.toFixed(1)}°C</strong></div>
+                    <div>💡 แสง: <strong style={{ color: '#fff' }}>{log.sensorData.lux?.toFixed(1)} Lux</strong></div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <Link href="/" style={{
+          backgroundColor: '#1e293b',
+          color: '#f1f5f9',
+          padding: '12px',
+          borderRadius: '14px',
+          textAlign: 'center',
+          fontWeight: '600',
+          fontSize: '14px',
+          textDecoration: 'none',
+          border: '1px solid #334155'
+        }}>
+          กลับหน้าหลัก
+        </Link>
       </main>
     </div>
   );
