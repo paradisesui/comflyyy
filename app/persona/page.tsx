@@ -6,86 +6,123 @@ import { database } from '@/app/lib/firebase';
 import { ref, query, limitToLast, onValue } from 'firebase/database';
 
 interface SensorData {
-  co2: number;
+  co2?: number;
+  humidity?: number;
+  lux?: number;
+  pm10?: number;
+  pm1_0?: number;
+  pm2_5?: number;
+  sound?: number;
+  temperature?: number;
+  timestamp?: number;
+}
+
+interface SleepLogItem {
+  id: string;
+  timestamp: number;
+  timeString: string;
+  dateString: string;
+  temperature: number;
   humidity: number;
   lux: number;
-  pm2_5: number;
+  co2: number;
   sound: number;
-  temperature: number;
-  timestamp: number;
-}
-
-interface SmartWatchData {
-  heartRate: number;
-  sleepStage: 'Deep' | 'Light' | 'REM' | 'Awake';
-  movement: 'Quiet' | 'Restless';
-  isArousal: boolean; // มีภาวะสะดุ้งตื่น/หัวใจเต้นเร็วผิดปกติ
-}
-
-interface SleepDisruptionLog {
-  id: string;
-  timeString: string;
+  pm2_5: number;
   disruptionCause: string;
-  watchData: SmartWatchData;
-  sensorData: Partial<SensorData>;
+  isDisrupted: boolean;
 }
 
 export default function PersonaPage() {
   const [sensitivity, setSensitivity] = useState({
-    temperature: 'High', // High, Medium, Low
+    temperature: 'High',
     sound: 'High',
     light: 'Medium',
   });
 
   const [isWatchConnected, setIsWatchConnected] = useState<boolean>(true);
-  const [logs, setLogs] = useState<SleepDisruptionLog[]>([]);
+  const [logs, setLogs] = useState<SleepLogItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // จำลองดึงข้อมูลประวัติการสะดุ้งตื่นที่ Timestamp ตรงกันระหว่าง Smart Watch และ Sensor
+  // ดึงข้อมูลประวัติย้อนหลังจริงจาก Firebase Realtime Database Node 'logs'
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
-      const latestLogsQuery = query(logsRef, limitToLast(5));
+      // ดึงข้อมูล 20 รายการล่าสุดจริงจาก Firebase
+      const latestLogsQuery = query(logsRef, limitToLast(20));
 
-      const unsubscribe = onValue(latestLogsQuery, (snapshot) => {
-        if (snapshot.exists()) {
-          const rawData = snapshot.val();
-          const mockDisruptionLogs: SleepDisruptionLog[] = Object.keys(rawData).map((key, index) => {
-            const item = rawData[key];
-            const date = item.timestamp ? new Date(item.timestamp) : new Date();
-            const timeStr = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      const unsubscribe = onValue(
+        latestLogsQuery,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const rawData = snapshot.val();
+            const parsedLogs: SleepLogItem[] = Object.keys(rawData).map((key) => {
+              const item: SensorData = rawData[key];
+              
+              // แปลง Timestamp จาก Firebase หรือใช้เวลาปัจจุบันกรณีไม่มี field
+              const logTime = item.timestamp ? new Date(item.timestamp) : new Date();
+              const timeStr = logTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+              const dateStr = logTime.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
 
-            // สุ่มระบุสาเหตุรบกวนตามค่าเซนเซอร์ที่เกินเกณฑ์
-            let cause = 'สภาพแวดล้อมปกติ';
-            if (item.temperature > 25) cause = 'อุณหภูมิห้องสูงเกินไป';
-            else if (item.lux > 5) cause = 'แสงสว่างรบกวนตา';
-            else if (item.sound > 1000) cause = 'เสียงรบกวนสะดุ้งตื่น';
+              // วิเคราะห์สาเหตุสิ่งรบกวนจริงตามค่าเซนเซอร์ย้อนหลังใน Firebase
+              const temp = item.temperature ?? 0;
+              const lux = item.lux ?? 0;
+              const sound = item.sound ?? 0;
+              const hum = item.humidity ?? 0;
 
-            return {
-              id: key,
-              timeString: timeStr,
-              disruptionCause: cause,
-              watchData: {
-                heartRate: 72 + (index * 4),
-                sleepStage: item.temperature > 25 ? 'Light' : 'Deep',
-                movement: item.sound > 1000 ? 'Restless' : 'Quiet',
-                isArousal: item.temperature > 25 || item.sound > 1000,
-              },
-              sensorData: {
-                temperature: item.temperature,
-                lux: item.lux,
-                sound: item.sound,
-                humidity: item.humidity,
+              let causeList: string[] = [];
+              let isDisrupted = false;
+
+              if (temp > 25) {
+                causeList.push('อุณหภูมิร้อนเกินไป');
+                isDisrupted = true;
               }
-            };
-          });
+              if (lux > 5) {
+                causeList.push('แสงสว่างรบกวน');
+                isDisrupted = true;
+              }
+              if (sound > 1000) {
+                causeList.push('เสียงรบกวนสะดุ้งตื่น');
+                isDisrupted = true;
+              }
+              if (hum > 60) {
+                causeList.push('ความชื้นสูงเกินเกณฑ์');
+              }
 
-          setLogs(mockDisruptionLogs.reverse());
+              const disruptionCause = causeList.length > 0 ? causeList.join(' • ') : 'สภาพแวดล้อมดี เหมาะกับการนอนหลับ';
+
+              return {
+                id: key,
+                timestamp: item.timestamp || Date.now(),
+                timeString: timeStr,
+                dateString: dateStr,
+                temperature: temp,
+                humidity: hum,
+                lux: lux,
+                co2: item.co2 ?? 0,
+                sound: sound,
+                pm2_5: item.pm2_5 ?? 0,
+                disruptionCause,
+                isDisrupted
+              };
+            });
+
+            // เรียงลำดับจากล่าสุดไปเก่าสุด
+            setLogs(parsedLogs.reverse());
+          } else {
+            setLogs([]);
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Firebase Logs Error:', error);
+          setLoading(false);
         }
-      });
+      );
 
       return () => unsubscribe();
     } catch (e) {
       console.error(e);
+      setLoading(false);
     }
   }, []);
 
@@ -98,193 +135,251 @@ export default function PersonaPage() {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: '20px'
+      padding: '16px'
     }}>
-      <main style={{
-        width: '100%',
-        maxWidth: '420px',
-        backgroundColor: '#0f172a',
-        borderRadius: '28px',
-        border: '1px solid #1e293b',
-        padding: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '20px'
-      }}>
+      {/* CSS Responsive Styles */}
+      <style jsx>{`
+        .persona-container {
+          width: 100%;
+          max-width: 1200px;
+          background-color: #0f172a;
+          border-radius: 28px;
+          border: 1px solid #1e293b;
+          padding: 24px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .top-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+
+        .logs-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        /* Responsive สำหรับหน้าจอคอมพิวเตอร์ (Desktop) */
+        @media (min-width: 768px) {
+          .persona-container {
+            padding: 32px;
+            gap: 24px;
+          }
+          .top-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+          }
+          .logs-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+          }
+        }
+      `}</style>
+
+      <main className="persona-container">
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>
-            ← ย้อนกลับ
+            ← ย้อนกลับหน้าหลัก
           </Link>
           <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0, color: '#f8fafc' }}>
-            Sleep Persona & Sync
+            ประวัติการใช้งาน & Smart Watch
           </h1>
           <div style={{ width: '40px' }}></div>
         </div>
 
-        {/* สถานะ Smart Watch */}
-        <section style={{
-          backgroundColor: '#162032',
-          padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '24px' }}>⌚</span>
-            <div>
-              <span style={{ fontSize: '14px', fontWeight: '700', display: 'block' }}>Smart Watch Sync</span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>
-                {isWatchConnected ? 'เชื่อมต่อแล้ว (Apple Watch / Garmin)' : 'ยังไม่ได้เชื่อมต่อ'}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsWatchConnected(!isWatchConnected)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '20px',
-              border: 'none',
-              backgroundColor: isWatchConnected ? '#10b98120' : '#334155',
-              color: isWatchConnected ? '#34d399' : '#94a3b8',
-              fontSize: '11px',
-              fontWeight: '700',
-              cursor: 'pointer'
-            }}
-          >
-            {isWatchConnected ? '• Live Sync' : 'Connect'}
-          </button>
-        </section>
-
-        {/* ตั้งค่าความไวเฉพาะบุคคล (Sensitivity Profile) */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <h2 style={{ fontSize: '14px', color: '#94a3b8', margin: 0, fontWeight: '600' }}>
-            🎯 ความไวต่อสิ่งรบกวนเฉพาะบุคคล (Sensitivity)
-          </h2>
-          <div style={{
+        {/* Top Grid: Smart Watch Status & Personal Sensitivity */}
+        <div className="top-grid">
+          {/* Smart Watch Sync Status */}
+          <section style={{
             backgroundColor: '#162032',
-            padding: '16px',
-            borderRadius: '16px',
+            padding: '20px',
+            borderRadius: '20px',
+            border: '1px solid #1e293b',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '28px' }}>⌚</span>
+                <div>
+                  <span style={{ fontSize: '15px', fontWeight: '700', display: 'block' }}>Smart Watch Sync</span>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    {isWatchConnected ? 'รอการเชื่อมต่อ Garmin API' : 'ปิดการเชื่อมต่อ'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsWatchConnected(!isWatchConnected)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  border: 'none',
+                  backgroundColor: isWatchConnected ? '#10b98120' : '#334155',
+                  color: isWatchConnected ? '#34d399' : '#94a3b8',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >
+                {isWatchConnected ? '• Ready Sync' : 'Connect'}
+              </button>
+            </div>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: '1.4' }}>
+              ระบบจะนำข้อมูล Timestamp ภาวะสะดุ้งตื่นจาก Smart Watch มาจับคู่กับค่าเซนเซอร์จาก Firebase โดยอัตโนมัติ
+            </p>
+          </section>
+
+          {/* Personal Sensitivity Settings */}
+          <section style={{
+            backgroundColor: '#162032',
+            padding: '20px',
+            borderRadius: '20px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
             gap: '12px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#cbd5e1' }}>🌡️ ตื่นง่ายเมื่อร้อน/อุ่น</span>
-              <select
-                value={sensitivity.temperature}
-                onChange={(e) => setSensitivity({ ...sensitivity, temperature: e.target.value })}
-                style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
-              >
-                <option value="High">ไวมาก (High)</option>
-                <option value="Medium">ปานกลาง</option>
-                <option value="Low">ทนได้ดี</option>
-              </select>
-            </div>
+            <h2 style={{ fontSize: '14px', color: '#38bdf8', margin: 0, fontWeight: '700' }}>
+              🎯 ระดับความไวต่อสิ่งรบกวนเฉพาะบุคคล
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#cbd5e1' }}>🌡️ อุณหภูมิห้อง</span>
+                <select
+                  value={sensitivity.temperature}
+                  onChange={(e) => setSensitivity({ ...sensitivity, temperature: e.target.value })}
+                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+                >
+                  <option value="High">ไวมาก (High)</option>
+                  <option value="Medium">ปานกลาง</option>
+                  <option value="Low">ทนได้ดี</option>
+                </select>
+              </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#cbd5e1' }}>🔊 สะดุ้งตื่นเมื่อมีเสียง</span>
-              <select
-                value={sensitivity.sound}
-                onChange={(e) => setSensitivity({ ...sensitivity, sound: e.target.value })}
-                style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
-              >
-                <option value="High">ไวมาก (High)</option>
-                <option value="Medium">ปานกลาง</option>
-                <option value="Low">ทนได้ดี</option>
-              </select>
-            </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#cbd5e1' }}>🔊 เสียงรบกวน</span>
+                <select
+                  value={sensitivity.sound}
+                  onChange={(e) => setSensitivity({ ...sensitivity, sound: e.target.value })}
+                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+                >
+                  <option value="High">ไวมาก (High)</option>
+                  <option value="Medium">ปานกลาง</option>
+                  <option value="Low">ทนได้ดี</option>
+                </select>
+              </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#cbd5e1' }}>💡 ตอบสนองต่อแสงสว่าง</span>
-              <select
-                value={sensitivity.light}
-                onChange={(e) => setSensitivity({ ...sensitivity, light: e.target.value })}
-                style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
-              >
-                <option value="High">ไวมาก (High)</option>
-                <option value="Medium">ปานกลาง (Medium)</option>
-                <option value="Low">ทนได้ดี</option>
-              </select>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#cbd5e1' }}>💡 แสงสว่าง</span>
+                <select
+                  value={sensitivity.light}
+                  onChange={(e) => setSensitivity({ ...sensitivity, light: e.target.value })}
+                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+                >
+                  <option value="High">ไวมาก (High)</option>
+                  <option value="Medium">ปานกลาง</option>
+                  <option value="Low">ทนได้ดี</option>
+                </select>
+              </div>
             </div>
+          </section>
+        </div>
+
+        {/* Real Firebase Disruption Logs */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '15px', color: '#f8fafc', margin: 0, fontWeight: '700' }}>
+              📊 ประวัติค่าเซนเซอร์ย้อนหลังจริง (Firebase Database)
+            </h2>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>
+              {logs.length} รายการล่าสุด
+            </span>
           </div>
-        </section>
 
-        {/* ประวัติการตื่นย้อนหลัง (Disruption Log) */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <h2 style={{ fontSize: '14px', color: '#94a3b8', margin: 0, fontWeight: '600' }}>
-            📊 ประวัติการตื่น timestamp กับค่าเซนเซอร์
-          </h2>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {logs.length === 0 ? (
-              <p style={{ fontSize: '12px', color: '#64748b', textAlign: 'center' }}>กำลังดึงข้อมูลประวัติ...</p>
-            ) : (
-              logs.map((log) => (
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '14px' }}>
+              ⏳ กำลังดึงข้อมูลประวัติจาก Firebase...
+            </div>
+          ) : logs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', backgroundColor: '#162032', borderRadius: '16px' }}>
+              ยังไม่มีข้อมูลบันทึกประวัติในระบบ Firebase
+            </div>
+          ) : (
+            <div className="logs-grid">
+              {logs.map((log) => (
                 <div key={log.id} style={{
                   backgroundColor: '#162032',
-                  padding: '14px',
-                  borderRadius: '16px',
-                  border: log.watchData.isArousal ? '1px solid #ef444450' : '1px solid #1e293b',
+                  padding: '16px',
+                  borderRadius: '18px',
+                  border: log.isDisrupted ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid #1e293b',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '6px'
+                  gap: '8px'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#38bdf8' }}>
-                      ⏱️ {log.timeString}
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>
+                      ⏱️ {log.dateString} - {log.timeString} น.
                     </span>
                     <span style={{
-                      fontSize: '10px',
+                      fontSize: '11px',
                       padding: '2px 8px',
                       borderRadius: '10px',
-                      backgroundColor: log.watchData.isArousal ? '#ef444420' : '#10b98120',
-                      color: log.watchData.isArousal ? '#f87171' : '#34d399',
+                      backgroundColor: log.isDisrupted ? '#ef444420' : '#10b98120',
+                      color: log.isDisrupted ? '#f87171' : '#34d399',
                       fontWeight: '700'
                     }}>
-                      {log.watchData.isArousal ? 'สะดุ้งตื่น / ตื่นตัว' : 'หลับสนิท'}
+                      {log.isDisrupted ? 'มีปัจจัยรบกวน' : 'สภาวะปกติ'}
                     </span>
                   </div>
 
                   <p style={{ fontSize: '13px', margin: 0, fontWeight: '600', color: '#f1f5f9' }}>
-                    สาเหตุ: {log.disruptionCause}
+                    {log.disruptionCause}
                   </p>
 
+                  {/* ค่าเซนเซอร์จริงจาก Firebase ณ Timestamp นั้น */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '6px',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '8px',
                     fontSize: '11px',
                     color: '#94a3b8',
                     marginTop: '4px',
                     backgroundColor: '#0f172a',
-                    padding: '8px',
-                    borderRadius: '10px'
+                    padding: '10px',
+                    borderRadius: '12px'
                   }}>
-                    <div>⌚ หัวใจ: <strong style={{ color: '#fff' }}>{log.watchData.heartRate} bpm</strong></div>
-                    <div>⌚ สถานะ: <strong style={{ color: '#fff' }}>{log.watchData.sleepStage} Sleep</strong></div>
-                    <div>🌡️ อุณหภูมิ: <strong style={{ color: '#fff' }}>{log.sensorData.temperature?.toFixed(1)}°C</strong></div>
-                    <div>💡 แสง: <strong style={{ color: '#fff' }}>{log.sensorData.lux?.toFixed(1)} Lux</strong></div>
+                    <div>🌡️ อุณหภูมิ: <strong style={{ color: '#fff', display: 'block' }}>{log.temperature.toFixed(1)}°C</strong></div>
+                    <div>💧 ความชื้น: <strong style={{ color: '#fff', display: 'block' }}>{log.humidity.toFixed(0)}%</strong></div>
+                    <div>💡 แสง: <strong style={{ color: '#fff', display: 'block' }}>{log.lux.toFixed(1)} Lux</strong></div>
+                    <div>🍃 CO2: <strong style={{ color: '#fff', display: 'block' }}>{log.co2} ppm</strong></div>
+                    <div>🔊 เสียง: <strong style={{ color: '#fff', display: 'block' }}>{log.sound}</strong></div>
+                    <div>🌫️ PM2.5: <strong style={{ color: '#fff', display: 'block' }}>{log.pm2_5} µg</strong></div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <Link href="/" style={{
           backgroundColor: '#1e293b',
           color: '#f1f5f9',
-          padding: '12px',
-          borderRadius: '14px',
+          padding: '14px',
+          borderRadius: '16px',
           textAlign: 'center',
           fontWeight: '600',
           fontSize: '14px',
           textDecoration: 'none',
-          border: '1px solid #334155'
+          border: '1px solid #334155',
+          marginTop: 'auto'
         }}>
           กลับหน้าหลัก
         </Link>
