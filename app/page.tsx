@@ -160,7 +160,7 @@ export default function Home() {
       `}</style>
 
       <main className="bento-container">
-        {/* Header with App Logo */}
+        {/* Header with App Logo & Account Menu */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
@@ -196,6 +196,7 @@ export default function Home() {
               {loading ? '• Connecting...' : '• Realtime Active'}
             </span>
 
+            {/* ปุ่ม Smart Watch */}
             <Link href="/persona" style={{
               padding: '8px 14px',
               borderRadius: '12px',
@@ -210,6 +211,23 @@ export default function Home() {
               border: '1px solid #1e293b'
             }}>
               ⌚ Smart Watch
+            </Link>
+
+            {/* ปุ่ม Account/Profile ผู้ใช้ */}
+            <Link href="/account" style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '12px',
+              backgroundColor: '#151c2c',
+              color: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+              fontSize: '16px',
+              border: '1px solid #1e293b'
+            }}>
+              👤
             </Link>
           </div>
         </header>
