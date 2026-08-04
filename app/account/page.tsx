@@ -1,18 +1,51 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { getAuth, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { app } from '@/app/lib/firebase';
 
 export default function AccountPage() {
-  // จำลองข้อมูลผู้ใช้เฉพาะบุคคล (สามารถเชื่อมต่อกับ Firebase Auth ได้)
-  const [user, setUser] = useState({
-    name: 'Somchai SleepWell',
-    email: 'somchai.s@comflyy.app',
-    role: 'Premium Sleep Member',
-    deviceId: 'ESP32-NODE-BEDROOM-01',
-    avgSleepScore: 88,
-    trackedNights: 42
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const router = useRouter();
+  const auth = getAuth(app);
+
+  useEffect(() => {
+    // ติดตามสถานะการล็อกอินของผู้ใช้จริงจาก Firebase Auth
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#090d16',
+        color: '#f8fafc',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <p style={{ color: '#818cf8', fontWeight: '600' }}>กำลังโหลดข้อมูลบัญชีผู้ใช้...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -62,94 +95,94 @@ export default function AccountPage() {
           }}>
             ← กลับหน้าหลัก
           </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>PERSONALIZED PROFILE</span>
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>AUTHENTICATED PROFILE</span>
         </div>
 
-        {/* User Card */}
-        <div style={{
-          backgroundColor: '#151c2c',
-          borderRadius: '22px',
-          padding: '24px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '20px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-              boxShadow: '0 6px 18px rgba(99, 102, 241, 0.4)',
-              flexShrink: 0
-            }}>
-              👤
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h1 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: '#f8fafc' }}>
-                  {user.name}
-                </h1>
-                <span style={{ fontSize: '10px', backgroundColor: '#10b98120', color: '#34d399', padding: '2px 8px', borderRadius: '8px', fontWeight: '700' }}>
-                  Verified
+        {/* Real User Card */}
+        {user ? (
+          <div style={{
+            backgroundColor: '#151c2c',
+            borderRadius: '22px',
+            padding: '24px',
+            border: '1px solid #1e293b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName || 'User Profile'}
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '20px',
+                    border: '2px solid #6366f1',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '20px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '28px',
+                  boxShadow: '0 6px 18px rgba(99, 102, 241, 0.4)',
+                  flexShrink: 0
+                }}>
+                  👤
+                </div>
+              )}
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h1 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: '#f8fafc' }}>
+                    {user.displayName || 'สมาชิก COMFLYY'}
+                  </h1>
+                  <span style={{ fontSize: '10px', backgroundColor: '#10b98120', color: '#34d399', padding: '2px 8px', borderRadius: '8px', fontWeight: '700' }}>
+                    Active
+                  </span>
+                </div>
+                <span style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginTop: '2px' }}>
+                  {user.email || 'ไม่ระบุอีเมล'}
+                </span>
+                <span style={{ fontSize: '11px', color: '#818cf8', fontWeight: '600', display: 'block', marginTop: '4px' }}>
+                  UID: {user.uid.substring(0, 12)}...
                 </span>
               </div>
-              <span style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginTop: '2px' }}>
-                {user.email}
-              </span>
-              <span style={{ fontSize: '11px', color: '#818cf8', fontWeight: '600', display: 'block', marginTop: '4px' }}>
-                ✦ {user.role}
-              </span>
             </div>
           </div>
-
-          <button style={{
-            padding: '8px 14px',
-            borderRadius: '12px',
-            backgroundColor: '#0f172a',
-            color: '#cbd5e1',
-            border: '1px solid #334155',
-            fontSize: '12px',
-            fontWeight: '600',
-            cursor: 'pointer'
+        ) : (
+          /* Case: Not Logged In */
+          <div style={{
+            backgroundColor: '#151c2c',
+            borderRadius: '22px',
+            padding: '32px 24px',
+            border: '1px solid #1e293b',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '14px'
           }}>
-            แก้ไขโปรไฟล์
-          </button>
-        </div>
-
-        {/* User Sleep Stats Grid */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700' }}>
-            📊 สถิติการใช้งานส่วนบุคคล
-          </span>
-
-          <div className="stats-user-grid">
-            <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b' }}>
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>คะแนนห้องนอนเฉลี่ยของคุณ</span>
-              <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', margin: '6px 0' }}>
-                {user.avgSleepScore}%
-              </div>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>สภาวะห้องนอนโดยรวมอยู่ในเกณฑ์ดี</span>
-            </div>
-
-            <div style={{ backgroundColor: '#151c2c', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b' }}>
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>คืนที่ได้รับการบันทึกข้อมูล</span>
-              <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '6px 0' }}>
-                {user.trackedNights} <span style={{ fontSize: '14px', fontWeight: '400' }}>คืน</span>
-              </div>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>สะสมข้อมูลเซนเซอร์ต่อเนื่อง</span>
-            </div>
+            <span style={{ fontSize: '40px' }}>🔒</span>
+            <h2 style={{ fontSize: '18px', margin: 0, color: '#f8fafc', fontWeight: '800' }}>
+              ยังไม่ได้เข้าสู่ระบบ
+            </h2>
+            <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, maxWidth: '400px', lineHeight: '1.5' }}>
+              เข้าสู่ระบบด้วย Firebase Auth เพื่อซิงค์ประวัติการนอนและข้อมูลเซนเซอร์เฉพาะบุคคลของคุณ
+            </p>
           </div>
-        </div>
+        )}
 
-        {/* Devices & Settings Section */}
+        {/* Devices & System Settings */}
         <div style={{
           backgroundColor: '#151c2c',
           borderRadius: '22px',
@@ -160,41 +193,46 @@ export default function AccountPage() {
           gap: '14px'
         }}>
           <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700' }}>
-            ⚙️ การเชื่อมต่ออุปกรณ์และสิทธิ์เข้าถึง
+            ⚙️ การเชื่อมต่อฮาร์ดแวร์และคลาวด์
           </span>
 
           <div style={{ backgroundColor: '#0f172a', padding: '14px 16px', borderRadius: '14px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'block' }}>บอร์ดควบคุมเซนเซอร์</span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>ID: {user.deviceId}</span>
+              <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'block' }}>Firebase Realtime Database</span>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>โหมดดึงค่าเซนเซอร์สด</span>
             </div>
-            <span style={{ fontSize: '11px', color: '#34d399', fontWeight: '700' }}>🟢 เชื่อมต่ออยู่</span>
+            <span style={{ fontSize: '11px', color: '#34d399', fontWeight: '700' }}>🟢 Connected</span>
           </div>
 
           <div style={{ backgroundColor: '#0f172a', padding: '14px 16px', borderRadius: '14px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'block' }}>การแชร์ข้อมูลให้ Gemini AI</span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>ใช้สำหรับประมวลผลคำแนะนำส่วนบุคคล</span>
+              <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'block' }}>Gemini AI Service</span>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>วิเคราะห์สภาพแวดล้อมเฉพาะบุคคล</span>
             </div>
-            <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '700' }}>อนุญาตแล้ว</span>
+            <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '700' }}>⚡ Ready</span>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <button style={{
-            backgroundColor: '#ef444415',
-            color: '#ef4444',
-            padding: '14px',
-            borderRadius: '16px',
-            border: '1px solid #ef444430',
-            fontWeight: '700',
-            fontSize: '13px',
-            cursor: 'pointer',
-            textAlign: 'center'
-          }}>
-            🚪 ออกจากระบบ (Sign Out)
-          </button>
+          {user && (
+            <button
+              onClick={handleSignOut}
+              style={{
+                backgroundColor: '#ef444415',
+                color: '#ef4444',
+                padding: '14px',
+                borderRadius: '16px',
+                border: '1px solid #ef444430',
+                fontWeight: '700',
+                fontSize: '13px',
+                cursor: 'pointer',
+                textAlign: 'center'
+              }}
+            >
+              🚪 ออกจากระบบ (Sign Out)
+            </button>
+          )}
 
           <Link href="/" style={{
             backgroundColor: '#1e293b',
