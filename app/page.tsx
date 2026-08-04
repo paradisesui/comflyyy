@@ -111,7 +111,7 @@ export default function Home() {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'flex-start',
-      padding: '20px 12px'
+      padding: '40px 16px'
     }}>
       <style jsx>{`
         .dashboard-container {
@@ -120,26 +120,25 @@ export default function Home() {
           background-color: #0f172a;
           border-radius: 28px;
           border: 1px solid #1e293b;
-          padding: 20px 16px;
+          padding: 24px;
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           display: flex;
           flex-direction: column;
-          gap: 18px;
+          gap: 24px;
         }
 
         .dashboard-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 18px;
+          gap: 24px;
         }
 
-        .footer-grid {
+        .nav-links-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 12px;
+          gap: 16px;
         }
 
-        /* ฟอนต์สำหรับหน้าจอมือถือ */
         .sensor-val {
           font-size: 18px;
           font-weight: 700;
@@ -147,33 +146,26 @@ export default function Home() {
         }
 
         .score-num {
-          font-size: 48px;
+          font-size: 56px;
           font-weight: 800;
           line-height: 1;
           color: #fff;
         }
 
-        .action-btn {
-          width: 100%;
-          padding: 14px;
-          font-size: 14px;
-          font-weight: 600;
-          border-radius: 16px;
-        }
-
-        /* สำหรับหน้าจอคอมพิวเตอร์ (Desktop) */
+        /* Desktop Mode Layout */
         @media (min-width: 900px) {
           .dashboard-container {
             width: 96vw;
             padding: 40px;
             gap: 28px;
-            margin-top: 40px;
+            margin-top: 20px;
+            border-radius: 32px;
           }
           .dashboard-grid {
-            grid-template-columns: 420px 1fr;
+            grid-template-columns: 460px 1fr;
             gap: 28px;
           }
-          .footer-grid {
+          .nav-links-grid {
             grid-template-columns: 1fr 1fr;
             gap: 20px;
           }
@@ -182,19 +174,13 @@ export default function Home() {
             font-weight: 800;
           }
           .score-num {
-            font-size: 64px;
-          }
-          .action-btn {
-            padding: 18px;
-            font-size: 16px;
-            font-weight: 700;
-            border-radius: 18px;
+            font-size: 72px;
           }
         }
       `}</style>
 
       <main className="dashboard-container">
-        {/* Header */}
+        {/* Top Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{
@@ -210,8 +196,8 @@ export default function Home() {
           </div>
           
           <Link href="/account" style={{
-            width: '38px',
-            height: '38px',
+            width: '42px',
+            height: '42px',
             borderRadius: '50%',
             backgroundColor: '#1e293b',
             color: '#f8fafc',
@@ -219,29 +205,29 @@ export default function Home() {
             alignItems: 'center',
             justifyContent: 'center',
             textDecoration: 'none',
-            fontSize: '16px',
+            fontSize: '18px',
             border: '1px solid #334155'
           }}>
             👤
           </Link>
         </header>
 
-        {/* Dashboard Grid */}
+        {/* Main Dashboard Grid */}
         <div className="dashboard-grid">
-          {/* Left Column: Score */}
+          {/* Left Column: Room Score Circular Chart (ขยายขนาดใหญ่ขึ้น) */}
           <section style={{
             backgroundColor: '#162032',
             borderRadius: '24px',
-            padding: '24px 16px',
+            padding: '48px 24px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '16px'
+            gap: '24px'
           }}>
-            <div style={{ position: 'relative', width: '200px', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg transform="rotate(-90)" width="200" height="200" viewBox="0 0 160 160">
+            <div style={{ position: 'relative', width: '280px', height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg transform="rotate(-90)" width="280" height="280" viewBox="0 0 160 160">
                 <circle cx="80" cy="80" r="70" stroke="#0f172a" strokeWidth="12" fill="transparent" />
                 <circle
                   cx="80" cy="80" r="70"
@@ -256,88 +242,96 @@ export default function Home() {
               </svg>
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span className="score-num">{score}%</span>
-                <span style={{ fontSize: '10px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '600' }}>ROOM SCORE</span>
+                <span style={{ fontSize: '12px', color: '#64748b', letterSpacing: '2px', marginTop: '8px', fontWeight: '600' }}>ROOM SCORE</span>
               </div>
             </div>
 
             <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-              <h2 style={{ fontSize: '24px', color: statusColor, fontWeight: '700', margin: '2px 0 0 0' }}>
+              <span style={{ fontSize: '14px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
+              <h2 style={{ fontSize: '32px', color: statusColor, fontWeight: '700', margin: '4px 0 0 0' }}>
                 {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
               </h2>
             </div>
           </section>
 
-          {/* Right Column: Metrics & AI */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'space-between' }}>
+          {/* Right Column: Key Sensors & AI Recommendation */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'space-between' }}>
+            {/* Primary Sensors Card */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '6px',
+              gap: '12px',
               backgroundColor: '#162032',
-              padding: '16px 8px',
-              borderRadius: '20px',
+              padding: '22px 16px',
+              borderRadius: '24px',
               border: '1px solid #1e293b'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>อุณหภูมิ</span>
+                <span style={{ fontSize: '13px', color: '#64748b', display: 'block', marginBottom: '6px' }}>อุณหภูมิ</span>
                 <span className="sensor-val" style={{ color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
                 </span>
               </div>
               <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>ความชื้น</span>
+                <span style={{ fontSize: '13px', color: '#64748b', display: 'block', marginBottom: '6px' }}>ความชื้น</span>
                 <span className="sensor-val" style={{ color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
                 </span>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>CO2</span>
+                <span style={{ fontSize: '13px', color: '#64748b', display: 'block', marginBottom: '6px' }}>CO2</span>
                 <span className="sensor-val" style={{ color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.co2} ppm` : '--'}
                 </span>
               </div>
             </div>
 
+            {/* AI Recommendation Box */}
             <div style={{
               backgroundColor: '#162032',
-              padding: '18px',
-              borderRadius: '20px',
+              padding: '24px',
+              borderRadius: '24px',
               border: '1px solid rgba(16, 185, 129, 0.3)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
-              flexGrow: 1
+              gap: '12px',
+              flexGrow: 1,
+              minHeight: '160px'
             }}>
               <p style={{
-                fontSize: '14px',
+                fontSize: '16px',
                 fontWeight: '700',
                 color: '#34d399',
                 margin: 0,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '8px'
               }}>
                 💡 คำแนะนำเฉพาะคุณ
               </p>
               <p style={{
-                fontSize: '13px',
+                fontSize: '15px',
                 color: aiLoading ? '#64748b' : '#cbd5e1',
                 margin: 0,
-                lineHeight: '1.5'
+                lineHeight: '1.6'
               }}>
                 {aiAnalysis}
               </p>
             </div>
 
+            {/* AI Action Button */}
             <button
               onClick={() => sensor && analyzeWithGemini(sensor)}
               disabled={aiLoading || !sensor || cooldown > 0}
-              className="action-btn"
               style={{
+                width: '100%',
+                padding: '18px',
                 backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
                 color: cooldown > 0 ? '#94a3b8' : '#022c22',
                 border: 'none',
+                borderRadius: '18px',
+                fontWeight: '700',
+                fontSize: '15px',
                 cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
                 opacity: aiLoading ? 0.7 : 1,
                 display: 'flex',
@@ -355,16 +349,16 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="footer-grid">
+        {/* Navigation Button Links */}
+        <footer className="nav-links-grid">
           <Link href="/sensors" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '14px',
-            borderRadius: '16px',
+            padding: '18px',
+            borderRadius: '18px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '13px',
+            fontSize: '15px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
@@ -373,11 +367,11 @@ export default function Home() {
           <Link href="/persona" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '14px',
-            borderRadius: '16px',
+            padding: '18px',
+            borderRadius: '18px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '13px',
+            fontSize: '15px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
