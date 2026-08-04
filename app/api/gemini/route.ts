@@ -19,23 +19,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // Prompt แบบกระชับและบังคับ Format ให้ตอบสั้นทันที
-    const promptText = `
-คุณคือ AI วิเคราะห์สภาพแวดล้อมห้องนอน หน้าที่ของคุณคือให้คำแนะนำสั้นๆ แก่ผู้ใช้เท่านั้น
-ห้ามคิดวิเคราะห์หรือพิมพ์กระบวนการคิดออกมาเด็ดขาด ให้ตอบเฉพาะผลลัพธ์สุดท้ายเป็นภาษาไทยเท่านั้น
+    // กรองค่าเสียงที่เพี้ยนเกินจริง (เช่น > 120 dB) ให้แสดงผลเป็นปกติ
+    const rawSound = sensorData.sound ?? 0;
+    const soundStatus = rawSound > 120 ? 'มีความชื้น/เสียงรบกวน' : `${rawSound} dB`;
 
+    const systemInstruction = "คุณเป็นระบบ AI วิเคราะห์สภาพแวดล้อมห้องนอน ตอบเป็นภาษาไทยสั้นๆ ไม่เกิน 2 ประโยคเท่านั้น ห้ามพิมพ์ภาษาอังกฤษ ห้ามพิมพ์กระบวนการคิด ห้ามมีดอกจัน (*)";
+
+    const userPrompt = `
 ข้อมูลเซนเซอร์:
 - อุณหภูมิ: ${sensorData.temperature ?? 'N/A'} °C
 - ความชื้น: ${sensorData.humidity ?? 'N/A'} %
 - CO2: ${sensorData.co2 ?? 'N/A'} ppm
 - ฝุ่น PM2.5: ${sensorData.pm2_5 ?? 'N/A'} µg/m³
 - แสง: ${sensorData.lux ?? 'N/A'} Lux
-- เสียง: ${sensorData.sound ?? 'N/A'} dB
+- เสียง: ${soundStatus}
 
-คำสั่ง: สรุปผลกระทบต่อการนอนและคำแนะนำการปรับปรุงสั้นๆ รวมกันไม่เกิน 2 ประโยคเท่านั้น (ห้ามเกิน 2 ประโยค)
+สรุปผลกระทบต่อการนอนและคำแนะนำสั้นๆ 1-2 ประโยคเท่านั้น:
     `;
 
-    // 1. ดึงรายชื่อโมเดลที่ใช้งานได้จริง
     const listRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
       { cache: 'no-store' }
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
 
     if (!listRes.ok) {
       return NextResponse.json(
-        { error: `ไม่สามารถดึงรายชื่อโมเดลได้ (${listRes.status}): ${listData?.error?.message || ''}` },
+        { error: `ไม่สามารถดึงรายชื่อโมเดลได้ (${listRes.status})` },
         { status: listRes.status }
       );
     }
@@ -55,10 +56,9 @@ export async function POST(req: Request) {
       ?.map((m: any) => m.name) || [];
 
     if (validModels.length === 0) {
-      return NextResponse.json({ error: 'ไม่พบโมเดลที่พร้อมใช้งานกับ API Key นี้' }, { status: 500 });
+      return NextResponse.json({ error: 'ไม่พบโมเดลที่พร้อมใช้งาน' }, { status: 500 });
     }
 
-    // 2. เรียกใช้โมเดลและตัดคำตอบให้เหลือเฉพาะเนื้อหาคำแนะนำ
     let lastError = '';
     for (const fullModelName of validModels) {
       const response = await fetch(
@@ -68,7 +68,14 @@ export async function POST(req: Request) {
           headers: { 'Content-Type': 'application/json' },
           cache: 'no-store',
           body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
+            systemInstruction: {
+              parts: [{ text: systemInstruction }]
+            },
+            contents: [{ parts: [{ text: userPrompt }] }],
+            generationConfig: {
+              temperature: 0.2, // ลดความฟุ้งซ่านของ AI
+              maxOutputTokens: 150
+            }
           }),
         }
       );
@@ -76,8 +83,19 @@ export async function POST(req: Request) {
       const data = await response.json();
 
       if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        let cleanResult = data.candidates[0].content.parts[0].text.trim();
-        return NextResponse.json({ result: cleanResult });
+        let text = data.candidates[0].content.parts[0].text.trim();
+
+        // Regex ดักกรอง: ถ้ามีภาษาอังกฤษผสมยาวๆ ให้เลือกเฉพาะประโยคภาษาไทยช่วงท้าย
+        const thaiMatches = text.match(/[\u0E00-\u0E7F\s0-9.,°-]+/g);
+        if (thaiMatches) {
+          const combinedThai = thaiMatches.join('').trim();
+          const cleanThai = combinedThai.replace(/\*+/g, '').replace(/\s+/g, ' ');
+          if (cleanThai.length > 5) {
+            text = cleanThai;
+          }
+        }
+
+        return NextResponse.json({ result: text });
       }
 
       lastError = data?.error?.message || `Status ${response.status}`;
