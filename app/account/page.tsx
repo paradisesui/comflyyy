@@ -3,29 +3,108 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getAuth, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  signOut, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  updateProfile,
+  User 
+} from 'firebase/auth';
 import { app } from '@/app/lib/firebase';
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const router = useRouter();
+  const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
+
+  // Form States
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
+  
+  // Edit Mode State
+  const [isEditing, setIsEditing] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [newPhotoURL, setNewPhotoURL] = useState('');
+
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+
   const auth = getAuth(app);
+  const router = useRouter();
 
   useEffect(() => {
-    // ติดตามสถานะการล็อกอินของผู้ใช้จริงจาก Firebase Auth
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        setNewDisplayName(currentUser.displayName || '');
+        setNewPhotoURL(currentUser.photoURL || '');
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [auth]);
 
+  // เข้าสู่ระบบ
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      setAuthSuccess('เข้าสู่ระบบสำเร็จ!');
+    } catch (err: any) {
+      setAuthError('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+    }
+  };
+
+  // สมัครสมาชิก
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, {
+          displayName: displayName || 'สมาชิก COMFLYY',
+          photoURL: photoURL || ''
+        });
+      }
+      setAuthSuccess('สมัครสมาชิกสำเร็จ!');
+    } catch (err: any) {
+      setAuthError(err.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
+    }
+  };
+
+  // อัปเดตข้อมูลโปรไฟล์ (เปลี่ยนชื่อ / รูปภาพ)
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) return;
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    try {
+      await updateProfile(auth.currentUser, {
+        displayName: newDisplayName,
+        photoURL: newPhotoURL
+      });
+      setUser({ ...auth.currentUser });
+      setIsEditing(false);
+      setAuthSuccess('อัปเดตข้อมูลโปรไฟล์เรียบร้อยแล้ว!');
+    } catch (err: any) {
+      setAuthError('ไม่สามารถอัปเดตข้อมูลได้');
+    }
+  };
+
+  // ออกจากระบบ
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      router.push('/');
+      setAuthSuccess(null);
+      setAuthError(null);
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -33,16 +112,8 @@ export default function AccountPage() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#090d16',
-        color: '#f8fafc',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        <p style={{ color: '#818cf8', fontWeight: '600' }}>กำลังโหลดข้อมูลบัญชีผู้ใช้...</p>
+      <div style={{ minHeight: '100vh', backgroundColor: '#090d16', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui' }}>
+        กำลังโหลดข้อมูล...
       </div>
     );
   }
@@ -58,196 +129,179 @@ export default function AccountPage() {
       justifyContent: 'center',
       padding: '24px 16px'
     }}>
-      <style jsx>{`
-        .account-card {
-          width: 100%;
-          max-width: 800px;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .stats-user-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 12px;
-        }
-
-        @media (min-width: 640px) {
-          .stats-user-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-          }
-        }
-      `}</style>
-
-      <main className="account-card">
-        {/* Header Bar */}
+      <main style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Top Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" style={{
-            color: '#38bdf8',
-            textDecoration: 'none',
-            fontSize: '13px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
+          <Link href="/" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
             ← กลับหน้าหลัก
           </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>AUTHENTICATED PROFILE</span>
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>COMFLYY AUTHENTICATION</span>
         </div>
 
-        {/* Real User Card */}
+        {/* แจ้งเตือน สถานะการทำงาน */}
+        {authError && (
+          <div style={{ backgroundColor: '#ef444420', color: '#ef4444', border: '1px solid #ef444440', padding: '12px', borderRadius: '12px', fontSize: '13px', textAlign: 'center' }}>
+            {authError}
+          </div>
+        )}
+        {authSuccess && (
+          <div style={{ backgroundColor: '#10b98120', color: '#34d399', border: '1px solid #10b98140', padding: '12px', borderRadius: '12px', fontSize: '13px', textAlign: 'center' }}>
+            {authSuccess}
+          </div>
+        )}
+
+        {/* CASE 1: ล็อกอินอยู่แล้ว (แสดงโปรไฟล์ + ฟอร์มแก้ไข) */}
         {user ? (
-          <div style={{
-            backgroundColor: '#151c2c',
-            borderRadius: '22px',
-            padding: '24px',
-            border: '1px solid #1e293b',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '16px',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-              {user.photoURL ? (
-                <img
-                  src={user.photoURL}
-                  alt={user.displayName || 'User Profile'}
-                  style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '20px',
-                    border: '2px solid #6366f1',
-                    objectFit: 'cover'
-                  }}
-                />
-              ) : (
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '20px',
-                  background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '28px',
-                  boxShadow: '0 6px 18px rgba(99, 102, 241, 0.4)',
-                  flexShrink: 0
-                }}>
-                  👤
+          <div style={{ backgroundColor: '#151c2c', borderRadius: '22px', padding: '24px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="Avatar" style={{ width: '60px', height: '60px', borderRadius: '18px', objectFit: 'cover', border: '2px solid #6366f1' }} />
+                ) : (
+                  <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px' }}>
+                    👤
+                  </div>
+                )}
+                <div>
+                  <h1 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#f8fafc' }}>
+                    {user.displayName || 'สมาชิก COMFLYY'}
+                  </h1>
+                  <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block' }}>{user.email}</span>
+                  <span style={{ fontSize: '10px', color: '#34d399', fontWeight: '700' }}>● Active User</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                style={{ padding: '8px 14px', borderRadius: '12px', backgroundColor: '#0f172a', color: '#38bdf8', border: '1px solid #334155', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}
+              >
+                {isEditing ? 'ยกเลิก' : '✏️ แก้ไขโปรไฟล์'}
+              </button>
+            </div>
+
+            {/* ฟอร์มแก้ไข Username / Photo URL */}
+            {isEditing && (
+              <form onSubmit={handleUpdateProfile} style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <span style={{ fontSize: '12px', color: '#818cf8', fontWeight: '700' }}>แก้ไขข้อมูลส่วนตัว</span>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>ชื่อผู้ใช้ (Username)</label>
+                  <input
+                    type="text"
+                    value={newDisplayName}
+                    onChange={(e) => setNewDisplayName(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#151c2c', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>ลิงก์รูปโปรไฟล์ (Image URL)</label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/photo.jpg"
+                    value={newPhotoURL}
+                    onChange={(e) => setNewPhotoURL(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#151c2c', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                  />
+                </div>
+                <button type="submit" style={{ padding: '10px', borderRadius: '10px', backgroundColor: '#6366f1', color: '#fff', border: 'none', fontSize: '13px', fontWeight: '700', cursor: 'pointer', marginTop: '4px' }}>
+                  บันทึกการเปลี่ยนแปลง
+                </button>
+              </form>
+            )}
+
+            <button
+              onClick={handleSignOut}
+              style={{ backgroundColor: '#ef444415', color: '#ef4444', padding: '12px', borderRadius: '14px', border: '1px solid #ef444430', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+            >
+              🚪 ออกจากระบบ (Sign Out)
+            </button>
+          </div>
+        ) : (
+          /* CASE 2: ยังไม่ได้ล็อกอิน (ฟอร์มเข้าสู่ระบบ / สมัครสมาชิก) */
+          <div style={{ backgroundColor: '#151c2c', borderRadius: '22px', padding: '24px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
+                {isRegisterMode ? '📝 สมัครสมาชิกใหม่' : '🔑 เข้าสู่ระบบ COMFLYY'}
+              </h2>
+              <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+                {isRegisterMode ? 'สร้างบัญชีเพื่อบันทึกประวัติเซนเซอร์เฉพาะบุคคล' : 'ยินดีต้อนรับกลับมา กรุณากรอกข้อมูลเพื่อเข้าสู่ระบบ'}
+              </p>
+            </div>
+
+            <form onSubmit={isRegisterMode ? handleRegister : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {isRegisterMode && (
+                <div>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>ชื่อผู้ใช้ (Username)</label>
+                  <input
+                    type="text"
+                    placeholder="เช่น Somchai"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                    required
+                  />
                 </div>
               )}
 
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <h1 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: '#f8fafc' }}>
-                    {user.displayName || 'สมาชิก COMFLYY'}
-                  </h1>
-                  <span style={{ fontSize: '10px', backgroundColor: '#10b98120', color: '#34d399', padding: '2px 8px', borderRadius: '8px', fontWeight: '700' }}>
-                    Active
-                  </span>
-                </div>
-                <span style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginTop: '2px' }}>
-                  {user.email || 'ไม่ระบุอีเมล'}
-                </span>
-                <span style={{ fontSize: '11px', color: '#818cf8', fontWeight: '600', display: 'block', marginTop: '4px' }}>
-                  UID: {user.uid.substring(0, 12)}...
-                </span>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>อีเมล (Email)</label>
+                <input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                  required
+                />
               </div>
+
+              <div>
+                <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>รหัสผ่าน (Password)</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                  required
+                />
+              </div>
+
+              {isRegisterMode && (
+                <div>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>ลิงก์รูปโปรไฟล์ (ถ้ามี)</label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/avatar.jpg"
+                    value={photoURL}
+                    onChange={(e) => setPhotoURL(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                  />
+                </div>
+              )}
+
+              <button
+                type="submit"
+                style={{ padding: '12px', borderRadius: '12px', backgroundColor: '#6366f1', color: '#fff', border: 'none', fontSize: '13px', fontWeight: '700', cursor: 'pointer', marginTop: '6px' }}
+              >
+                {isRegisterMode ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', paddingTop: '8px' }}>
+              <button
+                onClick={() => { setIsRegisterMode(!isRegisterMode); setAuthError(null); }}
+                style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}
+              >
+                {isRegisterMode ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิกใหม่ที่นี่'}
+              </button>
             </div>
-          </div>
-        ) : (
-          /* Case: Not Logged In */
-          <div style={{
-            backgroundColor: '#151c2c',
-            borderRadius: '22px',
-            padding: '32px 24px',
-            border: '1px solid #1e293b',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '14px'
-          }}>
-            <span style={{ fontSize: '40px' }}>🔒</span>
-            <h2 style={{ fontSize: '18px', margin: 0, color: '#f8fafc', fontWeight: '800' }}>
-              ยังไม่ได้เข้าสู่ระบบ
-            </h2>
-            <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, maxWidth: '400px', lineHeight: '1.5' }}>
-              เข้าสู่ระบบด้วย Firebase Auth เพื่อซิงค์ประวัติการนอนและข้อมูลเซนเซอร์เฉพาะบุคคลของคุณ
-            </p>
           </div>
         )}
 
-        {/* Devices & System Settings */}
-        <div style={{
-          backgroundColor: '#151c2c',
-          borderRadius: '22px',
-          padding: '20px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '14px'
-        }}>
-          <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700' }}>
-            ⚙️ การเชื่อมต่อฮาร์ดแวร์และคลาวด์
-          </span>
-
-          <div style={{ backgroundColor: '#0f172a', padding: '14px 16px', borderRadius: '14px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'block' }}>Firebase Realtime Database</span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>โหมดดึงค่าเซนเซอร์สด</span>
-            </div>
-            <span style={{ fontSize: '11px', color: '#34d399', fontWeight: '700' }}>🟢 Connected</span>
-          </div>
-
-          <div style={{ backgroundColor: '#0f172a', padding: '14px 16px', borderRadius: '14px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'block' }}>Gemini AI Service</span>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>วิเคราะห์สภาพแวดล้อมเฉพาะบุคคล</span>
-            </div>
-            <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '700' }}>⚡ Ready</span>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {user && (
-            <button
-              onClick={handleSignOut}
-              style={{
-                backgroundColor: '#ef444415',
-                color: '#ef4444',
-                padding: '14px',
-                borderRadius: '16px',
-                border: '1px solid #ef444430',
-                fontWeight: '700',
-                fontSize: '13px',
-                cursor: 'pointer',
-                textAlign: 'center'
-              }}
-            >
-              🚪 ออกจากระบบ (Sign Out)
-            </button>
-          )}
-
-          <Link href="/" style={{
-            backgroundColor: '#1e293b',
-            color: '#f8fafc',
-            padding: '14px',
-            borderRadius: '16px',
-            textAlign: 'center',
-            fontWeight: '600',
-            fontSize: '13px',
-            textDecoration: 'none',
-            border: '1px solid #334155'
-          }}>
-            กลับหน้าหลัก
-          </Link>
-        </div>
+        <Link href="/" style={{ backgroundColor: '#1e293b', color: '#f8fafc', padding: '14px', borderRadius: '16px', textAlign: 'center', fontWeight: '600', fontSize: '13px', textDecoration: 'none', border: '1px solid #334155' }}>
+          กลับหน้าหลัก
+        </Link>
       </main>
     </div>
   );
