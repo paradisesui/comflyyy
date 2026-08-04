@@ -24,18 +24,18 @@ export async function POST(req: Request) {
     const soundText = rawSound > 120 ? 'ปกติ' : `${rawSound} dB`;
 
     const promptText = `
-คุณคือ AI ผู้เชี่ยวชาญด้านการวิเคราะห์สภาพแวดล้อมห้องนอน
-จงวิเคราะห์ข้อมูลเซนเซอร์และตอบเป็นข้อความภาษาไทยความยาว 1-2 ประโยคสั้นๆ ที่เข้าใจง่ายเท่านั้น
+คุณเป็นผู้เชี่ยวชาญด้านสภาพแวดล้อมห้องนอน
+จงวิเคราะห์ข้อมูลเซนเซอร์ด้านล่าง และสรุปผลกระทบพร้อมคำแนะนำสั้นๆ ภาษาไทยไม่เกิน 2 ประโยคเท่านั้น
 
 ข้อมูลเซนเซอร์:
 - อุณหภูมิ: ${sensorData.temperature ?? 'N/A'} °C
 - ความชื้น: ${sensorData.humidity ?? 'N/A'} %
-- คาร์บอนไดออกไซด์ (CO2): ${sensorData.co2 ?? 'N/A'} ppm
-- ฝุ่น PM2.5: ${sensorData.pm2_5 ?? 'N/A'} µg/m³
+- CO2: ${sensorData.co2 ?? 'N/A'} ppm
+- PM2.5: ${sensorData.pm2_5 ?? 'N/A'} µg/m³
 - แสง: ${sensorData.lux ?? 'N/A'} Lux
 - เสียง: ${soundText}
 
-คำสั่ง: ตอบเฉพาะคำแนะนำและผลกระทบสั้นๆ ไม่เกิน 2 ประโยค (ห้ามมีภาษาอังกฤษ, ห้ามมีขั้นตอนการคิด, ห้ามมีดอกจัน)
+ข้อบังคับ: ตอบเป็นข้อความภาษาไทย 1-2 ประโยคเท่านั้น ห้ามพ่นกระบวนการคิด ห้ามมีภาษาอังกฤษเด็ดขาด
     `;
 
     const listRes = await fetch(
@@ -72,7 +72,11 @@ export async function POST(req: Request) {
             contents: [{ parts: [{ text: promptText }] }],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 200
+              maxOutputTokens: 200,
+              // ปิด Thinking Mode ของ Gemini 2.0 / Flash
+              thinkingConfig: {
+                thinkingBudget: 0
+              }
             }
           }),
         }
@@ -80,11 +84,17 @@ export async function POST(req: Request) {
 
       const data = await response.json();
 
-      if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        let text = data.candidates[0].content.parts[0].text.trim();
-        // ทำความสะอาดข้อความ ลบดอกจันและช่องว่างส่วนเกิน
-        text = text.replace(/\*/g, '').replace(/\s+/g, ' ');
-        return NextResponse.json({ result: text });
+      if (response.ok && data.candidates?.[0]?.content?.parts) {
+        // ดึงเฉพาะ Text ส่วนสุดท้ายที่ไม่ใช่ Thought Process
+        const parts = data.candidates[0].content.parts;
+        let finalAnswer = parts[parts.length - 1]?.text || '';
+
+        // ถ้ายังมีหลุด สามารถทำความสะอาดเพิ่มเติมได้
+        finalAnswer = finalAnswer.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
+
+        if (finalAnswer) {
+          return NextResponse.json({ result: finalAnswer });
+        }
       }
 
       lastError = data?.error?.message || `Status ${response.status}`;
