@@ -110,17 +110,17 @@ export default function Home() {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       display: 'flex',
       justifyContent: 'center',
-      alignItems: 'center',
-      padding: '20px'
+      alignItems: 'flex-start',
+      padding: '40px 20px'
     }}>
       <style jsx>{`
         .dashboard-container {
-          width: 100%;
-          max-width: 1400px;
+          width: 96vw;
+          max-width: 1600px;
           background-color: #0f172a;
           border-radius: 32px;
           border: 1px solid #1e293b;
-          padding: 28px;
+          padding: 32px;
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           display: flex;
           flex-direction: column;
@@ -136,7 +136,7 @@ export default function Home() {
         .footer-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 12px;
+          gap: 16px;
         }
 
         @media (min-width: 900px) {
@@ -145,7 +145,7 @@ export default function Home() {
             gap: 32px;
           }
           .dashboard-grid {
-            grid-template-columns: 380px 1fr;
+            grid-template-columns: 400px 1fr;
             gap: 32px;
           }
           .footer-grid {
@@ -190,20 +190,20 @@ export default function Home() {
 
         {/* Dashboard Grid */}
         <div className="dashboard-grid">
-          {/* Column 1: Score & Overview */}
+          {/* Left Column: Score */}
           <section style={{
             backgroundColor: '#162032',
             borderRadius: '24px',
-            padding: '32px',
+            padding: '40px 24px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '20px'
+            gap: '24px'
           }}>
-            <div style={{ position: 'relative', width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg transform="rotate(-90)" width="220" height="220" viewBox="0 0 160 160">
+            <div style={{ position: 'relative', width: '230px', height: '230px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg transform="rotate(-90)" width="230" height="230" viewBox="0 0 160 160">
                 <circle cx="80" cy="80" r="70" stroke="#0f172a" strokeWidth="12" fill="transparent" />
                 <circle
                   cx="80" cy="80" r="70"
@@ -217,52 +217,50 @@ export default function Home() {
                 />
               </svg>
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '52px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
+                <span style={{ fontSize: '56px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
                 <span style={{ fontSize: '11px', color: '#64748b', letterSpacing: '2px', marginTop: '6px', fontWeight: '600' }}>ROOM SCORE</span>
               </div>
             </div>
 
             <div style={{ textAlign: 'center' }}>
               <span style={{ fontSize: '14px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-              <h2 style={{ fontSize: '26px', color: statusColor, fontWeight: '700', margin: '4px 0 0 0' }}>
+              <h2 style={{ fontSize: '28px', color: statusColor, fontWeight: '700', margin: '4px 0 0 0' }}>
                 {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
               </h2>
             </div>
           </section>
 
-          {/* Column 2: Sensor Metrics & AI Box */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'space-between' }}>
-            {/* Quick Sensors Grid */}
+          {/* Right Column: Metrics & AI */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', justifyContent: 'space-between' }}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr 1fr',
               gap: '16px',
               backgroundColor: '#162032',
-              padding: '20px',
+              padding: '24px',
               borderRadius: '24px',
               border: '1px solid #1e293b'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#64748b', display: 'block' }}>อุณหภูมิ</span>
-                <span style={{ fontSize: '20px', fontWeight: '800', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
+                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '4px' }}>อุณหภูมิ</span>
+                <span style={{ fontSize: '24px', fontWeight: '800', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
                 </span>
               </div>
               <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '13px', color: '#64748b', display: 'block' }}>ความชื้น</span>
-                <span style={{ fontSize: '20px', fontWeight: '800', color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
+                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '4px' }}>ความชื้น</span>
+                <span style={{ fontSize: '24px', fontWeight: '800', color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
                 </span>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#64748b', display: 'block' }}>CO2</span>
-                <span style={{ fontSize: '20px', fontWeight: '800', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
+                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '4px' }}>CO2</span>
+                <span style={{ fontSize: '24px', fontWeight: '800', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.co2} ppm` : '--'}
                 </span>
               </div>
             </div>
 
-            {/* AI Recommendation Box */}
             <div style={{
               backgroundColor: '#162032',
               padding: '24px',
@@ -270,7 +268,7 @@ export default function Home() {
               border: '1px solid rgba(16, 185, 129, 0.3)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px',
+              gap: '12px',
               flexGrow: 1
             }}>
               <p style={{
@@ -285,7 +283,7 @@ export default function Home() {
                 💡 คำแนะนำเฉพาะคุณ
               </p>
               <p style={{
-                fontSize: '14px',
+                fontSize: '15px',
                 color: aiLoading ? '#64748b' : '#cbd5e1',
                 margin: 0,
                 lineHeight: '1.6'
@@ -294,7 +292,6 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Action Button */}
             <button
               onClick={() => sensor && analyzeWithGemini(sensor)}
               disabled={aiLoading || !sensor || cooldown > 0}
@@ -306,7 +303,7 @@ export default function Home() {
                 border: 'none',
                 borderRadius: '18px',
                 fontWeight: '700',
-                fontSize: '15px',
+                fontSize: '16px',
                 cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
                 opacity: aiLoading ? 0.7 : 1,
                 display: 'flex',
@@ -324,7 +321,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Footer Navigation Links */}
+        {/* Footer */}
         <footer className="footer-grid">
           <Link href="/sensors" style={{
             backgroundColor: '#1e293b',
@@ -333,7 +330,7 @@ export default function Home() {
             borderRadius: '18px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '14px',
+            fontSize: '15px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
@@ -346,7 +343,7 @@ export default function Home() {
             borderRadius: '18px',
             textAlign: 'center',
             fontWeight: '600',
-            fontSize: '14px',
+            fontSize: '15px',
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>

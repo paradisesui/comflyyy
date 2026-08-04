@@ -43,11 +43,9 @@ export default function PersonaPage() {
   const [logs, setLogs] = useState<SleepLogItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // ดึงข้อมูลประวัติย้อนหลังจริงจาก Firebase Realtime Database Node 'logs'
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
-      // ดึงข้อมูล 20 รายการล่าสุดจริงจาก Firebase
       const latestLogsQuery = query(logsRef, limitToLast(20));
 
       const unsubscribe = onValue(
@@ -58,12 +56,10 @@ export default function PersonaPage() {
             const parsedLogs: SleepLogItem[] = Object.keys(rawData).map((key) => {
               const item: SensorData = rawData[key];
               
-              // แปลง Timestamp จาก Firebase หรือใช้เวลาปัจจุบันกรณีไม่มี field
               const logTime = item.timestamp ? new Date(item.timestamp) : new Date();
               const timeStr = logTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
               const dateStr = logTime.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
 
-              // วิเคราะห์สาเหตุสิ่งรบกวนจริงตามค่าเซนเซอร์ย้อนหลังใน Firebase
               const temp = item.temperature ?? 0;
               const lux = item.lux ?? 0;
               const sound = item.sound ?? 0;
@@ -106,7 +102,6 @@ export default function PersonaPage() {
               };
             });
 
-            // เรียงลำดับจากล่าสุดไปเก่าสุด
             setLogs(parsedLogs.reverse());
           } else {
             setLogs([]);
@@ -134,49 +129,47 @@ export default function PersonaPage() {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       display: 'flex',
       justifyContent: 'center',
-      alignItems: 'center',
-      padding: '16px'
+      alignItems: 'flex-start',
+      padding: '60px 20px 40px 20px' // ขยับกรอบลงมาจากด้านบน 60px
     }}>
-      {/* CSS Responsive Styles */}
       <style jsx>{`
         .persona-container {
-          width: 100%;
-          max-width: 1200px;
+          width: 96vw;
+          max-width: 1600px;
           background-color: #0f172a;
-          border-radius: 28px;
+          border-radius: 32px;
           border: 1px solid #1e293b;
-          padding: 24px;
+          padding: 32px;
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 24px;
         }
 
         .top-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 16px;
+          gap: 20px;
         }
 
         .logs-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 12px;
+          gap: 16px;
         }
 
-        /* Responsive สำหรับหน้าจอคอมพิวเตอร์ (Desktop) */
-        @media (min-width: 768px) {
+        @media (min-width: 900px) {
           .persona-container {
-            padding: 32px;
-            gap: 24px;
+            padding: 40px;
+            gap: 28px;
           }
           .top-grid {
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 24px;
           }
           .logs-grid {
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 20px;
           }
         }
       `}</style>
@@ -187,31 +180,30 @@ export default function PersonaPage() {
           <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>
             ← ย้อนกลับหน้าหลัก
           </Link>
-          <h1 style={{ fontSize: '18px', fontWeight: '700', margin: 0, color: '#f8fafc' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '700', margin: 0, color: '#f8fafc' }}>
             ประวัติการใช้งาน & Smart Watch
           </h1>
           <div style={{ width: '40px' }}></div>
         </div>
 
-        {/* Top Grid: Smart Watch Status & Personal Sensitivity */}
+        {/* Top Grid */}
         <div className="top-grid">
-          {/* Smart Watch Sync Status */}
           <section style={{
             backgroundColor: '#162032',
-            padding: '20px',
-            borderRadius: '20px',
+            padding: '24px',
+            borderRadius: '24px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            gap: '12px'
+            gap: '16px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '28px' }}>⌚</span>
+                <span style={{ fontSize: '32px' }}>⌚</span>
                 <div>
-                  <span style={{ fontSize: '15px', fontWeight: '700', display: 'block' }}>Smart Watch Sync</span>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  <span style={{ fontSize: '16px', fontWeight: '700', display: 'block' }}>Smart Watch Sync</span>
+                  <span style={{ fontSize: '13px', color: '#64748b' }}>
                     {isWatchConnected ? 'รอการเชื่อมต่อ Garmin API' : 'ปิดการเชื่อมต่อ'}
                   </span>
                 </div>
@@ -219,12 +211,12 @@ export default function PersonaPage() {
               <button
                 onClick={() => setIsWatchConnected(!isWatchConnected)}
                 style={{
-                  padding: '6px 14px',
+                  padding: '8px 16px',
                   borderRadius: '20px',
                   border: 'none',
                   backgroundColor: isWatchConnected ? '#10b98120' : '#334155',
                   color: isWatchConnected ? '#34d399' : '#94a3b8',
-                  fontSize: '12px',
+                  fontSize: '13px',
                   fontWeight: '700',
                   cursor: 'pointer'
                 }}
@@ -232,31 +224,30 @@ export default function PersonaPage() {
                 {isWatchConnected ? '• Ready Sync' : 'Connect'}
               </button>
             </div>
-            <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: '1.4' }}>
+            <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.5' }}>
               ระบบจะนำข้อมูล Timestamp ภาวะสะดุ้งตื่นจาก Smart Watch มาจับคู่กับค่าเซนเซอร์จาก Firebase โดยอัตโนมัติ
             </p>
           </section>
 
-          {/* Personal Sensitivity Settings */}
           <section style={{
             backgroundColor: '#162032',
-            padding: '20px',
-            borderRadius: '20px',
+            padding: '24px',
+            borderRadius: '24px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px'
+            gap: '14px'
           }}>
-            <h2 style={{ fontSize: '14px', color: '#38bdf8', margin: 0, fontWeight: '700' }}>
+            <h2 style={{ fontSize: '15px', color: '#38bdf8', margin: 0, fontWeight: '700' }}>
               🎯 ระดับความไวต่อสิ่งรบกวนเฉพาะบุคคล
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#cbd5e1' }}>🌡️ อุณหภูมิห้อง</span>
+                <span style={{ fontSize: '14px', color: '#cbd5e1' }}>🌡️ อุณหภูมิห้อง</span>
                 <select
                   value={sensitivity.temperature}
                   onChange={(e) => setSensitivity({ ...sensitivity, temperature: e.target.value })}
-                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '6px 12px', fontSize: '13px' }}
                 >
                   <option value="High">ไวมาก (High)</option>
                   <option value="Medium">ปานกลาง</option>
@@ -265,11 +256,11 @@ export default function PersonaPage() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#cbd5e1' }}>🔊 เสียงรบกวน</span>
+                <span style={{ fontSize: '14px', color: '#cbd5e1' }}>🔊 เสียงรบกวน</span>
                 <select
                   value={sensitivity.sound}
                   onChange={(e) => setSensitivity({ ...sensitivity, sound: e.target.value })}
-                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '6px 12px', fontSize: '13px' }}
                 >
                   <option value="High">ไวมาก (High)</option>
                   <option value="Medium">ปานกลาง</option>
@@ -278,11 +269,11 @@ export default function PersonaPage() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#cbd5e1' }}>💡 แสงสว่าง</span>
+                <span style={{ fontSize: '14px', color: '#cbd5e1' }}>💡 แสงสว่าง</span>
                 <select
                   value={sensitivity.light}
                   onChange={(e) => setSensitivity({ ...sensitivity, light: e.target.value })}
-                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+                  style={{ backgroundColor: '#0f172a', color: '#34d399', border: '1px solid #334155', borderRadius: '8px', padding: '6px 12px', fontSize: '13px' }}
                 >
                   <option value="High">ไวมาก (High)</option>
                   <option value="Medium">ปานกลาง</option>
@@ -294,12 +285,12 @@ export default function PersonaPage() {
         </div>
 
         {/* Real Firebase Disruption Logs */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '15px', color: '#f8fafc', margin: 0, fontWeight: '700' }}>
+            <h2 style={{ fontSize: '16px', color: '#f8fafc', margin: 0, fontWeight: '700' }}>
               📊 ประวัติค่าเซนเซอร์ย้อนหลังจริง (Firebase Database)
             </h2>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
+            <span style={{ fontSize: '13px', color: '#64748b' }}>
               {logs.length} รายการล่าสุด
             </span>
           </div>
@@ -309,7 +300,7 @@ export default function PersonaPage() {
               ⏳ กำลังดึงข้อมูลประวัติจาก Firebase...
             </div>
           ) : logs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', backgroundColor: '#162032', borderRadius: '16px' }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', backgroundColor: '#162032', borderRadius: '20px' }}>
               ยังไม่มีข้อมูลบันทึกประวัติในระบบ Firebase
             </div>
           ) : (
@@ -317,20 +308,20 @@ export default function PersonaPage() {
               {logs.map((log) => (
                 <div key={log.id} style={{
                   backgroundColor: '#162032',
-                  padding: '16px',
-                  borderRadius: '18px',
+                  padding: '20px',
+                  borderRadius: '20px',
                   border: log.isDisrupted ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid #1e293b',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '8px'
+                  gap: '10px'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '700', color: '#38bdf8' }}>
                       ⏱️ {log.dateString} - {log.timeString} น.
                     </span>
                     <span style={{
                       fontSize: '11px',
-                      padding: '2px 8px',
+                      padding: '3px 10px',
                       borderRadius: '10px',
                       backgroundColor: log.isDisrupted ? '#ef444420' : '#10b98120',
                       color: log.isDisrupted ? '#f87171' : '#34d399',
@@ -340,21 +331,20 @@ export default function PersonaPage() {
                     </span>
                   </div>
 
-                  <p style={{ fontSize: '13px', margin: 0, fontWeight: '600', color: '#f1f5f9' }}>
+                  <p style={{ fontSize: '14px', margin: 0, fontWeight: '600', color: '#f1f5f9' }}>
                     {log.disruptionCause}
                   </p>
 
-                  {/* ค่าเซนเซอร์จริงจาก Firebase ณ Timestamp นั้น */}
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr 1fr',
-                    gap: '8px',
-                    fontSize: '11px',
+                    gap: '10px',
+                    fontSize: '12px',
                     color: '#94a3b8',
                     marginTop: '4px',
                     backgroundColor: '#0f172a',
-                    padding: '10px',
-                    borderRadius: '12px'
+                    padding: '12px',
+                    borderRadius: '14px'
                   }}>
                     <div>🌡️ อุณหภูมิ: <strong style={{ color: '#fff', display: 'block' }}>{log.temperature.toFixed(1)}°C</strong></div>
                     <div>💧 ความชื้น: <strong style={{ color: '#fff', display: 'block' }}>{log.humidity.toFixed(0)}%</strong></div>
@@ -372,11 +362,11 @@ export default function PersonaPage() {
         <Link href="/" style={{
           backgroundColor: '#1e293b',
           color: '#f1f5f9',
-          padding: '14px',
-          borderRadius: '16px',
+          padding: '16px',
+          borderRadius: '18px',
           textAlign: 'center',
           fontWeight: '600',
-          fontSize: '14px',
+          fontSize: '15px',
           textDecoration: 'none',
           border: '1px solid #334155',
           marginTop: 'auto'
