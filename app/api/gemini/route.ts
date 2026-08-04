@@ -20,7 +20,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Prompt คำแนะนำเชิงปฏิบัติ
     const promptText = `
       คุณคือโค้ชผู้เชี่ยวชาญด้านสุขภาพและการนอนหลับ (Professional Sleep Coach) ประจำแอป COMFLYY
       
@@ -38,9 +37,9 @@ export async function POST(req: Request) {
       4. ให้คำแนะนำอย่างมี action เช่น "ปรับแอร์ลง 1 องศา", "แย้มประตูระบายอากาศ", "ปิดไฟดวงสลัว" เป็นต้น
     `;
 
-    // ยิงตรงหา Gemini API v1beta แบบ Direct Fetch
+    // ใช้ Endpoint v1 พร้อมชื่อโมเดล gemini-1.5-flash
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
