@@ -12,7 +12,8 @@ import {
   updateProfile,
   User 
 } from 'firebase/auth';
-import { app } from '@/app/lib/firebase';
+import { ref, set, get, child } from 'firebase/database';
+import { app, database } from '@/app/lib/firebase';
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -36,12 +37,35 @@ export default function AccountPage() {
   const auth = getAuth(app);
   const router = useRouter();
 
+  // โหลดข้อมูลโปรไฟล์จาก Firebase Realtime Database
+  const fetchUserProfile = async (uid: string) => {
+    try {
+      const dbRef = ref(database);
+      const snapshot = await get(child(dbRef, `users/${uid}`));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        return data;
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+    return null;
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        setNewDisplayName(currentUser.displayName || '');
-        setNewPhotoBase64(currentUser.photoURL || '');
+        // ดึงข้อมูลรูปภาพและชื่อจาก Database
+        const profileData = await fetchUserProfile(currentUser.uid);
+        setUser({
+          ...currentUser,
+          displayName: profileData?.displayName || currentUser.displayName || 'สมาชิก COMFLYY',
+          photoURL: profileData?.photoURL || currentUser.photoURL || ''
+        });
+        setNewDisplayName(profileData?.displayName || currentUser.displayName || '');
+        setNewPhotoBase64(profileData?.photoURL || currentUser.photoURL || '');
+      } else {
+        setUser(null);
       }
       setLoading(false);
     });
@@ -49,7 +73,7 @@ export default function AccountPage() {
     return () => unsubscribe();
   }, [auth]);
 
-  // ฟังก์ชันย่อขนาดรูปภาพ (Resize Image) ให้สั้นพอสำหรับ Firebase Auth photoURL
+  // บีบอัดรูปภาพให้มีขนาดเล็กกะทัดรัด
   const compressImage = (file: File, callback: (base64: string) => void) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -58,8 +82,8 @@ export default function AccountPage() {
       img.src = event.target?.result as string;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 128;
-        const MAX_HEIGHT = 128;
+        const MAX_WIDTH = 150;
+        const MAX_HEIGHT = 150;
         let width = img.width;
         let height = img.height;
 
@@ -80,7 +104,6 @@ export default function AccountPage() {
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
 
-        // บีบอัดรูปภาพเป็น JPEG คุณภาพ 0.7 (ไฟล์เล็กจิ๋ว ส่งผ่านแน่นอน)
         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
         callback(compressedBase64);
       };
@@ -118,19 +141,26 @@ export default function AccountPage() {
     setAuthError(null);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      if (userCredential.user) {
-        await updateProfile(userCredential.user, {
-          displayName: displayName || 'สมาชิก COMFLYY',
-          photoURL: photoBase64 || ''
-        });
-      }
+      const newUser = userCredential.user;
+      
+      const finalName = displayName || 'สมาชิก COMFLYY';
+      const finalPhoto = photoBase64 || '';
+
+      // บันทึกข้อมุลลง Firebase Database
+      await set(ref(database, `users/${newUser.uid}`), {
+        displayName: finalName,
+        email: newUser.email,
+        photoURL: finalPhoto
+      });
+
+      await updateProfile(newUser, { displayName: finalName });
       setAuthSuccess('สมัครสมาชิกสำเร็จ!');
     } catch (err: any) {
       setAuthError(err.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
     }
   };
 
-  // อัปเดตข้อมูลโปรไฟล์ (แก้ไขชื่อ / รูปภาพ)
+  // อัปเดตข้อมูลโปรไฟล์ (เก็บบันทึกลง Firebase Database โดยตรง)
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth.currentUser) return;
@@ -138,13 +168,25 @@ export default function AccountPage() {
     setAuthSuccess(null);
 
     try {
-      await updateProfile(auth.currentUser, {
+      const uid = auth.currentUser.uid;
+
+      // บันทึกข้อมูลลง Firebase Realtime Database
+      await set(ref(database, `users/${uid}`), {
+        displayName: newDisplayName,
+        email: auth.currentUser.email,
+        photoURL: newPhotoBase64
+      });
+
+      // อัปเดต DisplayName ใน Auth ด้วย
+      await updateProfile(auth.currentUser, { displayName: newDisplayName });
+
+      // อัปเดต State สดทันที
+      setUser({
+        ...auth.currentUser,
         displayName: newDisplayName,
         photoURL: newPhotoBase64
       });
-      
-      // บังคับอัปเดต State สด
-      setUser({ ...auth.currentUser });
+
       setIsEditing(false);
       setAuthSuccess('อัปเดตข้อมูลโปรไฟล์เรียบร้อยแล้ว!');
     } catch (err: any) {
