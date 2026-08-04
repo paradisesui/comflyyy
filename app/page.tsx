@@ -20,9 +20,10 @@ interface SensorData {
 export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มด้านล่างเพื่อวิเคราะห์สภาพแวดล้อมด้วย Gemini AI');
+  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มด้านล่างเพื่อรับคำแนะนำการปรับสภาพห้องนอน');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<number>(0);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
     if (cooldown > 0) {
@@ -36,7 +37,7 @@ export default function Home() {
 
     try {
       setAiLoading(true);
-      setAiAnalysis('🤖 Gemini กำลังประมวลผลคำแนะนำ...');
+      setAiAnalysis('กำลังวิเคราะห์ข้อมูลสภาพแวดล้อมเพื่อสร้างคำแนะนำ...');
 
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -48,9 +49,11 @@ export default function Home() {
 
       if (res.ok && json.result) {
         setAiAnalysis(json.result);
+        const now = new Date();
+        setLastUpdated(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} น.`);
       } else {
         console.error('Gemini API Error:', json);
-        setAiAnalysis(json.error || json.details || 'ไม่สามารถประมวลผลคำตอบได้');
+        setAiAnalysis(json.error || json.details || 'ไม่สามารถประมวลผลคำแนะนำได้ในขณะนี้');
       }
     } catch (error) {
       console.error('Fetch Error:', error);
@@ -84,25 +87,15 @@ export default function Home() {
     }
   }, []);
 
-  // คำนวณคะแนนตามเกณฑ์วิจัยจริง
   const calculateScore = (data: SensorData | null) => {
     if (!data) return 97;
     let score = 100;
     
-    // อุณหภูมิ (เกณฑ์วิจัย <= 25°C)
     if (data.temperature > 25) score -= Math.round((data.temperature - 25) * 3);
-    
-    // ความชื้น (เกณฑ์วิจัย 40% - 60%)
     if (data.humidity > 60) score -= Math.round((data.humidity - 60) * 0.5);
     if (data.humidity < 40) score -= Math.round((40 - data.humidity) * 0.5);
-
-    // CO2 (เกณฑ์วิจัย <= 800 ppm)
     if (data.co2 > 800) score -= 10;
-    
-    // PM2.5 (เกณฑ์วิจัย <= 15 µg/m³)
     if (data.pm2_5 > 15) score -= 10;
-    
-    // แสงสว่าง (เกณฑ์วิจัย < 5 Lux)
     if (data.lux > 5) score -= 10;
 
     return Math.max(0, Math.min(100, Math.round(score)));
@@ -110,6 +103,7 @@ export default function Home() {
 
   const score = calculateScore(sensor);
   const strokeDashoffset = 440 - (440 * score) / 100;
+  const statusColor = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444';
 
   return (
     <div style={{
@@ -169,7 +163,7 @@ export default function Home() {
               <circle cx="80" cy="80" r="70" stroke="#1e293b" strokeWidth="12" fill="transparent" />
               <circle
                 cx="80" cy="80" r="70"
-                stroke={score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444'}
+                stroke={statusColor}
                 strokeWidth="12"
                 fill="transparent"
                 strokeDasharray="440"
@@ -186,7 +180,7 @@ export default function Home() {
 
           <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: '12px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-            <h2 style={{ fontSize: '24px', color: score >= 80 ? '#34d399' : score >= 60 ? '#f59e0b' : '#ef4444', fontWeight: '700', margin: '2px 0 0 0' }}>
+            <h2 style={{ fontSize: '24px', color: statusColor, fontWeight: '700', margin: '2px 0 0 0' }}>
               {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
             </h2>
           </div>
@@ -221,19 +215,68 @@ export default function Home() {
           </div>
         </div>
 
+        {/* กล่องคำแนะนำตกแต่งพิเศษ */}
         <div style={{
-          backgroundColor: '#162032',
-          padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid #10b98140',
-          position: 'relative'
+          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
+          padding: '18px',
+          borderRadius: '20px',
+          border: '1px solid rgba(52, 211, 153, 0.25)',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
-          <p style={{ fontSize: '14px', fontWeight: '600', color: '#34d399', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            ✨ Gemini AI วิเคราะห์สด
-          </p>
-          <p style={{ fontSize: '13px', color: aiLoading ? '#64748b' : '#cbd5e1', margin: 0, lineHeight: '1.5' }}>
+          {/* แถบสีด้านบน */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '3px',
+            background: score >= 80 
+              ? 'linear-gradient(90deg, #10b981, #34d399)' 
+              : score >= 60 
+                ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' 
+                : 'linear-gradient(90deg, #ef4444, #f87171)'
+          }} />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{
+              fontSize: '15px',
+              fontWeight: '700',
+              color: '#34d399',
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              letterSpacing: '0.2px'
+            }}>
+              💡 คำแนะนำ
+            </p>
+            {lastUpdated && (
+              <span style={{
+                fontSize: '10px',
+                color: '#64748b',
+                backgroundColor: '#0f172a',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                border: '1px solid #1e293b'
+              }}>
+                อัปเดตเมื่อ {lastUpdated}
+              </span>
+            )}
+          </div>
+
+          <div style={{
+            fontSize: '13px',
+            color: aiLoading ? '#94a3b8' : '#e2e8f0',
+            lineHeight: '1.6',
+            fontWeight: '400'
+          }}>
             {aiAnalysis}
-          </p>
+          </div>
         </div>
 
         <button
@@ -241,26 +284,28 @@ export default function Home() {
           disabled={aiLoading || !sensor || cooldown > 0}
           style={{
             width: '100%',
-            padding: '12px',
+            padding: '13px',
             backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
             color: cooldown > 0 ? '#94a3b8' : '#022c22',
             border: 'none',
-            borderRadius: '14px',
+            borderRadius: '16px',
             fontWeight: '700',
             fontSize: '14px',
             cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
-            opacity: aiLoading ? 0.6 : 1,
+            opacity: aiLoading ? 0.7 : 1,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px'
+            gap: '8px',
+            boxShadow: cooldown > 0 ? 'none' : '0 4px 14px rgba(16, 185, 129, 0.3)',
+            transition: 'all 0.2s ease'
           }}
         >
           {aiLoading 
             ? '🔄 กำลังวิเคราะห์...' 
             : cooldown > 0 
               ? `⏳ กรุณารอ (${cooldown}s)` 
-              : '🔄 วิเคราะห์สดด้วย Gemini'}
+              : '⚡ วิเคราะห์สภาพห้องนอน'}
         </button>
 
         <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
