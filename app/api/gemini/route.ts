@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(req: Request) {
   try {
@@ -18,8 +18,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // เรียกใช้ SDK ด้วย API Key
-    const ai = new GoogleGenAI({ apiKey });
+    // เรียกใช้ SDK มาตรฐานของ Gemini
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const promptText = `
       คุณคือผู้เชี่ยวชาญด้านสภาพแวดล้อมการนอน (Sleep Environment Expert)
@@ -34,15 +35,11 @@ export async function POST(req: Request) {
       คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
     `;
 
-    // เรียกใช้โมเดลผ่าน SDK โดยตรง
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: promptText,
-    });
+    const result = await model.generateContent(promptText);
+    const response = await result.response;
+    const text = response.text();
 
-    const resultText = response.text || 'ไม่สามารถดึงคำแนะนำได้ในขณะนี้';
-
-    return NextResponse.json({ result: resultText });
+    return NextResponse.json({ result: text || 'ไม่สามารถดึงคำแนะนำได้ในขณะนี้' });
   } catch (error: any) {
     console.error('Server Catch Error:', error);
     return NextResponse.json(
