@@ -23,7 +23,6 @@ export default function Home() {
   const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มด้านล่างเพื่อรับคำแนะนำการปรับสภาพห้องนอน');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<number>(0);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
     if (cooldown > 0) {
@@ -37,7 +36,7 @@ export default function Home() {
 
     try {
       setAiLoading(true);
-      setAiAnalysis('กำลังวิเคราะห์ข้อมูลสภาพแวดล้อมเพื่อสร้างคำแนะนำ...');
+      setAiAnalysis('กำลังวิเคราะห์สภาพแวดล้อมเพื่อสร้างคำแนะนำ...');
 
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -49,8 +48,6 @@ export default function Home() {
 
       if (res.ok && json.result) {
         setAiAnalysis(json.result);
-        const now = new Date();
-        setLastUpdated(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} น.`);
       } else {
         console.error('Gemini API Error:', json);
         setAiAnalysis(json.error || json.details || 'ไม่สามารถประมวลผลคำแนะนำได้ในขณะนี้');
@@ -215,68 +212,35 @@ export default function Home() {
           </div>
         </div>
 
-        {/* กล่องคำแนะนำตกแต่งพิเศษ */}
+        {/* กล่องคำแนะนำปรับใหม่ สบายตาเข้ากับธีม */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
-          padding: '18px',
-          borderRadius: '20px',
-          border: '1px solid rgba(52, 211, 153, 0.25)',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
+          backgroundColor: '#162032',
+          padding: '16px',
+          borderRadius: '16px',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px',
-          position: 'relative',
-          overflow: 'hidden'
+          gap: '6px'
         }}>
-          {/* แถบสีด้านบน */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '3px',
-            background: score >= 80 
-              ? 'linear-gradient(90deg, #10b981, #34d399)' 
-              : score >= 60 
-                ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' 
-                : 'linear-gradient(90deg, #ef4444, #f87171)'
-          }} />
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <p style={{
-              fontSize: '15px',
-              fontWeight: '700',
-              color: '#34d399',
-              margin: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              letterSpacing: '0.2px'
-            }}>
-              💡 คำแนะนำ
-            </p>
-            {lastUpdated && (
-              <span style={{
-                fontSize: '10px',
-                color: '#64748b',
-                backgroundColor: '#0f172a',
-                padding: '2px 8px',
-                borderRadius: '10px',
-                border: '1px solid #1e293b'
-              }}>
-                อัปเดตเมื่อ {lastUpdated}
-              </span>
-            )}
-          </div>
-
-          <div style={{
+          <p style={{
+            fontSize: '14px',
+            fontWeight: '700',
+            color: '#34d399',
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            💡 คำแนะนำ
+          </p>
+          <p style={{
             fontSize: '13px',
-            color: aiLoading ? '#94a3b8' : '#e2e8f0',
-            lineHeight: '1.6',
-            fontWeight: '400'
+            color: aiLoading ? '#64748b' : '#cbd5e1',
+            margin: 0,
+            lineHeight: '1.5'
           }}>
             {aiAnalysis}
-          </div>
+          </p>
         </div>
 
         <button
@@ -284,11 +248,11 @@ export default function Home() {
           disabled={aiLoading || !sensor || cooldown > 0}
           style={{
             width: '100%',
-            padding: '13px',
+            padding: '12px',
             backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
             color: cooldown > 0 ? '#94a3b8' : '#022c22',
             border: 'none',
-            borderRadius: '16px',
+            borderRadius: '14px',
             fontWeight: '700',
             fontSize: '14px',
             cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
@@ -296,16 +260,14 @@ export default function Home() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px',
-            boxShadow: cooldown > 0 ? 'none' : '0 4px 14px rgba(16, 185, 129, 0.3)',
-            transition: 'all 0.2s ease'
+            gap: '8px'
           }}
         >
           {aiLoading 
             ? '🔄 กำลังวิเคราะห์...' 
             : cooldown > 0 
               ? `⏳ กรุณารอ (${cooldown}s)` 
-              : '⚡ วิเคราะห์สภาพห้องนอน'}
+              : '🔄 วิเคราะห์สดด้วย Gemini'}
         </button>
 
         <footer style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto' }}>
