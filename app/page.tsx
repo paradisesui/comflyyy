@@ -20,6 +20,7 @@ interface SensorData {
 export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [lastUpdated, setLastUpdated] = useState<string>('--:--');
   const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มเพื่อวิเคราะห์สภาพแวดล้อมห้องนอนด้วย Gemini AI');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [cooldown, setCooldown] = useState<number>(0);
@@ -71,6 +72,12 @@ export default function Home() {
           const latestKey = Object.keys(data)[0];
           const currentSensorData: SensorData = data[latestKey];
           setSensor(currentSensorData);
+          
+          if (currentSensorData.timestamp) {
+            setLastUpdated(new Date(currentSensorData.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          } else {
+            setLastUpdated(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+          }
         }
         setLoading(false);
       }, (error) => {
@@ -124,19 +131,25 @@ export default function Home() {
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 20px;
         }
 
         .dashboard-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 24px;
+          gap: 20px;
         }
 
         .nav-links-grid {
           display: grid;
           grid-template-columns: 1fr;
           gap: 16px;
+        }
+
+        .info-cards-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
         }
 
         .sensor-val {
@@ -152,11 +165,12 @@ export default function Home() {
           color: #fff;
         }
 
+        /* Desktop Mode Layout */
         @media (min-width: 900px) {
           .dashboard-container {
             width: 96vw;
             padding: 40px;
-            gap: 28px;
+            gap: 24px;
             margin-top: 20px;
             border-radius: 32px;
           }
@@ -167,6 +181,10 @@ export default function Home() {
           .nav-links-grid {
             grid-template-columns: 1fr 1fr;
             gap: 20px;
+          }
+          .info-cards-grid {
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
           }
           .sensor-val {
             font-size: 26px;
@@ -367,7 +385,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Navigation Button Links (ปรับเปลี่ยนตามที่คุณขอ) */}
+        {/* Navigation Button Links */}
         <footer className="nav-links-grid">
           <Link href="/sensors" style={{
             backgroundColor: '#1e293b',
@@ -396,6 +414,22 @@ export default function Home() {
             ประวัติการใช้งาน
           </Link>
         </footer>
+
+        {/* [NEW] Quick System Specs & Target Zones (ส่วนที่เพิ่มเติมด้านล่างเพื่อเติมเต็มพื้นที่) */}
+        <div className="info-cards-grid">
+          <div style={{ backgroundColor: '#162032', padding: '14px 18px', borderRadius: '16px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>🎯 ช่วงอุณหภูมิที่เหมาะสม</span>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#34d399' }}>22°C - 25°C</span>
+          </div>
+          <div style={{ backgroundColor: '#162032', padding: '14px 18px', borderRadius: '16px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>🌬️ ระดับ CO2 ปลอดภัย</span>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>&lt; 800 ppm</span>
+          </div>
+          <div style={{ backgroundColor: '#162032', padding: '14px 18px', borderRadius: '16px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>⏱️ อัปเดตข้อมูลล่าสุด</span>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#f1f5f9' }}>{lastUpdated} น.</span>
+          </div>
+        </div>
       </main>
     </div>
   );
