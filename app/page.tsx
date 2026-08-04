@@ -146,10 +146,10 @@ export default function Home() {
           gap: 16px;
         }
 
-        .info-cards-grid {
+        .footer-widgets-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 12px;
+          gap: 16px;
         }
 
         .sensor-val {
@@ -182,9 +182,9 @@ export default function Home() {
             grid-template-columns: 1fr 1fr;
             gap: 20px;
           }
-          .info-cards-grid {
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 16px;
+          .footer-widgets-grid {
+            grid-template-columns: 1.2fr 1fr;
+            gap: 20px;
           }
           .sensor-val {
             font-size: 26px;
@@ -415,19 +415,73 @@ export default function Home() {
           </Link>
         </footer>
 
-        {/* [NEW] Quick System Specs & Target Zones (ส่วนที่เพิ่มเติมด้านล่างเพื่อเติมเต็มพื้นที่) */}
-        <div className="info-cards-grid">
-          <div style={{ backgroundColor: '#162032', padding: '14px 18px', borderRadius: '16px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>🎯 ช่วงอุณหภูมิที่เหมาะสม</span>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: '#34d399' }}>22°C - 25°C</span>
+        {/* [SELECTED] Sleep Quality & Hardware Status Widgets */}
+        <div className="footer-widgets-grid">
+          {/* Widget 1: Sleep Quality Index & Heart Rate Sync Summary */}
+          <div style={{
+            backgroundColor: '#162032',
+            padding: '18px 20px',
+            borderRadius: '20px',
+            border: '1px solid #1e293b',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#38bdf8', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ❤️ Sleep Quality & Heart Rate Sync
+              </span>
+              <span style={{ fontSize: '11px', color: '#34d399', backgroundColor: '#10b98120', padding: '2px 8px', borderRadius: '10px', fontWeight: '700' }}>
+                Garmin / Apple Health
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', backgroundColor: '#0f172a', padding: '12px 16px', borderRadius: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>RESTING HR Target</span>
+                <span style={{ fontSize: '18px', fontWeight: '800', color: '#f43f5e' }}>58-64 <span style={{ fontSize: '11px', fontWeight: '400' }}>BPM</span></span>
+              </div>
+              <div style={{ width: '1px', height: '28px', backgroundColor: '#334155' }}></div>
+              <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.4' }}>
+                อุณหภูมิห้อง <strong style={{ color: '#fff' }}>{sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}</strong> ช่วยให้หัวใจทำงานผ่อนคลายและเข้าสู่ภาวะหลับสนิทได้เร็วขึ้น
+              </div>
+            </div>
           </div>
-          <div style={{ backgroundColor: '#162032', padding: '14px 18px', borderRadius: '16px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>🌬️ ระดับ CO2 ปลอดภัย</span>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>&lt; 800 ppm</span>
-          </div>
-          <div style={{ backgroundColor: '#162032', padding: '14px 18px', borderRadius: '16px', border: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>⏱️ อัปเดตข้อมูลล่าสุด</span>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: '#f1f5f9' }}>{lastUpdated} น.</span>
+
+          {/* Widget 2: Hardware Status Board (บอร์ดควบคุมสถานะฮาร์ดแวร์) */}
+          <div style={{
+            backgroundColor: '#162032',
+            padding: '18px 20px',
+            borderRadius: '20px',
+            border: '1px solid #1e293b',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                📡 สถานะอุปกรณ์และฮาร์ดแวร์ (Device Health)
+              </span>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>ESP32 Node</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ backgroundColor: '#0f172a', padding: '8px 12px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: '#64748b' }}>เซนเซอร์ห้องนอน</span>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#34d399' }}>🟢 Online</span>
+              </div>
+              <div style={{ backgroundColor: '#0f172a', padding: '8px 12px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: '#64748b' }}>Firebase Database</span>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#38bdf8' }}>⚡ Syncing</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
+              <span>Smart Room Controller v1.0</span>
+              <span>อัปเดตล่าสุด: {lastUpdated} น.</span>
+            </div>
           </div>
         </div>
       </main>
