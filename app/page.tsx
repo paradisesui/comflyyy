@@ -111,7 +111,7 @@ export default function Home() {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'flex-start',
-      padding: '40px 20px'
+      padding: '60px 20px 40px 20px' // ระยะห่างด้านบน 60px เท่ากับหน้า persona
     }}>
       <style jsx>{`
         .dashboard-container {
@@ -121,7 +121,7 @@ export default function Home() {
           border-radius: 32px;
           border: 1px solid #1e293b;
           padding: 32px;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          boxShadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           display: flex;
           flex-direction: column;
           gap: 24px;
@@ -142,11 +142,11 @@ export default function Home() {
         @media (min-width: 900px) {
           .dashboard-container {
             padding: 40px;
-            gap: 32px;
+            gap: 28px;
           }
           .dashboard-grid {
-            grid-template-columns: 400px 1fr;
-            gap: 32px;
+            grid-template-columns: 420px 1fr;
+            gap: 28px;
           }
           .footer-grid {
             grid-template-columns: 1fr 1fr;
@@ -194,16 +194,16 @@ export default function Home() {
           <section style={{
             backgroundColor: '#162032',
             borderRadius: '24px',
-            padding: '40px 24px',
+            padding: '44px 24px',
             border: '1px solid #1e293b',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '24px'
+            gap: '28px'
           }}>
-            <div style={{ position: 'relative', width: '230px', height: '230px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg transform="rotate(-90)" width="230" height="230" viewBox="0 0 160 160">
+            <div style={{ position: 'relative', width: '260px', height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg transform="rotate(-90)" width="260" height="260" viewBox="0 0 160 160">
                 <circle cx="80" cy="80" r="70" stroke="#0f172a" strokeWidth="12" fill="transparent" />
                 <circle
                   cx="80" cy="80" r="70"
@@ -217,21 +217,22 @@ export default function Home() {
                 />
               </svg>
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '56px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
-                <span style={{ fontSize: '11px', color: '#64748b', letterSpacing: '2px', marginTop: '6px', fontWeight: '600' }}>ROOM SCORE</span>
+                {/* ขยายขนาดเปอร์เซ็นต์ใหญ่ขึ้น */}
+                <span style={{ fontSize: '64px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
+                <span style={{ fontSize: '12px', color: '#64748b', letterSpacing: '2px', marginTop: '8px', fontWeight: '600' }}>ROOM SCORE</span>
               </div>
             </div>
 
             <div style={{ textAlign: 'center' }}>
               <span style={{ fontSize: '14px', color: '#94a3b8' }}>ระดับคุณภาพห้องนอน</span>
-              <h2 style={{ fontSize: '28px', color: statusColor, fontWeight: '700', margin: '4px 0 0 0' }}>
+              <h2 style={{ fontSize: '30px', color: statusColor, fontWeight: '700', margin: '4px 0 0 0' }}>
                 {score >= 80 ? 'ดีเยี่ยม' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
               </h2>
             </div>
           </section>
 
           {/* Right Column: Metrics & AI */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'space-between' }}>
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr 1fr',
@@ -242,20 +243,20 @@ export default function Home() {
               border: '1px solid #1e293b'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '4px' }}>อุณหภูมิ</span>
-                <span style={{ fontSize: '24px', fontWeight: '800', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
+                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '6px' }}>อุณหภูมิ</span>
+                <span style={{ fontSize: '26px', fontWeight: '800', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.temperature?.toFixed(1)}°C` : '--'}
                 </span>
               </div>
               <div style={{ textAlign: 'center', borderLeft: '1px solid #1e293b', borderRight: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '4px' }}>ความชื้น</span>
-                <span style={{ fontSize: '24px', fontWeight: '800', color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
+                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '6px' }}>ความชื้น</span>
+                <span style={{ fontSize: '26px', fontWeight: '800', color: (sensor?.humidity ?? 0) > 60 || (sensor?.humidity ?? 0) < 40 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.humidity?.toFixed(0)}%` : '--'}
                 </span>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '4px' }}>CO2</span>
-                <span style={{ fontSize: '24px', fontWeight: '800', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
+                <span style={{ fontSize: '14px', color: '#64748b', display: 'block', marginBottom: '6px' }}>CO2</span>
+                <span style={{ fontSize: '26px', fontWeight: '800', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f1f5f9' }}>
                   {sensor ? `${sensor.co2} ppm` : '--'}
                 </span>
               </div>
@@ -263,16 +264,17 @@ export default function Home() {
 
             <div style={{
               backgroundColor: '#162032',
-              padding: '24px',
+              padding: '28px',
               borderRadius: '24px',
               border: '1px solid rgba(16, 185, 129, 0.3)',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
-              flexGrow: 1
+              flexGrow: 1,
+              minHeight: '180px' // ยืดกล่องเพื่อเติมพื้นที่ว่างด้านล่าง
             }}>
               <p style={{
-                fontSize: '16px',
+                fontSize: '17px',
                 fontWeight: '700',
                 color: '#34d399',
                 margin: 0,
@@ -297,7 +299,7 @@ export default function Home() {
               disabled={aiLoading || !sensor || cooldown > 0}
               style={{
                 width: '100%',
-                padding: '16px',
+                padding: '18px',
                 backgroundColor: cooldown > 0 ? '#334155' : '#10b981',
                 color: cooldown > 0 ? '#94a3b8' : '#022c22',
                 border: 'none',
@@ -326,7 +328,7 @@ export default function Home() {
           <Link href="/sensors" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '16px',
+            padding: '18px',
             borderRadius: '18px',
             textAlign: 'center',
             fontWeight: '600',
@@ -339,7 +341,7 @@ export default function Home() {
           <Link href="/persona" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
-            padding: '16px',
+            padding: '18px',
             borderRadius: '18px',
             textAlign: 'center',
             fontWeight: '600',
