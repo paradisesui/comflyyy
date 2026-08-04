@@ -19,6 +19,9 @@ export async function POST(req: Request) {
       );
     }
 
+    // ตัดส่วนท้าย Key มาโชว์ 4 ตัว เพื่อเช็กว่า Vercel ดึง Key ใหม่ไปใช้จริงไหม
+    const keyHint = apiKey.length > 8 ? `...${apiKey.slice(-4)}` : 'Key สั้นเกินไป';
+
     const promptText = `
       คุณคือผู้เชี่ยวชาญด้านสภาพแวดล้อมการนอน (Sleep Environment Expert)
       โปรดวิเคราะห์สภาพแวดล้อมในห้องนอนจากข้อมูลเซนเซอร์ดังนี้:
@@ -54,16 +57,13 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       console.error('Google Gemini API Error response:', data);
-
-      if (response.status === 429) {
-        return NextResponse.json(
-          { error: '⏳ โควต้าการใช้งาน API Key นี้เต็มแล้ว กรุณาสร้าง Key ใหม่ใน Google AI Studio' },
-          { status: 429 }
-        );
-      }
-
-      const apiErrorMessage = data?.error?.message || `API Error (${response.status})`;
-      return NextResponse.json({ error: apiErrorMessage }, { status: response.status });
+      
+      // พ่นรายละเอียดข้อผิดพลาดพร้อม Key Hint ออกมาดูตรงๆ บน UI
+      const rawErrorMessage = data?.error?.message || `HTTP Status: ${response.status}`;
+      return NextResponse.json(
+        { error: `[Key: ${keyHint}] Google API Error (${response.status}): ${rawErrorMessage}` },
+        { status: response.status }
+      );
     }
 
     const resultText =
