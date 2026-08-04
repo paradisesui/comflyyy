@@ -152,7 +152,6 @@ export default function Home() {
           color: #fff;
         }
 
-        /* Desktop Mode Layout */
         @media (min-width: 900px) {
           .dashboard-container {
             width: 96vw;
@@ -194,27 +193,46 @@ export default function Home() {
               {loading ? 'กำลังเชื่อมต่อ...' : 'Live Realtime'}
             </span>
           </div>
-          
-          <Link href="/account" style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '50%',
-            backgroundColor: '#1e293b',
-            color: '#f8fafc',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textDecoration: 'none',
-            fontSize: '18px',
-            border: '1px solid #334155'
-          }}>
-            👤
-          </Link>
+
+          {/* Header Quick Menu */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Link href="/persona" style={{
+              padding: '8px 14px',
+              borderRadius: '20px',
+              backgroundColor: '#1e293b',
+              color: '#38bdf8',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              textDecoration: 'none',
+              fontSize: '13px',
+              fontWeight: '600',
+              border: '1px solid #334155'
+            }}>
+              ⌚ Smart Watch
+            </Link>
+
+            <Link href="/account" style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              backgroundColor: '#1e293b',
+              color: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+              fontSize: '18px',
+              border: '1px solid #334155'
+            }}>
+              👤
+            </Link>
+          </div>
         </header>
 
         {/* Main Dashboard Grid */}
         <div className="dashboard-grid">
-          {/* Left Column: Room Score Circular Chart (ขยายขนาดใหญ่ขึ้น) */}
+          {/* Left Column: Room Score Circular Chart */}
           <section style={{
             backgroundColor: '#162032',
             borderRadius: '24px',
@@ -349,7 +367,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Navigation Button Links */}
+        {/* Navigation Button Links (ปรับเปลี่ยนตามที่คุณขอ) */}
         <footer className="nav-links-grid">
           <Link href="/sensors" style={{
             backgroundColor: '#1e293b',
@@ -362,9 +380,9 @@ export default function Home() {
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
-            ดูรายละเอียดเซนเซอร์ทั้งหมด & กราฟย้อนหลัง ➔
+            รายละเอียดเซนเซอร์ทั้งหมด ➔
           </Link>
-          <Link href="/persona" style={{
+          <Link href="/history" style={{
             backgroundColor: '#1e293b',
             color: '#f1f5f9',
             padding: '18px',
@@ -375,7 +393,7 @@ export default function Home() {
             textDecoration: 'none',
             border: '1px solid #334155'
           }}>
-            ประวัติการใช้งาน & Smart Watch
+            ประวัติการใช้งาน
           </Link>
         </footer>
       </main>
