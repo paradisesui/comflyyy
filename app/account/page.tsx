@@ -23,12 +23,12 @@ export default function AccountPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [photoURL, setPhotoURL] = useState('');
+  const [photoBase64, setPhotoBase64] = useState('');
   
   // Edit Mode State
   const [isEditing, setIsEditing] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState('');
-  const [newPhotoURL, setNewPhotoURL] = useState('');
+  const [newPhotoBase64, setNewPhotoBase64] = useState('');
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
@@ -41,13 +41,35 @@ export default function AccountPage() {
       setUser(currentUser);
       if (currentUser) {
         setNewDisplayName(currentUser.displayName || '');
-        setNewPhotoURL(currentUser.photoURL || '');
+        setNewPhotoBase64(currentUser.photoURL || '');
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [auth]);
+
+  // ฟังก์ชันแปลงไฟล์ภาพจากคอมพิวเตอร์เป็น Base64
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, isRegister: boolean) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // จำกัดขนาดไฟล์ไม่เกิน 2MB
+        setAuthError('ขนาดไฟล์ภาพต้องไม่เกิน 2MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        if (isRegister) {
+          setPhotoBase64(base64String);
+        } else {
+          setNewPhotoBase64(base64String);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // เข้าสู่ระบบ
   const handleLogin = async (e: React.FormEvent) => {
@@ -70,7 +92,7 @@ export default function AccountPage() {
       if (userCredential.user) {
         await updateProfile(userCredential.user, {
           displayName: displayName || 'สมาชิก COMFLYY',
-          photoURL: photoURL || ''
+          photoURL: photoBase64 || ''
         });
       }
       setAuthSuccess('สมัครสมาชิกสำเร็จ!');
@@ -79,7 +101,7 @@ export default function AccountPage() {
     }
   };
 
-  // อัปเดตข้อมูลโปรไฟล์ (เปลี่ยนชื่อ / รูปภาพ)
+  // อัปเดตข้อมูลโปรไฟล์ (เปลี่ยนชื่อ / รูปภาพจากคอมฯ)
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth.currentUser) return;
@@ -89,7 +111,7 @@ export default function AccountPage() {
     try {
       await updateProfile(auth.currentUser, {
         displayName: newDisplayName,
-        photoURL: newPhotoURL
+        photoURL: newPhotoBase64
       });
       setUser({ ...auth.currentUser });
       setIsEditing(false);
@@ -135,10 +157,10 @@ export default function AccountPage() {
           <Link href="/" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
             ← กลับหน้าหลัก
           </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>COMFLYY AUTHENTICATION</span>
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>COMFLYY PROFILE MANAGEMENT</span>
         </div>
 
-        {/* แจ้งเตือน สถานะการทำงาน */}
+        {/* Notifications */}
         {authError && (
           <div style={{ backgroundColor: '#ef444420', color: '#ef4444', border: '1px solid #ef444440', padding: '12px', borderRadius: '12px', fontSize: '13px', textAlign: 'center' }}>
             {authError}
@@ -150,15 +172,15 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* CASE 1: ล็อกอินอยู่แล้ว (แสดงโปรไฟล์ + ฟอร์มแก้ไข) */}
+        {/* CASE 1: Logged In */}
         {user ? (
           <div style={{ backgroundColor: '#151c2c', borderRadius: '22px', padding: '24px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 {user.photoURL ? (
-                  <img src={user.photoURL} alt="Avatar" style={{ width: '60px', height: '60px', borderRadius: '18px', objectFit: 'cover', border: '2px solid #6366f1' }} />
+                  <img src={user.photoURL} alt="Avatar" style={{ width: '64px', height: '64px', borderRadius: '20px', objectFit: 'cover', border: '2px solid #6366f1' }} />
                 ) : (
-                  <div style={{ width: '60px', height: '60px', borderRadius: '18px', background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
                     👤
                   </div>
                 )}
@@ -179,30 +201,48 @@ export default function AccountPage() {
               </button>
             </div>
 
-            {/* ฟอร์มแก้ไข Username / Photo URL */}
+            {/* Edit Form with Local File Picker */}
             {isEditing && (
-              <form onSubmit={handleUpdateProfile} style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <span style={{ fontSize: '12px', color: '#818cf8', fontWeight: '700' }}>แก้ไขข้อมูลส่วนตัว</span>
+              <form onSubmit={handleUpdateProfile} style={{ backgroundColor: '#0f172a', padding: '18px', borderRadius: '18px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <span style={{ fontSize: '13px', color: '#818cf8', fontWeight: '700' }}>แก้ไขข้อมูลส่วนตัว</span>
+                
                 <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>ชื่อผู้ใช้ (Username)</label>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>ชื่อผู้ใช้ (Username)</label>
                   <input
                     type="text"
                     value={newDisplayName}
                     onChange={(e) => setNewDisplayName(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#151c2c', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#151c2c', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
                     required
                   />
                 </div>
+
+                {/* Local File Picker Input */}
                 <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>ลิงก์รูปโปรไฟล์ (Image URL)</label>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>เลือกรูปภาพจากคอมพิวเตอร์</label>
                   <input
-                    type="url"
-                    placeholder="https://example.com/photo.jpg"
-                    value={newPhotoURL}
-                    onChange={(e) => setNewPhotoURL(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#151c2c', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, false)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '10px',
+                      backgroundColor: '#151c2c',
+                      border: '1px solid #334155',
+                      color: '#94a3b8',
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
                   />
+                  {newPhotoBase64 && (
+                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>ตัวอย่างรูปภาพ:</span>
+                      <img src={newPhotoBase64} alt="Preview" style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #6366f1' }} />
+                    </div>
+                  )}
                 </div>
+
                 <button type="submit" style={{ padding: '10px', borderRadius: '10px', backgroundColor: '#6366f1', color: '#fff', border: 'none', fontSize: '13px', fontWeight: '700', cursor: 'pointer', marginTop: '4px' }}>
                   บันทึกการเปลี่ยนแปลง
                 </button>
@@ -217,14 +257,14 @@ export default function AccountPage() {
             </button>
           </div>
         ) : (
-          /* CASE 2: ยังไม่ได้ล็อกอิน (ฟอร์มเข้าสู่ระบบ / สมัครสมาชิก) */
+          /* CASE 2: Login / Register Form */
           <div style={{ backgroundColor: '#151c2c', borderRadius: '22px', padding: '24px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
                 {isRegisterMode ? '📝 สมัครสมาชิกใหม่' : '🔑 เข้าสู่ระบบ COMFLYY'}
               </h2>
               <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-                {isRegisterMode ? 'สร้างบัญชีเพื่อบันทึกประวัติเซนเซอร์เฉพาะบุคคล' : 'ยินดีต้อนรับกลับมา กรุณากรอกข้อมูลเพื่อเข้าสู่ระบบ'}
+                {isRegisterMode ? 'สร้างบัญชีเพื่อบันทึกประวัติเซนเซอร์เฉพาะบุคคล' : 'กรุณากรอกข้อมูลเพื่อเข้าสู่ระบบ'}
               </p>
             </div>
 
@@ -269,13 +309,12 @@ export default function AccountPage() {
 
               {isRegisterMode && (
                 <div>
-                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>ลิงก์รูปโปรไฟล์ (ถ้ามี)</label>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>เลือกรูปโปรไฟล์จากเครื่อง</label>
                   <input
-                    type="url"
-                    placeholder="https://example.com/avatar.jpg"
-                    value={photoURL}
-                    onChange={(e) => setPhotoURL(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '10px', backgroundColor: '#0f172a', border: '1px solid #334155', color: '#fff', fontSize: '13px' }}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e, true)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '10px', backgroundColor: '#0f172a', border: '1px solid #334155', color: '#94a3b8', fontSize: '12px' }}
                   />
                 </div>
               )}
