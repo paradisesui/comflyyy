@@ -30,9 +30,9 @@ export async function POST(req: Request) {
       คำสั่ง: ให้คำแนะนำสั้นๆ ไม่เกิน 2 ประโยค ว่าสภาพห้องนี้น่าจะส่งผลต่อการนอนอย่างไร และควรปรับปรุงอะไรทันที
     `;
 
-    // ยิงตรงไปที่ Google Gemini API Endpoint แบบ Native Fetch
+    // เปลี่ยนไปใช้ API Version v1 แทน v1beta
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
