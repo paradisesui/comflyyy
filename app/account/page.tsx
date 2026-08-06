@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
-import { ref, set, get, child } from 'firebase/database';
+import { ref, set, onValue } from 'firebase/database';
 
 export default function AccountPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -20,26 +20,43 @@ export default function AccountPage() {
   const [inputName, setInputName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
 
+  // Helper สำหรับแปลงอีเมลให้เป็น Database Key ปลอดภัย
   const makeUserKey = (mail: string) => {
     return mail.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
   };
 
-  // ดึงข้อมูล Profile แบบไม่บล็อกการเข้าสู่ระบบ
-  const fetchUserProfile = async (key: string, userMail: string) => {
-    try {
-      const dbRef = ref(database);
-      const snapshot = await get(child(dbRef, `users/${key}`));
+  // ตรวจสอบ Session และเปิดการเชื่อมต่อ Real-time Sync
+  useEffect(() => {
+    const savedMail = localStorage.getItem('comflyy_session_email');
+    if (savedMail) {
+      const key = makeUserKey(savedMail);
+      setEmail(savedMail);
+      setUserKey(key);
+      setIsLoggedIn(true);
 
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        if (data.name) setUserName(data.name);
-        if (data.image) setProfileImage(data.image);
-      }
-    } catch (error) {
-      console.warn("Database sync warning (using local fallback):", error);
+      // ดึงข้อมูล Real-time จาก Firebase Database (ถ้าเปลี่ยนในคอม บนมือถือจะเปลี่ยนตามทันที)
+      const userRef = ref(database, `users/${key}`);
+      const unsubscribe = onValue(userRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          setUserName(data.name || savedMail.split('@')[0]);
+          setProfileImage(data.image || null);
+        } else {
+          setUserName(savedMail.split('@')[0]);
+        }
+        setLoading(false);
+      }, (error) => {
+        console.error("Firebase Realtime Listener Error:", error);
+        setLoading(false);
+      });
+
+      return () => unsubscribe();
+    } else {
+      setLoading(false);
     }
-  };
+  }, []);
 
+  // บันทึกข้อมูล Profile ลง Firebase Realtime Database
   const saveUserProfileToFirebase = async (key: string, name: string, mail: string, image: string | null) => {
     try {
       await set(ref(database, `users/${key}`), {
@@ -50,31 +67,12 @@ export default function AccountPage() {
       });
     } catch (error) {
       console.error("Error saving user profile:", error);
+      alert("ไม่สามารถบันทึกข้อมูลลง Database ได้ กรุณาเช็คอินเทอร์เน็ต");
     }
   };
 
-  // ตรวจสอบ Session เมื่อเปิดหน้าเว็บ
-  useEffect(() => {
-    const savedMail = localStorage.getItem('comflyy_session_email');
-    if (savedMail) {
-      const key = makeUserKey(savedMail);
-      const savedName = localStorage.getItem(`comflyy_name_${key}`) || savedMail.split('@')[0];
-      const savedImg = localStorage.getItem(`comflyy_img_${key}`);
-
-      setEmail(savedMail);
-      setUserKey(key);
-      setUserName(savedName);
-      setProfileImage(savedImg);
-      setIsLoggedIn(true);
-
-      // ดึงข้อมูลอัปเดตจาก Firebase
-      fetchUserProfile(key, savedMail);
-    }
-    setLoading(false);
-  }, []);
-
-  // ฟังก์ชัน เข้าสู่ระบบ / สมัครสมาชิก (ปลดล็อกทันที)
-  const handleAuth = (e: React.FormEvent) => {
+  // ฟังก์ชันกด เข้าสู่ระบบ / สมัครสมาชิก
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputEmail) {
       alert('กรุณากรอกอีเมล');
@@ -85,17 +83,26 @@ export default function AccountPage() {
     const key = makeUserKey(cleanedEmail);
     const finalName = inputName.trim() || cleanedEmail.split('@')[0];
 
-    // 1. บันทึกลงเครื่องทันทีเพื่อล็อกอิน
+    // บันทึก Session ในเครื่อง
     localStorage.setItem('comflyy_session_email', cleanedEmail);
-    localStorage.setItem(`comflyy_name_${key}`, finalName);
 
     setEmail(cleanedEmail);
     setUserKey(key);
     setUserName(finalName);
     setIsLoggedIn(true);
 
-    // 2. บันทึกลง Firebase Database เบื้องหลัง
-    saveUserProfileToFirebase(key, finalName, cleanedEmail, profileImage);
+    // เปิด listener สำหรับ User ใหม่
+    const userRef = ref(database, `users/${key}`);
+    onValue(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setUserName(data.name || finalName);
+        setProfileImage(data.image || null);
+      }
+    });
+
+    // ส่งข้อมูลไปบันทึกบน Firebase
+    await saveUserProfileToFirebase(key, finalName, cleanedEmail, profileImage);
 
     setInputEmail('');
     setInputPassword('');
@@ -118,16 +125,15 @@ export default function AccountPage() {
     const newName = inputName.trim();
     setUserName(newName);
     setIsEditingName(false);
-    localStorage.setItem(`comflyy_name_${userKey}`, newName);
     await saveUserProfileToFirebase(userKey, newName, email, profileImage);
   };
 
-  // อัปโหลดรูปภาพ
+  // อัปโหลดรูปภาพ (บีบอัดเป็น Base64 และส่งขึ้น Firebase)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && userKey) {
-      if (file.size > 1 * 1024 * 1024) {
-        alert('ขนาดไฟล์รูปภาพต้องไม่เกิน 1MB');
+      if (file.size > 800 * 1024) { // จำกัดไม่เกิน 800KB เพื่อให้บันทึกลง Realtime DB ได้เร็ว
+        alert('ขนาดไฟล์รูปภาพต้องไม่เกิน 800KB ครับ');
         return;
       }
 
@@ -135,7 +141,6 @@ export default function AccountPage() {
       reader.onloadend = async () => {
         const base64String = reader.result as string;
         setProfileImage(base64String);
-        localStorage.setItem(`comflyy_img_${userKey}`, base64String);
         await saveUserProfileToFirebase(userKey, userName, email, base64String);
       };
       reader.readAsDataURL(file);
@@ -145,7 +150,7 @@ export default function AccountPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#090d16', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        กำลังโหลดข้อมูล...
+        กำลังซิงค์ข้อมูลกับ Firebase...
       </div>
     );
   }
@@ -398,7 +403,7 @@ export default function AccountPage() {
                   กดเพื่อเลือกรูปภาพจากมือถือหรือคอมพิวเตอร์
                 </span>
                 <span style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>
-                  รองรับไฟล์ PNG หรือ JPG (ไม่เกิน 1MB)
+                  รองรับไฟล์ PNG หรือ JPG (ไม่เกิน 800KB)
                 </span>
               </label>
 
