@@ -20,38 +20,26 @@ export default function AccountPage() {
   const [inputName, setInputName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
 
-  // Helper แปลงอีเมลเป็นคีย์สำหรับ Database (ตัดอักขระพิเศษออก)
   const makeUserKey = (mail: string) => {
     return mail.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
   };
 
-  // ดึงข้อมูล Profile จาก Firebase Database
+  // ดึงข้อมูล Profile แบบไม่บล็อกการเข้าสู่ระบบ
   const fetchUserProfile = async (key: string, userMail: string) => {
     try {
-      setLoading(true);
       const dbRef = ref(database);
       const snapshot = await get(child(dbRef, `users/${key}`));
 
       if (snapshot.exists()) {
         const data = snapshot.val();
-        setUserName(data.name || userMail.split('@')[0]);
-        setProfileImage(data.image || null);
-      } else {
-        const defaultName = userMail.split('@')[0];
-        setUserName(defaultName);
-        await saveUserProfileToFirebase(key, defaultName, userMail, null);
+        if (data.name) setUserName(data.name);
+        if (data.image) setProfileImage(data.image);
       }
-      setEmail(userMail);
-      setUserKey(key);
-      setIsLoggedIn(true);
     } catch (error) {
-      console.error("Error fetching user profile:", error);
-    } finally {
-      setLoading(false);
+      console.warn("Database sync warning (using local fallback):", error);
     }
   };
 
-  // บันทึกข้อมูล Profile ลง Firebase Database
   const saveUserProfileToFirebase = async (key: string, name: string, mail: string, image: string | null) => {
     try {
       await set(ref(database, `users/${key}`), {
@@ -70,36 +58,44 @@ export default function AccountPage() {
     const savedMail = localStorage.getItem('comflyy_session_email');
     if (savedMail) {
       const key = makeUserKey(savedMail);
+      const savedName = localStorage.getItem(`comflyy_name_${key}`) || savedMail.split('@')[0];
+      const savedImg = localStorage.getItem(`comflyy_img_${key}`);
+
+      setEmail(savedMail);
+      setUserKey(key);
+      setUserName(savedName);
+      setProfileImage(savedImg);
+      setIsLoggedIn(true);
+
+      // ดึงข้อมูลอัปเดตจาก Firebase
       fetchUserProfile(key, savedMail);
-    } else {
-      setLoading(false);
     }
+    setLoading(false);
   }, []);
 
-  // ฟังก์ชันกด เข้าสู่ระบบ / สมัครสมาชิก
-  const handleAuth = async (e: React.FormEvent) => {
+  // ฟังก์ชัน เข้าสู่ระบบ / สมัครสมาชิก (ปลดล็อกทันที)
+  const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputEmail || !inputPassword) {
-      alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+    if (!inputEmail) {
+      alert('กรุณากรอกอีเมล');
       return;
     }
 
     const cleanedEmail = inputEmail.trim();
     const key = makeUserKey(cleanedEmail);
+    const finalName = inputName.trim() || cleanedEmail.split('@')[0];
 
-    // บันทึก Session ลง LocalStorage เครื่อง
+    // 1. บันทึกลงเครื่องทันทีเพื่อล็อกอิน
     localStorage.setItem('comflyy_session_email', cleanedEmail);
+    localStorage.setItem(`comflyy_name_${key}`, finalName);
 
-    if (isRegisterMode) {
-      const finalName = inputName.trim() || cleanedEmail.split('@')[0];
-      setUserName(finalName);
-      setEmail(cleanedEmail);
-      setUserKey(key);
-      setIsLoggedIn(true);
-      await saveUserProfileToFirebase(key, finalName, cleanedEmail, profileImage);
-    } else {
-      await fetchUserProfile(key, cleanedEmail);
-    }
+    setEmail(cleanedEmail);
+    setUserKey(key);
+    setUserName(finalName);
+    setIsLoggedIn(true);
+
+    // 2. บันทึกลง Firebase Database เบื้องหลัง
+    saveUserProfileToFirebase(key, finalName, cleanedEmail, profileImage);
 
     setInputEmail('');
     setInputPassword('');
@@ -122,6 +118,7 @@ export default function AccountPage() {
     const newName = inputName.trim();
     setUserName(newName);
     setIsEditingName(false);
+    localStorage.setItem(`comflyy_name_${userKey}`, newName);
     await saveUserProfileToFirebase(userKey, newName, email, profileImage);
   };
 
@@ -138,6 +135,7 @@ export default function AccountPage() {
       reader.onloadend = async () => {
         const base64String = reader.result as string;
         setProfileImage(base64String);
+        localStorage.setItem(`comflyy_img_${userKey}`, base64String);
         await saveUserProfileToFirebase(userKey, userName, email, base64String);
       };
       reader.readAsDataURL(file);
