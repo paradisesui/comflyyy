@@ -8,7 +8,7 @@ import { ref, set, get, child } from 'firebase/database';
 export default function AccountPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const [userKey, setUserKey] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
@@ -20,12 +20,12 @@ export default function AccountPage() {
   const [inputName, setInputName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
 
-  // Helper สำหรับแปลงอีเมลเป็น Database Safe Key
+  // Helper แปลงอีเมลเป็นคีย์สำหรับ Database (ตัดอักขระพิเศษออก)
   const makeUserKey = (mail: string) => {
-    return mail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    return mail.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
   };
 
-  // ดึงข้อมูล Profile จาก Firebase Database โดยใช้ User Key
+  // ดึงข้อมูล Profile จาก Firebase Database
   const fetchUserProfile = async (key: string, userMail: string) => {
     try {
       setLoading(true);
@@ -37,7 +37,6 @@ export default function AccountPage() {
         setUserName(data.name || userMail.split('@')[0]);
         setProfileImage(data.image || null);
       } else {
-        // หากยังไม่มีข้อมูลใน DB ให้ตั้งค่าเริ่มต้น
         const defaultName = userMail.split('@')[0];
         setUserName(defaultName);
         await saveUserProfileToFirebase(key, defaultName, userMail, null);
@@ -52,7 +51,7 @@ export default function AccountPage() {
     }
   };
 
-  // บันทึกข้อมูล Profile ลง Firebase Realtime Database
+  // บันทึกข้อมูล Profile ลง Firebase Database
   const saveUserProfileToFirebase = async (key: string, name: string, mail: string, image: string | null) => {
     try {
       await set(ref(database, `users/${key}`), {
@@ -66,16 +65,18 @@ export default function AccountPage() {
     }
   };
 
-  // เช็ค Session เดิมจาก localStorage
+  // ตรวจสอบ Session เมื่อเปิดหน้าเว็บ
   useEffect(() => {
     const savedMail = localStorage.getItem('comflyy_session_email');
     if (savedMail) {
       const key = makeUserKey(savedMail);
       fetchUserProfile(key, savedMail);
+    } else {
+      setLoading(false);
     }
   }, []);
 
-  // เข้าสู่ระบบ / สมัครสมาชิก (ไม่ต้องพึ่ง Firebase Auth)
+  // ฟังก์ชันกด เข้าสู่ระบบ / สมัครสมาชิก
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) {
@@ -83,18 +84,21 @@ export default function AccountPage() {
       return;
     }
 
-    const key = makeUserKey(inputEmail);
-    localStorage.setItem('comflyy_session_email', inputEmail);
+    const cleanedEmail = inputEmail.trim();
+    const key = makeUserKey(cleanedEmail);
+
+    // บันทึก Session ลง LocalStorage เครื่อง
+    localStorage.setItem('comflyy_session_email', cleanedEmail);
 
     if (isRegisterMode) {
-      const finalName = inputName || inputEmail.split('@')[0];
+      const finalName = inputName.trim() || cleanedEmail.split('@')[0];
       setUserName(finalName);
-      setEmail(inputEmail);
+      setEmail(cleanedEmail);
       setUserKey(key);
       setIsLoggedIn(true);
-      await saveUserProfileToFirebase(key, finalName, inputEmail, profileImage);
+      await saveUserProfileToFirebase(key, finalName, cleanedEmail, profileImage);
     } else {
-      await fetchUserProfile(key, inputEmail);
+      await fetchUserProfile(key, cleanedEmail);
     }
 
     setInputEmail('');
@@ -107,15 +111,18 @@ export default function AccountPage() {
     localStorage.removeItem('comflyy_session_email');
     setIsLoggedIn(false);
     setUserKey('');
+    setUserName('');
+    setEmail('');
     setProfileImage(null);
   };
 
   // บันทึกการเปลี่ยนชื่อ
   const handleSaveName = async () => {
     if (!inputName.trim() || !userKey) return;
-    setUserName(inputName);
+    const newName = inputName.trim();
+    setUserName(newName);
     setIsEditingName(false);
-    await saveUserProfileToFirebase(userKey, inputName, email, profileImage);
+    await saveUserProfileToFirebase(userKey, newName, email, profileImage);
   };
 
   // อัปโหลดรูปภาพ
@@ -140,7 +147,7 @@ export default function AccountPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#090d16', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        กำลังโหลดข้อมูลโปรไฟล์...
+        กำลังโหลดข้อมูล...
       </div>
     );
   }
