@@ -71,31 +71,33 @@ export default function Home() {
     try {
       const logsRef = ref(database, 'logs');
       
-      // 💡 ใช้ orderByKey() เพื่อสั่งเรียงตัวเลข Timestamp แล้วเอา 1 ตัวล่าสุด
-      const latestLogQuery = query(logsRef, orderByKey(), limitToLast(1));
-      
-      const unsubscribe = onValue(latestLogQuery, (snapshot) => {
+      // ดึง realtime logs ตรงๆ ไม่ผ่าน query filter
+      const unsubscribe = onValue(logsRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
           
-          // ดึง object ล่าสุดออกมา
-          const keys = Object.keys(data);
-          const latestKey = keys[keys.length - 1];
+          // ดึง keys ทั้งหมดแล้วเรียงตามตัวเลข/ข้อความ
+          const keys = Object.keys(data).sort(); 
+          const latestKey = keys[keys.length - 1]; // เลือกคีย์ตัวสุดท้าย (ล่าสุด)
           const latestItem = data[latestKey];
+
+          console.log("Firebase Retrieved Item:", latestItem); // ดูค่าใน Console F12 ได้
 
           if (latestItem) {
             setSensor({
-              co2: latestItem.co2 ?? 0,
-              humidity: latestItem.humidity ?? 0,
-              lux: latestItem.lux ?? 0,
-              pm10: latestItem.pm10 ?? 0,
-              pm1_0: latestItem.pm1_0 ?? 0,
-              pm2_5: latestItem.pm2_5 ?? 0,
-              sound: latestItem.sound ?? 0,
-              temperature: latestItem.temperature ?? 0,
-              timestamp: latestItem.timestamp ?? 0,
+              co2: Number(latestItem.co2) || 0,
+              humidity: Number(latestItem.humidity) || 0,
+              lux: Number(latestItem.lux) || 0,
+              pm10: Number(latestItem.pm10) || 0,
+              pm1_0: Number(latestItem.pm1_0) || 0,
+              pm2_5: Number(latestItem.pm2_5) || 0,
+              sound: Number(latestItem.sound) || 0,
+              temperature: Number(latestItem.temperature) || 0,
+              timestamp: Number(latestItem.timestamp) || 0,
             });
           }
+        } else {
+          console.log("No data found in /logs");
         }
         setLoading(false);
       }, (err) => {
@@ -105,6 +107,7 @@ export default function Home() {
 
       return () => unsubscribe();
     } catch (e) {
+      console.error("Catch Error:", e);
       setLoading(false);
     }
   }, []);
