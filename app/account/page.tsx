@@ -2,39 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-// --- เริ่มต้นตั้งค่า Firebase แบบกะทัดรัดภายในไฟล์ ---
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getDatabase, ref, set, get, child } from 'firebase/database';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  onAuthStateChanged, 
-  signOut 
-} from 'firebase/auth';
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const database = getDatabase(app);
-const auth = getAuth(app);
-// --- สิ้นสุดการตั้งค่า Firebase ---
+import { database } from '@/app/lib/firebase';
+import { ref, set, get, child } from 'firebase/database';
 
 export default function AccountPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const [userId, setUserId] = useState<string>('');
+  const [userKey, setUserKey] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -44,20 +20,31 @@ export default function AccountPage() {
   const [inputName, setInputName] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
 
-  // ดึงข้อมูล Profile จาก Firebase Realtime Database
-  const fetchUserProfile = async (uid: string, userEmail: string) => {
+  // Helper สำหรับแปลงอีเมลเป็น Database Safe Key
+  const makeUserKey = (mail: string) => {
+    return mail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  };
+
+  // ดึงข้อมูล Profile จาก Firebase Database โดยใช้ User Key
+  const fetchUserProfile = async (key: string, userMail: string) => {
     try {
+      setLoading(true);
       const dbRef = ref(database);
-      const snapshot = await get(child(dbRef, `users/${uid}`));
-      
+      const snapshot = await get(child(dbRef, `users/${key}`));
+
       if (snapshot.exists()) {
         const data = snapshot.val();
-        setUserName(data.name || 'ผู้ใช้งาน COMFLYY');
+        setUserName(data.name || userMail.split('@')[0]);
         setProfileImage(data.image || null);
       } else {
-        setUserName(userEmail.split('@')[0]);
+        // หากยังไม่มีข้อมูลใน DB ให้ตั้งค่าเริ่มต้น
+        const defaultName = userMail.split('@')[0];
+        setUserName(defaultName);
+        await saveUserProfileToFirebase(key, defaultName, userMail, null);
       }
-      setEmail(userEmail);
+      setEmail(userMail);
+      setUserKey(key);
+      setIsLoggedIn(true);
     } catch (error) {
       console.error("Error fetching user profile:", error);
     } finally {
@@ -65,10 +52,10 @@ export default function AccountPage() {
     }
   };
 
-  // บันทึกข้อมูล Profile ลง Database
-  const saveUserProfileToFirebase = async (uid: string, name: string, mail: string, image: string | null) => {
+  // บันทึกข้อมูล Profile ลง Firebase Realtime Database
+  const saveUserProfileToFirebase = async (key: string, name: string, mail: string, image: string | null) => {
     try {
-      await set(ref(database, `users/${uid}`), {
+      await set(ref(database, `users/${key}`), {
         name,
         email: mail,
         image,
@@ -79,23 +66,16 @@ export default function AccountPage() {
     }
   };
 
-  // ติดตามสถานะการล็อกอินจริงผ่าน Firebase Auth
+  // เช็ค Session เดิมจาก localStorage
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUserId(user.uid);
-        setIsLoggedIn(true);
-        fetchUserProfile(user.uid, user.email || '');
-      } else {
-        setIsLoggedIn(false);
-        setUserId('');
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
+    const savedMail = localStorage.getItem('comflyy_session_email');
+    if (savedMail) {
+      const key = makeUserKey(savedMail);
+      fetchUserProfile(key, savedMail);
+    }
   }, []);
 
-  // เข้าสู่ระบบ / สมัครสมาชิก
+  // เข้าสู่ระบบ / สมัครสมาชิก (ไม่ต้องพึ่ง Firebase Auth)
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) {
@@ -103,48 +83,45 @@ export default function AccountPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      if (isRegisterMode) {
-        const userCredential = await createUserWithEmailAndPassword(auth, inputEmail, inputPassword);
-        const user = userCredential.user;
-        const finalName = inputName || inputEmail.split('@')[0];
-        
-        setUserName(finalName);
-        setEmail(inputEmail);
-        await saveUserProfileToFirebase(user.uid, finalName, inputEmail, profileImage);
-      } else {
-        await signInWithEmailAndPassword(auth, inputEmail, inputPassword);
-      }
-      
-      setInputEmail('');
-      setInputPassword('');
-      setInputName('');
-    } catch (error: any) {
-      alert(`เกิดข้อผิดพลาด: ${error.message}`);
-      setLoading(false);
+    const key = makeUserKey(inputEmail);
+    localStorage.setItem('comflyy_session_email', inputEmail);
+
+    if (isRegisterMode) {
+      const finalName = inputName || inputEmail.split('@')[0];
+      setUserName(finalName);
+      setEmail(inputEmail);
+      setUserKey(key);
+      setIsLoggedIn(true);
+      await saveUserProfileToFirebase(key, finalName, inputEmail, profileImage);
+    } else {
+      await fetchUserProfile(key, inputEmail);
     }
+
+    setInputEmail('');
+    setInputPassword('');
+    setInputName('');
   };
 
   // ออกจากระบบ
-  const handleLogout = async () => {
-    await signOut(auth);
+  const handleLogout = () => {
+    localStorage.removeItem('comflyy_session_email');
     setIsLoggedIn(false);
+    setUserKey('');
     setProfileImage(null);
   };
 
   // บันทึกการเปลี่ยนชื่อ
   const handleSaveName = async () => {
-    if (!inputName.trim() || !userId) return;
+    if (!inputName.trim() || !userKey) return;
     setUserName(inputName);
     setIsEditingName(false);
-    await saveUserProfileToFirebase(userId, inputName, email, profileImage);
+    await saveUserProfileToFirebase(userKey, inputName, email, profileImage);
   };
 
   // อัปโหลดรูปภาพ
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && userId) {
+    if (file && userKey) {
       if (file.size > 1 * 1024 * 1024) {
         alert('ขนาดไฟล์รูปภาพต้องไม่เกิน 1MB');
         return;
@@ -154,7 +131,7 @@ export default function AccountPage() {
       reader.onloadend = async () => {
         const base64String = reader.result as string;
         setProfileImage(base64String);
-        await saveUserProfileToFirebase(userId, userName, email, base64String);
+        await saveUserProfileToFirebase(userKey, userName, email, base64String);
       };
       reader.readAsDataURL(file);
     }
@@ -163,7 +140,7 @@ export default function AccountPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#090d16', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        กำลังโหลดข้อมูล...
+        กำลังโหลดข้อมูลโปรไฟล์...
       </div>
     );
   }
