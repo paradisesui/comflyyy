@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
-import { ref, query, limitToLast, onValue } from 'firebase/database';
+import { ref, query, orderByKey, limitToLast, onValue } from 'firebase/database';
 
 interface SensorData {
   co2: number;
@@ -70,18 +70,31 @@ export default function Home() {
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
-      // ดึง 1 รายการล่าสุดจากกิ่ง logs
-      const latestLogQuery = query(logsRef, limitToLast(1));
+      
+      // 💡 ใช้ orderByKey() เพื่อสั่งเรียงตัวเลข Timestamp แล้วเอา 1 ตัวล่าสุด
+      const latestLogQuery = query(logsRef, orderByKey(), limitToLast(1));
       
       const unsubscribe = onValue(latestLogQuery, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
-          const keys = Object.keys(data);
-          // 💡 แก้ไขจุดสำคัญ: ดึงข้อมูลตัวล่าสุดจากคีย์ท้ายสุดเสมอ
-          const latestKey = keys[keys.length - 1]; 
           
-          if (data[latestKey]) {
-            setSensor(data[latestKey]);
+          // ดึง object ล่าสุดออกมา
+          const keys = Object.keys(data);
+          const latestKey = keys[keys.length - 1];
+          const latestItem = data[latestKey];
+
+          if (latestItem) {
+            setSensor({
+              co2: latestItem.co2 ?? 0,
+              humidity: latestItem.humidity ?? 0,
+              lux: latestItem.lux ?? 0,
+              pm10: latestItem.pm10 ?? 0,
+              pm1_0: latestItem.pm1_0 ?? 0,
+              pm2_5: latestItem.pm2_5 ?? 0,
+              sound: latestItem.sound ?? 0,
+              temperature: latestItem.temperature ?? 0,
+              timestamp: latestItem.timestamp ?? 0,
+            });
           }
         }
         setLoading(false);
@@ -89,7 +102,7 @@ export default function Home() {
         console.error("Firebase Error:", err);
         setLoading(false);
       });
-      
+
       return () => unsubscribe();
     } catch (e) {
       setLoading(false);
@@ -374,7 +387,7 @@ export default function Home() {
               </span>
               <div style={{ margin: '6px 0', display: 'flex', alignItems: 'baseline', gap: '2px' }}>
                 <span style={{ fontSize: '30px', fontWeight: '800', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f8fafc', lineHeight: '1' }}>
-                  {sensor && sensor.temperature !== undefined ? `${sensor.temperature.toFixed(1)}°` : '--'}
+                  {sensor ? `${sensor.temperature.toFixed(1)}°` : '--'}
                 </span>
                 <span style={{ fontSize: '16px', color: '#64748b', fontWeight: '700' }}>C</span>
               </div>
@@ -408,7 +421,7 @@ export default function Home() {
               </span>
               <div style={{ margin: '6px 0', display: 'flex', alignItems: 'baseline', gap: '2px' }}>
                 <span style={{ fontSize: '30px', fontWeight: '800', color: '#f8fafc', lineHeight: '1' }}>
-                  {sensor && sensor.humidity !== undefined ? `${sensor.humidity.toFixed(0)}` : '--'}
+                  {sensor ? `${sensor.humidity.toFixed(0)}` : '--'}
                 </span>
                 <span style={{ fontSize: '16px', color: '#64748b', fontWeight: '700' }}>%</span>
               </div>
@@ -442,7 +455,7 @@ export default function Home() {
               </span>
               <div style={{ margin: '6px 0', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                 <span style={{ fontSize: '30px', fontWeight: '800', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f8fafc', lineHeight: '1' }}>
-                  {sensor && sensor.co2 !== undefined ? `${sensor.co2}` : '--'}
+                  {sensor ? `${sensor.co2}` : '--'}
                 </span>
                 <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>ppm</span>
               </div>
@@ -476,7 +489,7 @@ export default function Home() {
               </span>
               <div style={{ margin: '6px 0', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                 <span style={{ fontSize: '30px', fontWeight: '800', color: '#f8fafc', lineHeight: '1' }}>
-                  {sensor && sensor.lux !== undefined ? `${sensor.lux.toFixed(1)}` : '--'}
+                  {sensor ? `${sensor.lux.toFixed(1)}` : '--'}
                 </span>
                 <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Lux</span>
               </div>
