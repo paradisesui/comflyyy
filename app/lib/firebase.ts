@@ -3,7 +3,7 @@ import { getDatabase } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCmmMKOVH5K9T6TwpajxwzPSHeyb866T1A",
+  apiKey: "AIzaSyCmmMKOVHK5K9T6TwpajxwzPSHeyb866T1A", // 👈 เพิ่ม  ไว้ท้ายสุด
   authDomain: "room-envi-test.firebaseapp.com",
   databaseURL: "https://room-envi-test-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "room-envi-test",
