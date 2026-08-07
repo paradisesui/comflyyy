@@ -24,7 +24,6 @@ export default function SensitivityPage() {
     const unsubEvents = onValue(eventsRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        // ดึงข้อมูลของวันที่ล่าสุด
         const dates = Object.keys(data).sort();
         const latestDate = dates[dates.length - 1];
         setEventData(data[latestDate]);
@@ -43,7 +42,7 @@ export default function SensitivityPage() {
   const accumulatedDays = summaryData?.totalAccumulatedDays || 0;
   const evaluatedDate = summaryData?.evaluatedDate || '-';
 
-  // ตัวแปลภาษาเซ็นเซอร์
+  // แปลงชื่อเซ็นเซอร์เป็นภาษาไทย
   const formatSensorName = (sensorKey: string) => {
     switch (sensorKey) {
       case 'sound_db': return '🔊 เสียงรบกวน (Noise)';
@@ -54,6 +53,22 @@ export default function SensitivityPage() {
       case 'pm25': return '🌫️ ฝุ่น PM2.5';
       default: return sensorKey || 'ไม่พบปัจจัยกระตุ้น';
     }
+  };
+
+  // แสดงผลสถานะเซ็นเซอร์เพื่อป้องกันความสับสนของผู้ใช้
+  const renderTriggerStatus = (count: number) => {
+    if (count > 0) {
+      return (
+        <strong style={{ fontSize: '18px', color: '#38bdf8', display: 'block', marginTop: '2px' }}>
+          {count} <span style={{ fontSize: '11px', fontWeight: '400', color: '#94a3b8' }}>ครั้ง</span>
+        </strong>
+      );
+    }
+    return (
+      <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700', display: 'block', marginTop: '6px' }}>
+        🟢 สภาพแวดล้อมปกติ
+      </span>
+    );
   };
 
   const triggerBreakdown = eventData?.sensorTriggerBreakdown || {};
@@ -156,7 +171,7 @@ export default function SensitivityPage() {
         {/* 1. แสดงผลปัจจัยหลักจาก Timestamp Event Correlation */}
         <section className="main-card">
           <span style={{ fontSize: '11px', color: '#facc15', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            ⚠️ ปัจจัยหลักที่กระตุ้นให้เกิดการดิ้น/ตื่น (Minute-by-Minute Analysis)
+            ⚠️ ปัจจัยหลักที่กระตุ้นให้เกิดการดิ้น/ตื่น (MINUTE-BY-MINUTE ANALYSIS)
           </span>
           <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fef08a', margin: 0 }}>
             {formatSensorName(eventData?.primarySensorTrigger)}
@@ -184,9 +199,7 @@ export default function SensitivityPage() {
             {Object.entries(triggerBreakdown).map(([key, count]) => (
               <div key={key} style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '12px', border: '1px solid #1e293b' }}>
                 <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>{formatSensorName(key)}</span>
-                <strong style={{ fontSize: '18px', color: (count as number) > 0 ? '#38bdf8' : '#64748b', display: 'block', marginTop: '2px' }}>
-                  {count as number} <span style={{ fontSize: '11px', fontWeight: '400' }}>ครั้ง</span>
-                </strong>
+                {renderTriggerStatus(count as number)}
               </div>
             ))}
           </div>
