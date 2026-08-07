@@ -1,9 +1,66 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ref, onValue } from 'firebase/database';
+// เช็ค Path ให้ตรงกับโครงสร้างโฟลเดอร์ในโปรเจกต์ของคุณ
+import { database as db } from '../lib/firebase';
 
 export default function SmartWatchPersonaPage() {
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 🔗 อ่านผลสรุปสะสมประจำวันจาก Firebase
+    const summaryRef = ref(db, 'personal_sensitivity/summary');
+    const unsubscribe = onValue(summaryRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSummaryData(snapshot.val());
+      } else {
+        setSummaryData(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // ดึงข้อมูล Real Metric จาก Firebase
+  const daily = summaryData?.dailyMetrics;
+  const cumulative = summaryData?.cumulativeSummary;
+
+  // คำนวณระยะเวลานอนแต่ละ Stage
+  const deepMins = daily?.deepSleepMinutes || 0;
+  const remMins = daily?.remSleepMinutes || 0;
+  const lightMins = daily?.lightSleepMinutes || 0;
+  const totalMins = deepMins + remMins + lightMins;
+
+  // คำนวณ % สัดส่วนการนอน (Dynamic 100% ไม่มีค่าจำลอง)
+  const deepPct = totalMins > 0 ? Math.round((deepMins / totalMins) * 100) : 0;
+  const remPct = totalMins > 0 ? Math.round((remMins / totalMins) * 100) : 0;
+  const lightPct = totalMins > 0 ? Math.max(0, 100 - deepPct - remPct) : 0;
+
+  const formatHoursMins = (mins: number) => {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return `${h}h ${m}m`;
+  };
+
+  // Dynamic Status Message ตามค่า Stress & Score จริง
+  const getStressStatus = (stress: number) => {
+    if (stress === 0) return 'ยังไม่มีข้อมูล';
+    if (stress < 25) return '🟢 ความเครียดต่ำ ผ่อนคลายดี';
+    if (stress < 50) return '🟡 ความเครียดปานกลาง';
+    return '🔴 ความเครียดสูงขณะนอน';
+  };
+
+  const getScoreStatus = (score: number) => {
+    if (score === 0) return 'ยังไม่มีข้อมูล';
+    if (score >= 80) return '🟢 การนอนอยู่ในเกณฑ์ดีเยี่ยม';
+    if (score >= 60) return '🟡 การนอนอยู่ในเกณฑ์ปานกลาง';
+    return '🔴 การนอนควรปรับปรุง';
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -73,7 +130,9 @@ export default function SmartWatchPersonaPage() {
           <Link href="/" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
             ← ย้อนกลับหน้าหลัก
           </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>SMART WATCH METRICS</span>
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+            SMART WATCH METRICS {summaryData ? `(สะสม ${summaryData.totalAccumulatedDays} วัน)` : ''}
+          </span>
         </div>
 
         <div>
@@ -81,7 +140,7 @@ export default function SmartWatchPersonaPage() {
             ⌚ สถิติการนอนหลับและหัวใจ (Smart Watch Sync)
           </h1>
           <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-            รายงานสัดส่วนระยะการนอนและแนวโน้มอัตราการเต้นของหัวใจจากนาฬิกาอัจฉริยะ
+            {loading ? 'กำลังโหลดข้อมูลจาก Firebase...' : cumulative?.statusMessage || 'รายงานสัดส่วนระยะการนอนและแนวโน้มอัตราการเต้นของหัวใจจากนาฬิกาอัจฉริยะ'}
           </p>
         </div>
 
@@ -101,39 +160,39 @@ export default function SmartWatchPersonaPage() {
                 📊 สัดส่วนระยะการนอนหลับ (Sleep Phase Breakdown)
               </span>
               <span style={{ fontSize: '11px', color: '#34d399', backgroundColor: '#10b98120', padding: '2px 8px', borderRadius: '8px', fontWeight: '700' }}>
-                รวม 7h 22m
+                รวม {formatHoursMins(totalMins)}
               </span>
             </div>
 
-            {/* Visual Progress Bar */}
+            {/* Visual Progress Bar (Dynamic %) */}
             <div style={{ width: '100%', height: '14px', backgroundColor: '#1e293b', borderRadius: '7px', overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: '25%', height: '100%', backgroundColor: '#6366f1' }} title="Deep Sleep 25%"></div>
-              <div style={{ width: '22%', height: '100%', backgroundColor: '#38bdf8' }} title="REM Sleep 22%"></div>
-              <div style={{ width: '53%', height: '100%', backgroundColor: '#334155' }} title="Light Sleep 53%"></div>
+              <div style={{ width: `${deepPct}%`, height: '100%', backgroundColor: '#6366f1' }} title={`Deep Sleep ${deepPct}%`}></div>
+              <div style={{ width: `${remPct}%`, height: '100%', backgroundColor: '#38bdf8' }} title={`REM Sleep ${remPct}%`}></div>
+              <div style={{ width: `${lightPct}%`, height: '100%', backgroundColor: '#334155' }} title={`Light Sleep ${lightPct}%`}></div>
             </div>
 
             <div className="sleep-stages-grid">
               <div style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '14px', border: '1px solid #1e293b' }}>
                 <span style={{ fontSize: '11px', color: '#818cf8', display: 'block', fontWeight: '700', marginBottom: '2px' }}>● Deep Sleep</span>
-                <strong style={{ fontSize: '16px', color: '#f8fafc', display: 'block' }}>1h 45m</strong>
-                <span style={{ fontSize: '10px', color: '#64748b' }}>25% (หลับสนิท)</span>
+                <strong style={{ fontSize: '16px', color: '#f8fafc', display: 'block' }}>{formatHoursMins(deepMins)}</strong>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>{deepPct}% (หลับสนิท)</span>
               </div>
 
               <div style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '14px', border: '1px solid #1e293b' }}>
                 <span style={{ fontSize: '11px', color: '#38bdf8', display: 'block', fontWeight: '700', marginBottom: '2px' }}>● REM Sleep</span>
-                <strong style={{ fontSize: '16px', color: '#f8fafc', display: 'block' }}>1h 32m</strong>
-                <span style={{ fontSize: '10px', color: '#64748b' }}>22% (ช่วงฝัน)</span>
+                <strong style={{ fontSize: '16px', color: '#f8fafc', display: 'block' }}>{formatHoursMins(remMins)}</strong>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>{remPct}% (ช่วงฝัน)</span>
               </div>
 
               <div style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '14px', border: '1px solid #1e293b' }}>
                 <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: '700', marginBottom: '2px' }}>● Light Sleep</span>
-                <strong style={{ fontSize: '16px', color: '#f8fafc', display: 'block' }}>3h 45m</strong>
-                <span style={{ fontSize: '10px', color: '#64748b' }}>53% (หลับตื้น)</span>
+                <strong style={{ fontSize: '16px', color: '#f8fafc', display: 'block' }}>{formatHoursMins(lightMins)}</strong>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>{lightPct}% (หลับตื้น)</span>
               </div>
             </div>
           </section>
 
-          {/* 2. แนวโน้มอัตราการเต้นหัวใจขณะนอน (Sleep Heart Rate & Recovery Trend) */}
+          {/* 2. แนวโน้มอัตราการเต้นหัวใจและ Sensitivity สะสม */}
           <section style={{
             backgroundColor: '#0f172a',
             padding: '20px',
@@ -144,32 +203,32 @@ export default function SmartWatchPersonaPage() {
             gap: '16px'
           }}>
             <span style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '800' }}>
-              ❤️ แนวโน้มอัตราการเต้นหัวใจขณะนอนหลับ (Heart Rate Trend)
+              ❤️ แนวโน้มอัตราการเต้นหัวใจและจุดอ่อนสะสม (Sleep & Sensitivity Trend)
             </span>
 
             <div className="hr-grid">
               <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '14px', border: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Resting Heart Rate</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Sleep Stress</span>
                 <div style={{ fontSize: '22px', fontWeight: '800', color: '#f43f5e', margin: '4px 0' }}>
-                  58 <span style={{ fontSize: '12px', fontWeight: '400', color: '#94a3b8' }}>BPM</span>
+                  {daily?.avgSleepStress || 0} <span style={{ fontSize: '12px', fontWeight: '400', color: '#94a3b8' }}>Score</span>
                 </div>
-                <span style={{ fontSize: '10px', color: '#34d399' }}>🟢 หัวใจผ่อนคลายดี</span>
+                <span style={{ fontSize: '10px', color: '#34d399' }}>{getStressStatus(daily?.avgSleepStress || 0)}</span>
               </div>
 
               <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '14px', border: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Avg Sleep HR</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Sleep Score</span>
                 <div style={{ fontSize: '22px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
-                  62 <span style={{ fontSize: '12px', fontWeight: '400', color: '#94a3b8' }}>BPM</span>
+                  {daily?.sleepScore || 0} <span style={{ fontSize: '12px', fontWeight: '400', color: '#94a3b8' }}>/ 100</span>
                 </div>
-                <span style={{ fontSize: '10px', color: '#34d399' }}>อยู่ในเกณฑ์ปกติ</span>
+                <span style={{ fontSize: '10px', color: '#34d399' }}>{getScoreStatus(daily?.sleepScore || 0)}</span>
               </div>
 
               <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '14px', border: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Body Recovery</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Sensitivity Score</span>
                 <div style={{ fontSize: '22px', fontWeight: '800', color: '#34d399', margin: '4px 0' }}>
-                  92%
+                  {cumulative?.overallSensitivityScore || 0}
                 </div>
-                <span style={{ fontSize: '10px', color: '#38bdf8' }}>⚡ ร่างกายฟื้นฟูเต็มที่</span>
+                <span style={{ fontSize: '10px', color: '#38bdf8' }}>⚡ ไวต่อ {cumulative?.avgRoomTemp || 0}°C</span>
               </div>
             </div>
           </section>
