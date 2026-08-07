@@ -1,0 +1,56 @@
+[
+  {
+    "dailySleepDTO": {
+      "calendarDate": "2026-07-02",
+      "sleepStartTimestampGMT": 1782919920000,
+      "sleepEndTimestampGMT": 1782945180000,
+      "deepSleepSeconds": 6360,
+      "lightSleepSeconds": 14760,
+      "remSleepSeconds": 3360,
+      "awakeSleepSeconds": 780,
+      "averageRespirationValue": 15.0,
+      "awakeCount": 1,
+      "avgSleepStress": 24.0,
+      "sleepScores": {
+        "overall": { "value": 72 }
+      }
+    },
+    "restlessMomentsCount": 58
+  },
+  {
+    "dailySleepDTO": {
+      "calendarDate": "2026-07-01",
+      "sleepStartTimestampGMT": 1782833820000,
+      "sleepEndTimestampGMT": 1782857431000,
+      "deepSleepSeconds": 6600,
+      "lightSleepSeconds": 13380,
+      "remSleepSeconds": 3660,
+      "awakeSleepSeconds": 0,
+      "averageRespirationValue": 14.0,
+      "awakeCount": 0,
+      "avgSleepStress": 19.0,
+      "sleepScores": {
+        "overall": { "value": 78 }
+      }
+    },
+    "restlessMomentsCount": 32
+  },
+  {
+    "dailySleepDTO": {
+      "calendarDate": "2026-06-30",
+      "sleepStartTimestampGMT": 1782759120000,
+      "sleepEndTimestampGMT": 1782771600000,
+      "deepSleepSeconds": 6120,
+      "lightSleepSeconds": 5760,
+      "remSleepSeconds": 540,
+      "awakeSleepSeconds": 60,
+      "averageRespirationValue": 15.0,
+      "awakeCount": 0,
+      "avgSleepStress": 47.0,
+      "sleepScores": {
+        "overall": { "value": 31 }
+      }
+    },
+    "restlessMomentsCount": 13
+  }
+]
