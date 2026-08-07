@@ -235,7 +235,7 @@ export default function SensitivityPage() {
             <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', margin: '4px 0' }}>
               {cumulative?.overallSensitivityScore ?? 0} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนความไวสะสมย้อนหลัง</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>ความไวในการอ่อนไหวต่อเสียงรบกวน</span>
           </div>
 
           <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
