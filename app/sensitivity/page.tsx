@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ref, onValue } from 'firebase/database';
-import { db } from '../lib/firebase';
+import { database as db } from '../lib/firebase';
 
 export default function SensitivityPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
@@ -11,29 +11,54 @@ export default function SensitivityPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. ดึงข้อมูลสรุปสะสมภาพรวม
-    const summaryRef = ref(db, 'personal_sensitivity/summary');
-    const unsubSummary = onValue(summaryRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setSummaryData(snapshot.val());
-      }
-    });
+    if (!db) return;
 
-    // 2. ดึงข้อมูลการจับคู่ Event ระดับนาทีรายเซ็นเซอร์
-    const eventsRef = ref(db, 'personal_sensitivity/all_sensors_events');
-    const unsubEvents = onValue(eventsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const dates = Object.keys(data).sort();
-        const latestDate = dates[dates.length - 1];
-        setEventData(data[latestDate]);
-      }
+    let unsubSummary: (() => void) | undefined;
+    let unsubEvents: (() => void) | undefined;
+
+    try {
+      // 1. ดึงข้อมูลสรุปสะสมภาพรวม
+      const summaryRef = ref(db, 'personal_sensitivity/summary');
+      unsubSummary = onValue(
+        summaryRef,
+        (snapshot) => {
+          if (snapshot && snapshot.exists()) {
+            setSummaryData(snapshot.val());
+          }
+        },
+        (error) => console.error('Error reading summary:', error)
+      );
+
+      // 2. ดึงข้อมูลการจับคู่ Event รายเซ็นเซอร์
+      const eventsRef = ref(db, 'personal_sensitivity/all_sensors_events');
+      unsubEvents = onValue(
+        eventsRef,
+        (snapshot) => {
+          if (snapshot && snapshot.exists()) {
+            const data = snapshot.val();
+            if (data && typeof data === 'object') {
+              const dates = Object.keys(data).sort();
+              if (dates.length > 0) {
+                const latestDate = dates[dates.length - 1];
+                setEventData(data[latestDate]);
+              }
+            }
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Error reading events:', error);
+          setLoading(false);
+        }
+      );
+    } catch (err) {
+      console.error('Firebase initialization error:', err);
       setLoading(false);
-    });
+    }
 
     return () => {
-      unsubSummary();
-      unsubEvents();
+      if (unsubSummary) unsubSummary();
+      if (unsubEvents) unsubEvents();
     };
   }, []);
 
@@ -42,7 +67,6 @@ export default function SensitivityPage() {
   const accumulatedDays = summaryData?.totalAccumulatedDays || 0;
   const evaluatedDate = summaryData?.evaluatedDate || '-';
 
-  // แปลงชื่อเซ็นเซอร์เป็นภาษาไทย
   const formatSensorName = (sensorKey: string) => {
     switch (sensorKey) {
       case 'sound_db': return '🔊 เสียงรบกวน (Noise)';
@@ -55,7 +79,6 @@ export default function SensitivityPage() {
     }
   };
 
-  // แสดงผลสถานะเซ็นเซอร์เพื่อป้องกันความสับสน
   const renderTriggerStatus = (count: number) => {
     if (count > 0) {
       return (
