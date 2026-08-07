@@ -19,6 +19,31 @@ export default function HistoryPage() {
   const [logs, setLogs] = useState<{ id: string; data: SleepLogItem }[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ฟังก์ชันแปลงเวลาอย่างถูกต้อง (รองรับทั้งวินาที และ มิลลิวินาที)
+  const formatTimestamp = (timestamp: number | string) => {
+    if (!timestamp) return 'ไม่ระบุเวลา';
+
+    let num = Number(timestamp);
+    if (isNaN(num) || num === 0) return 'เวลาไม่ถูกต้อง';
+
+    // ถ้าค่ามาเป็นระดับ Seconds (< 1,000,000,000,000) ให้คูณ 1000 แปลงเป็น Milliseconds
+    if (num < 1000000000000) {
+      num = num * 1000;
+    }
+
+    const date = new Date(num);
+
+    return date.toLocaleString('th-TH', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
+
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
@@ -89,9 +114,7 @@ export default function HistoryPage() {
             </div>
           ) : (
             logs.map((item) => {
-              const dateStr = item.data.timestamp
-                ? new Date(item.data.timestamp).toLocaleString('th-TH')
-                : 'ไม่ระบุเวลา';
+              const dateStr = formatTimestamp(item.data.timestamp);
 
               return (
                 <div key={item.id} style={{
