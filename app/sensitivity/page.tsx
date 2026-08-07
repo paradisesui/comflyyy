@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ref, onValue } from 'firebase/database';
-import { database as db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 
 export default function SensitivityPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
@@ -55,7 +55,7 @@ export default function SensitivityPage() {
     }
   };
 
-  // แสดงผลสถานะเซ็นเซอร์เพื่อป้องกันความสับสนของผู้ใช้
+  // แสดงผลสถานะเซ็นเซอร์เพื่อป้องกันความสับสน
   const renderTriggerStatus = (count: number) => {
     if (count > 0) {
       return (
@@ -205,7 +205,7 @@ export default function SensitivityPage() {
           </div>
         </section>
 
-        {/* 3. การ์ดแสดงสถิติคะแนนความไวสะสมภาพรวม */}
+        {/* 3. การ์ดแสดงสถิติคะแนนความไวสะสมภาพรวมและ Combined Score */}
         <div className="metrics-grid">
           <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Overall Sensitivity Score</span>
@@ -216,11 +216,13 @@ export default function SensitivityPage() {
           </div>
 
           <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Sleep Score ล่าสุด</span>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Combined Sleep Score</span>
             <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
-              {daily?.sleepScore ?? 0} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
+              {daily?.combinedSleepScore ?? 0} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนคุณภาพการนอนล่าสุด</span>
+            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+              (Garmin: {daily?.garminSleepScore ?? 0} | Room Env: {daily?.roomEnvironmentScore ?? 0})
+            </span>
           </div>
         </div>
 

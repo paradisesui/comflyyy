@@ -2,107 +2,147 @@ import json
 import requests
 from datetime import datetime
 
-# 🔗 URL ของ Firebase Realtime Database
 DATABASE_URL = "https://room-envi-test-default-rtdb.asia-southeast1.firebasedatabase.app"
 
-def convert_ms_to_datetime(ms):
-    if not ms:
-        return None
-    return datetime.fromtimestamp(ms / 1000.0).strftime('%Y-%m-%d %H:%M:%S')
+def parse_iso_to_ms(iso_str):
+    if not iso_str: 
+        return 0
+    dt = datetime.strptime(iso_str.split('.')[0], "%Y-%m-%dT%H:%M:%S")
+    return int(dt.timestamp() * 1000)
+
+def calculate_room_score(avg_temp, avg_sound, avg_hum):
+    """คำนวณคะแนนสภาพแวดล้อมห้อง (0-100)"""
+    score = 100
+    # 1. เช็คอุณหภูมิห้อง (เหมาะสมที่สุด 23-25°C)
+    if avg_temp > 25:
+        score -= (avg_temp - 25) * 5
+    elif avg_temp < 23:
+        score -= (23 - avg_temp) * 5
+
+    # 2. เช็คเสียงรบกวน (เหมาะสมที่สุด <= 45 dB)
+    if avg_sound > 45:
+        score -= (avg_sound - 45) * 2
+
+    # 3. เช็คความชื้น (เหมาะสมที่สุด 45-60%)
+    if avg_hum > 60:
+        score -= (avg_hum - 60) * 2
+    elif avg_hum < 45:
+        score -= (45 - avg_hum) * 2
+
+    return max(0, min(100, round(score, 1)))
 
 def main():
     try:
-        # 1. โหลดข้อมูล JSON จากเพื่อน/นาฬิกา
+        # 1. โหลดข้อมูล Garmin
         with open("garmin_friend_data.json", "r", encoding="utf-8") as f:
             records = json.load(f)
 
-        # เรียงลำดับข้อมูลจากวันเก่าไปวันใหม่
         records.sort(key=lambda x: x.get("dailySleepDTO", {}).get("calendarDate", ""))
 
-        print("🔄 ดึงข้อมูลเซ็นเซอร์จาก Firebase...")
+        print("🔄 ดึงข้อมูลเซ็นเซอร์ทั้งหมดจาก Firebase...")
         sensor_res = requests.get(f"{DATABASE_URL}/sensors.json")
         sensors_data = sensor_res.json() if sensor_res.status_code == 200 and sensor_res.json() else {}
 
         accumulated_history = []
 
-        # 2. วนลูปสะสมข้อมูลทีละวัน
-        for index, garmin_record in enumerate(records, start=1):
+        for garmin_record in records:
             daily_dto = garmin_record.get("dailySleepDTO", {})
             calendar_date = daily_dto.get("calendarDate")
-            sleep_start_ms = daily_dto.get("sleepStartTimestampGMT")
-            sleep_end_ms = daily_dto.get("sleepEndTimestampGMT")
+            
+            # ดึงข้อมูลการดิ้น
+            restless_data = garmin_record.get("sleepRestlessMoments", [])
+            if isinstance(restless_data, dict):
+                restless_moments = list(restless_data.values())
+            elif isinstance(restless_data, list):
+                restless_moments = restless_data
+            else:
+                restless_moments = []
 
-            # Match ข้อมูลเซ็นเซอร์เฉพาะช่วงเวลานอนของวันนั้น
-            matched_temp = []
-            if isinstance(sensors_data, dict):
-                for ts, sensor_val in sensors_data.items():
-                    if isinstance(sensor_val, dict) and "timestamp_ms" in sensor_val:
-                        s_ms = sensor_val["timestamp_ms"]
-                        if sleep_start_ms <= s_ms <= sleep_end_ms:
-                            if "temperature" in sensor_val:
-                                matched_temp.append(sensor_val["temperature"])
-
-            avg_temp = round(sum(matched_temp) / len(matched_temp), 2) if matched_temp else 25.0
-            sleep_score = daily_dto.get("sleepScores", {}).get("overall", {}).get("value", 0)
+            total_restless_count = len(restless_moments) or garmin_record.get("restlessMomentsCount", 0) or daily_dto.get("restlessMomentsCount", 0)
             awake_count = daily_dto.get("awakeCount", 0)
-            restless_count = garmin_record.get("restlessMomentsCount", 0)
             avg_stress = daily_dto.get("avgSleepStress", 0)
+            garmin_sleep_score = daily_dto.get("sleepScores", {}).get("overall", {}).get("value", 0)
 
-            # ดึงเวลา Stage การนอน (นาที)
-            deep_mins = round(daily_dto.get("deepSleepSeconds", 0) / 60, 1)
-            rem_mins = round(daily_dto.get("remSleepSeconds", 0) / 60, 1)
-            light_mins = round(daily_dto.get("lightSleepSeconds", 0) / 60, 1)
+            # ดึงข้อมูลเซ็นเซอร์ช่วงเวลานอน
+            matched_temp, matched_sound, matched_hum = [], [], []
+            if isinstance(sensors_data, dict):
+                for sensor in sensors_data.values():
+                    if isinstance(sensor, dict):
+                        if "temperature" in sensor: matched_temp.append(sensor["temperature"])
+                        if "sound_db" in sensor: matched_sound.append(sensor["sound_db"])
+                        if "humidity" in sensor: matched_hum.append(sensor["humidity"])
 
-            # คำนวณ Sensitivity ของวันนั้นๆ
-            daily_sensitivity = round(((restless_count * 0.5) + (awake_count * 5) + (avg_stress * 0.3)) / (sleep_score / 100 if sleep_score > 0 else 1), 2)
+            avg_temp = round(sum(matched_temp)/len(matched_temp), 1) if matched_temp else 25.0
+            avg_sound = round(sum(matched_sound)/len(matched_sound), 1) if matched_sound else 40.0
+            avg_hum = round(sum(matched_hum)/len(matched_hum), 1) if matched_hum else 50.0
 
-            # บันทึกเข้าประวัติสะสม
+            # 2. คำนวณคะแนนห้อง และ Combined Sleep Score (Garmin 50% + Room 50%)
+            room_env_score = calculate_room_score(avg_temp, avg_sound, avg_hum)
+            combined_sleep_score = round((garmin_sleep_score + room_env_score) / 2, 1)
+
+            # 3. คำนวณ Daily Sensitivity
+            daily_sensitivity = round(((total_restless_count * 0.5) + (awake_count * 5) + (avg_stress * 0.3)) / (combined_sleep_score / 100 if combined_sleep_score > 0 else 1), 2)
+
             accumulated_history.append({
                 "date": calendar_date,
                 "sensitivity": daily_sensitivity,
                 "avgTemp": avg_temp,
-                "restless": restless_count
+                "restless": total_restless_count
             })
 
-            # 3. คำนวณค่าเฉลี่ยสะสมจนถึงวันปัจจุบัน (Cumulative Calculation)
+            # 4. คำนวณสถิติสะสม
             total_days = len(accumulated_history)
             cum_sensitivity = round(sum(item["sensitivity"] for item in accumulated_history) / total_days, 2)
             cum_avg_temp = round(sum(item["avgTemp"] for item in accumulated_history) / total_days, 2)
 
-            primary_factor = "อุณหภูมิห้อง (High Temp Sensitivity)" if cum_avg_temp > 24 else "สภาวะความเครียด (Stress Sensitivity)"
-            
-            payload = {
+            primary_factor = "อุณหภูมิห้อง (Temperature)" if cum_avg_temp > 24 else "เสียงรบกวน (Noise)"
+
+            payload_summary = {
                 "evaluatedDate": calendar_date,
                 "totalAccumulatedDays": total_days,
                 "dailyMetrics": {
-                    "sleepScore": sleep_score,
-                    "restlessMoments": restless_count,
+                    "garminSleepScore": garmin_sleep_score,
+                    "roomEnvironmentScore": room_env_score,
+                    "combinedSleepScore": combined_sleep_score,
+                    "restlessMoments": total_restless_count,
                     "todaySensitivity": daily_sensitivity,
-                    "avgSleepStress": avg_stress,
-                    "deepSleepMinutes": deep_mins,
-                    "remSleepMinutes": rem_mins,
-                    "lightSleepMinutes": light_mins
+                    "avgSleepStress": avg_stress
                 },
                 "cumulativeSummary": {
                     "overallSensitivityScore": cum_sensitivity,
                     "avgRoomTemp": cum_avg_temp,
                     "primarySensitivityFactor": primary_factor,
-                    "statusMessage": f"วิเคราะห์จากข้อมูลสะสม {total_days} วัน: ร่างกายมีความไวต่อ{primary_factor}"
+                    "statusMessage": f"วิเคราะห์จากข้อมูลสะสม {total_days} วัน: สภาพแวดล้อมที่มีผลต่อร่างกายมากที่สุดคือ {primary_factor}"
                 }
             }
 
-            # 4. ยิงข้อมูลขึ้น Firebase Node หลัก (summary)
-            target_url = f"{DATABASE_URL}/personal_sensitivity/summary.json"
-            requests.put(target_url, json=payload)
+            # บันทึกขึ้น Firebase Node หลัก
+            requests.put(f"{DATABASE_URL}/personal_sensitivity/summary.json", json=payload_summary)
 
-            # บันทึกประวัติแยกตามวันไว้ด้วย
-            daily_target_url = f"{DATABASE_URL}/personal_sensitivity/history/{calendar_date}.json"
-            requests.put(daily_target_url, json=payload)
+            # บันทึกรายละเอียดการกระตุ้นรายเซ็นเซอร์ (Sensor Breakdown Event)
+            trigger_counts = {
+                "sound_db": int(total_restless_count * 0.4) if avg_sound > 45 else 0,
+                "temperature": int(total_restless_count * 0.6) if avg_temp > 25 else 0,
+                "light_lux": 0,
+                "humidity": 0,
+                "co2": 0,
+                "pm25": 0
+            }
 
-            print(f"✅ วันที่ {calendar_date} (สะสม {total_days} วัน) -> สรุปความไวสะสม: {cum_sensitivity} | ตัวการหลัก: {primary_factor}")
+            sorted_triggers = sorted(trigger_counts.items(), key=lambda x: x[1], reverse=True)
+            top_sensor = sorted_triggers[0][0] if sorted_triggers[0][1] > 0 else "temperature"
 
-    except FileNotFoundError:
-        print("❌ ไม่พบไฟล์ garmin_friend_data.json")
+            payload_events = {
+                "calendarDate": calendar_date,
+                "totalRestlessEvents": total_restless_count,
+                "primarySensorTrigger": top_sensor,
+                "sensorTriggerBreakdown": trigger_counts
+            }
+
+            requests.put(f"{DATABASE_URL}/personal_sensitivity/all_sensors_events/{calendar_date}.json", json=payload_events)
+
+            print(f"✅ วันที่ {calendar_date} | Combined Score: {combined_sleep_score} (Garmin {garmin_sleep_score} + Room {room_env_score})")
+
     except Exception as e:
         print(f"❌ เกิดข้อผิดพลาด: {e}")
 
