@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
-import { ref, query, limitToLast, onValue } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 
 interface SensorData {
   co2: number;
@@ -24,56 +24,74 @@ export default function AllSensorsPage() {
   useEffect(() => {
     try {
       const logsRef = ref(database, 'logs');
-      const latestLogQuery = query(logsRef, limitToLast(1));
-      const unsubscribe = onValue(latestLogQuery, (snapshot) => {
+      
+      // ดึงข้อมูล realtime จาก logs โดยแกะคีย์ตัวล่าสุด
+      const unsubscribe = onValue(logsRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
-          const latestKey = Object.keys(data)[0];
-          setSensor(data[latestKey]);
+          const keys = Object.keys(data).sort(); 
+          const latestKey = keys[keys.length - 1]; // คีย์ล่าสุด
+          const latestItem = data[latestKey];
+
+          if (latestItem) {
+            setSensor({
+              co2: Number(latestItem.co2) || 0,
+              humidity: Number(latestItem.humidity) || 0,
+              lux: Number(latestItem.lux) || 0,
+              pm10: Number(latestItem.pm10) || 0,
+              pm1_0: Number(latestItem.pm1_0) || 0,
+              pm2_5: Number(latestItem.pm2_5) || 0,
+              sound: Number(latestItem.sound) || 0,
+              temperature: Number(latestItem.temperature) || 0,
+              timestamp: Number(latestItem.timestamp) || 0,
+            });
+          }
         }
         setLoading(false);
-      }, () => setLoading(false));
+      }, (err) => {
+        console.error("Firebase Error:", err);
+        setLoading(false);
+      });
+
       return () => unsubscribe();
     } catch (e) {
+      console.error("Catch Error:", e);
       setLoading(false);
     }
   }, []);
 
-  // ฟังก์ชันประเมินสถานะและคืนค่าสี/ข้อความ
+  // ฟังก์ชันประเมินสถานะเซ็นเซอร์ (ใช้เกณฑ์มาตรฐานเดียวกับหน้าหลัก)
   const getTempStatus = (val: number | undefined) => {
     if (val === undefined) return { label: 'กำลังโหลด...', color: '#64748b', bg: '#1e293b' };
-    if (val >= 22 && val <= 25) return { label: '🟢 เหมาะสมกับการนอน', color: '#34d399', bg: '#10b98120' };
-    if (val > 25 && val <= 28) return { label: '🟡 ค่อนข้างอุ่น', color: '#f59e0b', bg: '#f59e0b20' };
-    if (val < 22) return { label: '🟡 ค่อนข้างเย็น', color: '#38bdf8', bg: '#38bdf820' };
-    return { label: '🔴 อุณหภูมิสูงเกินไป', color: '#ef4444', bg: '#ef444420' };
+    if (val > 25.0) return { label: '🔴 อุณหภูมิสูงเกินไป', color: '#ef4444', bg: '#ef444420' };
+    if (val < 22.0) return { label: '🟡 ค่อนข้างเย็น', color: '#38bdf8', bg: '#38bdf820' };
+    return { label: '🟢 เหมาะสมกับการนอน', color: '#34d399', bg: '#10b98120' };
   };
 
   const getHumidityStatus = (val: number | undefined) => {
     if (val === undefined) return { label: 'กำลังโหลด...', color: '#64748b', bg: '#1e293b' };
-    if (val >= 40 && val <= 60) return { label: '🟢 ความชื้นพอดี', color: '#34d399', bg: '#10b98120' };
-    if (val > 60) return { label: '🟡 ชื้นเกินไป (เสี่ยงเชื้อรา)', color: '#f59e0b', bg: '#f59e0b20' };
-    return { label: '🟡 อากาศแห้งเกินไป', color: '#f59e0b', bg: '#f59e0b20' };
+    if (val > 60.0) return { label: '🟡 ชื้นเกินไป (เสี่ยงเชื้อรา)', color: '#f59e0b', bg: '#f59e0b20' };
+    if (val < 40.0) return { label: '🟡 อากาศแห้งเกินไป', color: '#f59e0b', bg: '#f59e0b20' };
+    return { label: '🟢 ความชื้นพอดี', color: '#34d399', bg: '#10b98120' };
   };
 
   const getCo2Status = (val: number | undefined) => {
     if (val === undefined) return { label: 'กำลังโหลด...', color: '#64748b', bg: '#1e293b' };
-    if (val < 800) return { label: '🟢 อากาศบริสุทธิ์', color: '#34d399', bg: '#10b98120' };
-    if (val >= 800 && val <= 1000) return { label: '🟡 สะสมปานกลาง', color: '#f59e0b', bg: '#f59e0b20' };
-    return { label: '🔴 ควรเปิดระบายอากาศ', color: '#ef4444', bg: '#ef444420' };
+    if (val > 1000) return { label: '🔴 ควรเปิดระบายอากาศ', color: '#ef4444', bg: '#ef444420' };
+    if (val >= 800) return { label: '🟡 สะสมปานกลาง', color: '#f59e0b', bg: '#f59e0b20' };
+    return { label: '🟢 อากาศบริสุทธิ์', color: '#34d399', bg: '#10b98120' };
   };
 
   const getLuxStatus = (val: number | undefined) => {
     if (val === undefined) return { label: 'กำลังโหลด...', color: '#64748b', bg: '#1e293b' };
-    if (val <= 5) return { label: '🟢 มืดสนิท (ดีเยี่ยม)', color: '#34d399', bg: '#10b98120' };
-    if (val > 5 && val <= 30) return { label: '🟡 มีแสงสลัวรบกวน', color: '#f59e0b', bg: '#f59e0b20' };
-    return { label: '🔴 สว่างเกินไปสำหรับการนอน', color: '#ef4444', bg: '#ef444420' };
+    if (val > 5.0) return { label: '🔴 สว่างเกินไปสำหรับการนอน', color: '#ef4444', bg: '#ef444420' };
+    return { label: '🟢 มืดสนิท (ดีเยี่ยม)', color: '#34d399', bg: '#10b98120' };
   };
 
   const getPm25Status = (val: number | undefined) => {
     if (val === undefined) return { label: 'กำลังโหลด...', color: '#64748b', bg: '#1e293b' };
-    if (val <= 15) return { label: '🟢 อากาศสะอาดมาก', color: '#34d399', bg: '#10b98120' };
-    if (val > 15 && val <= 37.5) return { label: '🟡 ฝุ่นปานกลาง', color: '#f59e0b', bg: '#f59e0b20' };
-    return { label: '🔴 ฝุ่นเกินเกณฑ์มาตรฐาน', color: '#ef4444', bg: '#ef444420' };
+    if (val > 15.0) return { label: '🟡 ฝุ่นเกินเกณฑ์มาตรฐาน', color: '#f59e0b', bg: '#f59e0b20' };
+    return { label: '🟢 อากาศสะอาดมาก', color: '#34d399', bg: '#10b98120' };
   };
 
   const tempSt = getTempStatus(sensor?.temperature);

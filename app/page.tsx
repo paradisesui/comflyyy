@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
-import { ref, query, orderByKey, limitToLast, onValue } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 
 interface SensorData {
   co2: number;
@@ -16,6 +16,36 @@ interface SensorData {
   temperature: number;
   timestamp: number;
 }
+
+// ฟังก์ชันเกณฑ์การประเมินสถานะเซ็นเซอร์ (ใช้เกณฑ์มาตรฐานเดียวทั้งระบบ)
+const getSensorStatus = (key: string, val: number) => {
+  switch (key) {
+    case 'temperature':
+    case 'temp':
+      if (val > 25.0) return { label: 'ค่อนข้างสูง', color: '#ef4444', bg: '#450a0a' };
+      if (val < 22.0) return { label: 'ค่อนข้างต่ำ', color: '#38bdf8', bg: '#0c4a6e' };
+      return { label: 'เย็นสบาย', color: '#34d399', bg: '#10b98115' };
+
+    case 'humidity':
+    case 'hum':
+      if (val > 60.0) return { label: 'ชื้นเกินไป (เสี่ยงเชื้อรา)', color: '#f59e0b', bg: '#451a03' };
+      if (val < 40.0) return { label: 'แห้งเกินไป', color: '#f59e0b', bg: '#451a03' };
+      return { label: 'ปกติ', color: '#34d399', bg: '#10b98115' };
+
+    case 'light':
+    case 'lux':
+      if (val > 5.0) return { label: 'สว่างเกินไปสำหรับการนอน', color: '#ef4444', bg: '#450a0a' };
+      return { label: 'มืดสนิท', color: '#34d399', bg: '#10b98115' };
+
+    case 'co2':
+      if (val > 1000) return { label: 'อากาศอับชื้น/CO2 สูง', color: '#ef4444', bg: '#450a0a' };
+      if (val > 800) return { label: 'เริ่มถ่ายเทไม่สะดวก', color: '#f59e0b', bg: '#451a03' };
+      return { label: 'อากาศดี', color: '#34d399', bg: '#10b98115' };
+
+    default:
+      return { label: 'ปกติ', color: '#34d399', bg: '#10b98115' };
+  }
+};
 
 export default function Home() {
   const [sensor, setSensor] = useState<SensorData | null>(null);
@@ -71,17 +101,12 @@ export default function Home() {
     try {
       const logsRef = ref(database, 'logs');
       
-      // ดึง realtime logs ตรงๆ ไม่ผ่าน query filter
       const unsubscribe = onValue(logsRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
-          
-          // ดึง keys ทั้งหมดแล้วเรียงตามตัวเลข/ข้อความ
           const keys = Object.keys(data).sort(); 
-          const latestKey = keys[keys.length - 1]; // เลือกคีย์ตัวสุดท้าย (ล่าสุด)
+          const latestKey = keys[keys.length - 1];
           const latestItem = data[latestKey];
-
-          console.log("Firebase Retrieved Item:", latestItem); // ดูค่าใน Console F12 ได้
 
           if (latestItem) {
             setSensor({
@@ -96,8 +121,6 @@ export default function Home() {
               timestamp: Number(latestItem.timestamp) || 0,
             });
           }
-        } else {
-          console.log("No data found in /logs");
         }
         setLoading(false);
       }, (err) => {
@@ -127,6 +150,12 @@ export default function Home() {
   const score = calculateScore(sensor);
   const strokeDashoffset = 440 - (440 * score) / 100;
   const statusColor = score >= 80 ? '#6366f1' : score >= 60 ? '#f59e0b' : '#ef4444';
+
+  // ประเมินสถานะของเซ็นเซอร์แต่ละตัว
+  const tempStatus = getSensorStatus('temp', sensor?.temperature ?? 0);
+  const humStatus = getSensorStatus('hum', sensor?.humidity ?? 0);
+  const co2Status = getSensorStatus('co2', sensor?.co2 ?? 0);
+  const lightStatus = getSensorStatus('lux', sensor?.lux ?? 0);
 
   return (
     <div style={{
@@ -375,6 +404,7 @@ export default function Home() {
 
           {/* 4 Metrics Grid */}
           <div className="metrics-grid">
+            {/* Temp */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '18px 16px',
@@ -398,17 +428,18 @@ export default function Home() {
                 <span style={{
                   fontSize: '10px',
                   fontWeight: '700',
-                  color: (sensor?.temperature ?? 0) <= 25 ? '#34d399' : '#f59e0b',
-                  backgroundColor: (sensor?.temperature ?? 0) <= 25 ? '#10b98115' : '#f59e0b15',
+                  color: tempStatus.color,
+                  backgroundColor: tempStatus.bg,
                   padding: '4px 8px',
                   borderRadius: '6px',
                   display: 'inline-block'
                 }}>
-                  {(sensor?.temperature ?? 0) <= 25 ? '• เย็นสบาย' : '• ค่อนข้างสูง'}
+                  • {tempStatus.label}
                 </span>
               </div>
             </div>
 
+            {/* Humidity */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '18px 16px',
@@ -432,17 +463,18 @@ export default function Home() {
                 <span style={{
                   fontSize: '10px',
                   fontWeight: '700',
-                  color: '#34d399',
-                  backgroundColor: '#10b98115',
+                  color: humStatus.color,
+                  backgroundColor: humStatus.bg,
                   padding: '4px 8px',
                   borderRadius: '6px',
                   display: 'inline-block'
                 }}>
-                  • ปกติ
+                  • {humStatus.label}
                 </span>
               </div>
             </div>
 
+            {/* CO2 */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '18px 16px',
@@ -466,17 +498,18 @@ export default function Home() {
                 <span style={{
                   fontSize: '10px',
                   fontWeight: '700',
-                  color: (sensor?.co2 ?? 0) < 800 ? '#34d399' : '#f59e0b',
-                  backgroundColor: (sensor?.co2 ?? 0) < 800 ? '#10b98115' : '#f59e0b15',
+                  color: co2Status.color,
+                  backgroundColor: co2Status.bg,
                   padding: '4px 8px',
                   borderRadius: '6px',
                   display: 'inline-block'
                 }}>
-                  {(sensor?.co2 ?? 0) < 800 ? '• อากาศดี' : '• ควรระบาย'}
+                  • {co2Status.label}
                 </span>
               </div>
             </div>
 
+            {/* Light */}
             <div style={{
               backgroundColor: '#151c2c',
               padding: '18px 16px',
@@ -500,13 +533,13 @@ export default function Home() {
                 <span style={{
                   fontSize: '10px',
                   fontWeight: '700',
-                  color: '#34d399',
-                  backgroundColor: '#10b98115',
+                  color: lightStatus.color,
+                  backgroundColor: lightStatus.bg,
                   padding: '4px 8px',
                   borderRadius: '6px',
                   display: 'inline-block'
                 }}>
-                  • มืดสนิท
+                  • {lightStatus.label}
                 </span>
               </div>
             </div>
