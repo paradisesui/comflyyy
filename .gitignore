@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+garmin_cookies.txt
+garmin_cookies.json
+garmin_real_sleep.json
+.env.local
