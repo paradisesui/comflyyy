@@ -10,7 +10,7 @@ export default function SensitivityPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 🔗 ดึงข้อมูลสรุปสะสมประจำวันจาก Firebase
+    // 🔗 อ่านผลสรุปสะสมประจำวันจาก Firebase Node
     const summaryRef = ref(db, 'personal_sensitivity/summary');
     const unsubscribe = onValue(summaryRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -24,6 +24,7 @@ export default function SensitivityPage() {
     return () => unsubscribe();
   }, []);
 
+  // อ่านค่าตรงตาม Payload ที่ Python ยิงขึ้น Firebase
   const cumulative = summaryData?.cumulativeSummary;
   const daily = summaryData?.dailyMetrics;
   const accumulatedDays = summaryData?.totalAccumulatedDays || 0;
@@ -133,7 +134,7 @@ export default function SensitivityPage() {
           <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Overall Sensitivity Score</span>
             <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', margin: '4px 0' }}>
-              {cumulative?.overallSensitivityScore || 0} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
+              {cumulative?.overallSensitivityScore ?? 0} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
             <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนความไวสะสมย้อนหลัง</span>
           </div>
@@ -141,13 +142,13 @@ export default function SensitivityPage() {
           <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Avg Room Temperature</span>
             <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
-              {cumulative?.avgRoomTemp || 0}°C
+              {cumulative?.avgRoomTemp ?? 0}°C
             </div>
             <span style={{ fontSize: '11px', color: '#94a3b8' }}>อุณหภูมิห้องเฉลี่ยสะสมช่วงเวลานอน</span>
           </div>
         </div>
 
-        {/* 3. สรุปข้อมูลรายวันล่าสุด */}
+        {/* 3. สรุปข้อมูลล่าสุดประจำวัน */}
         <section style={{
           backgroundColor: '#0f172a',
           padding: '16px',
@@ -163,15 +164,15 @@ export default function SensitivityPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', textAlign: 'center' }}>
             <div style={{ backgroundColor: '#151c2c', padding: '10px', borderRadius: '12px' }}>
               <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Sleep Score</span>
-              <strong style={{ fontSize: '15px', color: '#f8fafc' }}>{daily?.sleepScore || 0}</strong>
+              <strong style={{ fontSize: '15px', color: '#f8fafc' }}>{daily?.sleepScore ?? 0}</strong>
             </div>
             <div style={{ backgroundColor: '#151c2c', padding: '10px', borderRadius: '12px' }}>
               <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>การดิ้นกลางดึก</span>
-              <strong style={{ fontSize: '15px', color: '#f8fafc' }}>{daily?.restlessMoments || 0} ครั้ง</strong>
+              <strong style={{ fontSize: '15px', color: '#f8fafc' }}>{daily?.restlessMoments ?? 0} ครั้ง</strong>
             </div>
             <div style={{ backgroundColor: '#151c2c', padding: '10px', borderRadius: '12px' }}>
               <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Sensitivity วันนี้</span>
-              <strong style={{ fontSize: '15px', color: '#facc15' }}>{daily?.todaySensitivity || 0}</strong>
+              <strong style={{ fontSize: '15px', color: '#facc15' }}>{daily?.todaySensitivity ?? 0}</strong>
             </div>
           </div>
         </section>
