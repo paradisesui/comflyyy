@@ -10,7 +10,7 @@ export default function SensitivityPage() {
   const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. ระบบ Auto Sync & Timestamp Matching อัตโนมัติแบบ Dynamic Days
+  // 1. ระบบ Auto Sync & Timestamp Matching พร้อม Fallback Pattern
   useEffect(() => {
     if (!database) return;
 
@@ -39,22 +39,25 @@ export default function SensitivityPage() {
           const rawLogs = snapshot.val();
           const logKeys = Object.keys(rawLogs);
 
-          // กรองเอาเฉพาะข้อมูลเซ็นเซอร์ช่วงเวลานอน
-          const matchedLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
+          // กรองเอาเฉพาะข้อมูลเซ็นเซอร์ที่เกิดขึ้นในช่วงเวลานอนของ Garmin
+          const matchedSleepLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
             let t = Number(log.timestamp) || 0;
-            if (t < 1000000000000) t = t * 1000;
+            if (t < 1000000000000) t = t * 1000; // แปลงเป็น Milliseconds
             return t >= garmin.sleepStartTimestamp && t <= garmin.sleepEndTimestamp;
           });
 
-          const effectiveLogs = matchedLogs.length > 0 
-            ? matchedLogs 
-            : logKeys.slice(-20).map(k => rawLogs[k]);
+          // Fallback Strategy: หากมี log ช่วงเวลานอนให้ใช้ matchedSleepLogs 
+          // แต่ถ้าไม่มี ให้ใช้ค่าเฉลี่ยเซ็นเซอร์ย้อนหลังทั้งหมด (rawLogs) มาคำนวณแทน
+          const effectiveLogs = matchedSleepLogs.length > 0 
+            ? matchedSleepLogs 
+            : logKeys.slice(-30).map(k => rawLogs[k]);
 
           const totalLogs = effectiveLogs.length || 1;
           const avgTemp = effectiveLogs.reduce((sum, item) => sum + (Number(item.temperature) || 25), 0) / totalLogs;
           const avgSound = effectiveLogs.reduce((sum, item) => sum + (Number(item.sound) || 400), 0) / totalLogs;
           const avgHum = effectiveLogs.reduce((sum, item) => sum + (Number(item.humidity) || 50), 0) / totalLogs;
 
+          // คำนวณ Room Environment Score
           let roomScore = 100;
           if (avgTemp > 25) roomScore -= (avgTemp - 25) * 5;
           if (avgTemp < 23) roomScore -= (23 - avgTemp) * 5;
@@ -62,9 +65,10 @@ export default function SensitivityPage() {
           if (avgSound > 1000) roomScore -= 15;
           roomScore = Math.max(0, Math.min(100, Math.round(roomScore)));
 
+          // คำนวณ Combined Sleep Score
           const combinedScore = Math.round((garmin.garminSleepScore + roomScore) / 2);
 
-          // คำนวณนับจำนวนวันสะสมแบบ Dynamic จากประวัติเดิม
+          // นับจำนวนวันสะสมแบบ Dynamic
           const currentAccumulated = summaryData?.totalAccumulatedDays || 1;
 
           const summaryRef = ref(database, 'personal_sensitivity/summary');
@@ -135,7 +139,6 @@ export default function SensitivityPage() {
 
   const cumulative = summaryData?.cumulativeSummary;
   const daily = summaryData?.dailyMetrics;
-  // ดึงค่าจำนวนวันสะสมจริง (ถ้ายังไม่มีข้อมูล ให้เริ่มต้นที่ 1 วัน)
   const accumulatedDays = summaryData?.totalAccumulatedDays ?? 1;
   const evaluatedDate = summaryData?.evaluatedDate || '-';
 
