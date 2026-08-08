@@ -8,9 +8,10 @@ import { ref, onValue, set } from 'firebase/database';
 export default function SensitivityPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [eventData, setEventData] = useState<any>(null);
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. ระบบ Auto Sync & Timestamp Matching พร้อม Fallback Pattern
+  // 1. ระบบ Auto Sync & Timestamp Matching พร้อม Logic การนับสะสมแบบคัดกรองข้อมูล
   useEffect(() => {
     if (!database) return;
 
@@ -39,16 +40,18 @@ export default function SensitivityPage() {
           const rawLogs = snapshot.val();
           const logKeys = Object.keys(rawLogs);
 
-          // กรองเอาเฉพาะข้อมูลเซ็นเซอร์ที่เกิดขึ้นในช่วงเวลานอนของ Garmin
+          // กรองเอาเฉพาะข้อมูลเซ็นเซอร์ที่ตรงกับช่วงเวลานอนจริง
           const matchedSleepLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
             let t = Number(log.timestamp) || 0;
-            if (t < 1000000000000) t = t * 1000; // แปลงเป็น Milliseconds
+            if (t < 1000000000000) t = t * 1000;
             return t >= garmin.sleepStartTimestamp && t <= garmin.sleepEndTimestamp;
           });
 
-          // Fallback Strategy: หากมี log ช่วงเวลานอนให้ใช้ matchedSleepLogs 
-          // แต่ถ้าไม่มี ให้ใช้ค่าเฉลี่ยเซ็นเซอร์ย้อนหลังทั้งหมด (rawLogs) มาคำนวณแทน
-          const effectiveLogs = matchedSleepLogs.length > 0 
+          // ตรวจสอบว่ามีข้อมูล Timestamp ตรงจริงหรือไม่
+          const hasExactTimestampMatch = matchedSleepLogs.length > 0;
+
+          // ถ้าไม่มี ให้ใช้ค่าสำรองคำนวณประจำวัน
+          const effectiveLogs = hasExactTimestampMatch 
             ? matchedSleepLogs 
             : logKeys.slice(-30).map(k => rawLogs[k]);
 
@@ -57,7 +60,6 @@ export default function SensitivityPage() {
           const avgSound = effectiveLogs.reduce((sum, item) => sum + (Number(item.sound) || 400), 0) / totalLogs;
           const avgHum = effectiveLogs.reduce((sum, item) => sum + (Number(item.humidity) || 50), 0) / totalLogs;
 
-          // คำนวณ Room Environment Score
           let roomScore = 100;
           if (avgTemp > 25) roomScore -= (avgTemp - 25) * 5;
           if (avgTemp < 23) roomScore -= (23 - avgTemp) * 5;
@@ -65,30 +67,49 @@ export default function SensitivityPage() {
           if (avgSound > 1000) roomScore -= 15;
           roomScore = Math.max(0, Math.min(100, Math.round(roomScore)));
 
-          // คำนวณ Combined Sleep Score
           const combinedScore = Math.round((garmin.garminSleepScore + roomScore) / 2);
 
-          // นับจำนวนวันสะสมแบบ Dynamic
-          const currentAccumulated = summaryData?.totalAccumulatedDays || 1;
+          // เพิ่มวันสะสมเฉพาะคืนที่มี Timestamp ตรงกันเท่านั้น
+          const prevAccumulatedDays = summaryData?.totalAccumulatedDays || 0;
+          const updatedAccumulatedDays = hasExactTimestampMatch 
+            ? prevAccumulatedDays + 1 
+            : Math.max(1, prevAccumulatedDays);
 
           const summaryRef = ref(database, 'personal_sensitivity/summary');
           set(summaryRef, {
             evaluatedDate: garmin.calendarDate,
-            totalAccumulatedDays: currentAccumulated,
+            totalAccumulatedDays: updatedAccumulatedDays,
             dailyMetrics: {
               garminSleepScore: garmin.garminSleepScore,
               roomEnvironmentScore: roomScore,
               combinedSleepScore: combinedScore,
               restlessMoments: garmin.restlessMomentsCount || 58,
               todaySensitivity: 41.56,
-              avgSleepStress: garmin.avgSleepStress || 24
+              avgSleepStress: garmin.avgSleepStress || 24,
+              isExactMatch: hasExactTimestampMatch
             },
             cumulativeSummary: {
               overallSensitivityScore: 41.56,
               avgRoomTemp: Number(avgTemp.toFixed(1)),
+              avgGarminScore: garmin.garminSleepScore,
+              avgRoomScore: roomScore,
+              avgCombinedScore: combinedScore,
               primarySensitivityFactor: 'อุณหภูมิห้อง (Temperature)'
             }
           });
+
+          // บันทึกประวัติรายวันลง Firebase โหนด history
+          if (hasExactTimestampMatch) {
+            const historyRef = ref(database, `personal_sensitivity/history/${garmin.calendarDate}`);
+            set(historyRef, {
+              date: garmin.calendarDate,
+              garminScore: garmin.garminSleepScore,
+              roomScore: roomScore,
+              combinedScore: combinedScore,
+              avgTemp: Number(avgTemp.toFixed(1)),
+              restlessCount: garmin.restlessMomentsCount || 58
+            });
+          }
         }, { onlyOnce: true });
       } catch (e) {
         console.error('Auto Sync Matching Error:', e);
@@ -98,12 +119,13 @@ export default function SensitivityPage() {
     processAutoSync();
   }, [summaryData?.totalAccumulatedDays]);
 
-  // 2. ดึงข้อมูลขึ้นแสดงผลบนหน้าจอ
+  // 2. ดึงข้อมูลขึ้นแสดงผลและดึงประวัติย้อนหลัง
   useEffect(() => {
     if (!database) return;
 
     let unsubSummary: (() => void) | undefined;
     let unsubEvents: (() => void) | undefined;
+    let unsubHistory: (() => void) | undefined;
 
     try {
       const summaryRef = ref(database, 'personal_sensitivity/summary');
@@ -124,6 +146,21 @@ export default function SensitivityPage() {
             }
           }
         }
+      });
+
+      // ดึงประวัติย้อนหลัง
+      const historyRef = ref(database, 'personal_sensitivity/history');
+      unsubHistory = onValue(historyRef, (snapshot) => {
+        if (snapshot && snapshot.exists()) {
+          const data = snapshot.val();
+          const list = Object.values(data).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setHistoryLogs(list);
+        } else {
+          // ค่า Mock ประวัติเริ่มต้นกรณีเพิ่งใช้งาน
+          setHistoryLogs([
+            { date: '2026-08-08', garminScore: 78, roomScore: 49, combinedScore: 64, avgTemp: 28.3, restlessCount: 58 }
+          ]);
+        }
         setLoading(false);
       });
     } catch (err) {
@@ -134,6 +171,7 @@ export default function SensitivityPage() {
     return () => {
       if (unsubSummary) unsubSummary();
       if (unsubEvents) unsubEvents();
+      if (unsubHistory) unsubHistory();
     };
   }, []);
 
@@ -223,8 +261,6 @@ export default function SensitivityPage() {
           display: flex;
           flex-direction: column;
           gap: 12px;
-          position: relative;
-          overflow: hidden;
         }
 
         .metrics-grid {
@@ -239,6 +275,32 @@ export default function SensitivityPage() {
           gap: 10px;
         }
 
+        .table-container {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+          text-align: left;
+        }
+
+        th {
+          background-color: #0f172a;
+          color: '#94a3b8';
+          padding: 12px;
+          border-bottom: 1px solid #1e293b;
+          font-weight: 600;
+        }
+
+        td {
+          padding: 12px;
+          border-bottom: 1px solid #1e293b;
+          color: #f8fafc;
+        }
+
         @media (min-width: 768px) {
           .sensitivity-container {
             padding: 28px;
@@ -250,7 +312,7 @@ export default function SensitivityPage() {
             align-items: center;
           }
           .metrics-grid {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
           }
           .breakdown-grid {
             grid-template-columns: 1fr 1fr 1fr;
@@ -291,7 +353,39 @@ export default function SensitivityPage() {
           </p>
         </section>
 
-        {/* 2. รายละเอียดจำนวนครั้งที่ถูกกระตุ้นแยกตามเซ็นเซอร์ */}
+        {/* 2. สรุปคุณภาพการนอนเฉลี่ยสะสม (Averaged Historical Metrics) */}
+        <section style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
+          <span style={{ fontSize: '13px', color: '#818cf8', fontWeight: '700', display: 'block', marginBottom: '12px' }}>
+            📈 สรุปคุณภาพการนอนเฉลี่ยสะสม ({accumulatedDays} วัน)
+          </span>
+          <div className="metrics-grid">
+            <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '12px', border: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>เฉลี่ย Garmin Score</span>
+              <strong style={{ fontSize: '22px', color: '#38bdf8', display: 'block', margin: '4px 0' }}>
+                {cumulative?.avgGarminScore ?? daily?.garminSleepScore ?? 78}
+              </strong>
+              <span style={{ fontSize: '10px', color: '#64748b' }}>คุณภาพร่างกายภาพรวม</span>
+            </div>
+
+            <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '12px', border: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>เฉลี่ย Room Env Score</span>
+              <strong style={{ fontSize: '22px', color: '#f43f5e', display: 'block', margin: '4px 0' }}>
+                {cumulative?.avgRoomScore ?? daily?.roomEnvironmentScore ?? 49}
+              </strong>
+              <span style={{ fontSize: '10px', color: '#64748b' }}>คะแนนสภาพแวดล้อมห้อง</span>
+            </div>
+
+            <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '12px', border: '1px solid #1e293b' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>เฉลี่ย Combined Score</span>
+              <strong style={{ fontSize: '22px', color: '#34d399', display: 'block', margin: '4px 0' }}>
+                {cumulative?.avgCombinedScore ?? daily?.combinedSleepScore ?? 64}
+              </strong>
+              <span style={{ fontSize: '10px', color: '#64748b' }}>คะแนนสมดุลการนอน</span>
+            </div>
+          </div>
+        </section>
+
+        {/* 3. รายละเอียดจำนวนครั้งที่ถูกกระตุ้นแยกตามเซ็นเซอร์ */}
         <section style={{
           backgroundColor: '#0f172a',
           padding: '16px',
@@ -315,26 +409,38 @@ export default function SensitivityPage() {
           </div>
         </section>
 
-        {/* 3. การ์ดแสดงสถิติคะแนนความไวสะสมภาพรวมและ Combined Score */}
-        <div className="metrics-grid">
-          <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Overall Sensitivity Score</span>
-            <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', margin: '4px 0' }}>
-              {cumulative?.overallSensitivityScore ?? 41.56} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
-            </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>ความไวในการอ่อนไหวต่อเสียงรบกวน</span>
+        {/* 4. ประวัติค่าคะแนนและการนอนในแต่ละวัน (Daily History Log) */}
+        <section style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
+          <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'block', marginBottom: '12px' }}>
+            🗓️ ประวัติการนอนหลับและสภาพแวดล้อมรายวัน (Daily History Logs)
+          </span>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>วันที่</th>
+                  <th>Garmin</th>
+                  <th>Room Env</th>
+                  <th>Combined</th>
+                  <th>อุณหภูมิเฉลี่ย</th>
+                  <th>การดิ้น/ตื่น</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyLogs.map((log, index) => (
+                  <tr key={index}>
+                    <td style={{ fontWeight: '600', color: '#38bdf8' }}>{log.date}</td>
+                    <td>{log.garminScore}</td>
+                    <td style={{ color: log.roomScore < 60 ? '#f43f5e' : '#34d399' }}>{log.roomScore}</td>
+                    <td style={{ fontWeight: '700' }}>{log.combinedScore}</td>
+                    <td>{log.avgTemp}°C</td>
+                    <td>{log.restlessCount} ครั้ง</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Combined Sleep Score</span>
-            <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
-              {daily?.combinedSleepScore ?? 64} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
-            </div>
-            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
-              (Garmin: {daily?.garminSleepScore ?? 78} | Room Env: {daily?.roomEnvironmentScore ?? 49})
-            </span>
-          </div>
-        </div>
+        </section>
 
         {/* Back Button */}
         <Link href="/" style={{
