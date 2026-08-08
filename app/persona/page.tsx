@@ -3,19 +3,19 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ref, onValue } from 'firebase/database';
-import { database as db } from '../lib/firebase';
+import { database } from '@/app/lib/firebase';
 
 export default function PersonaPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!db) return;
+    if (!database) return;
 
     let unsubSummary: (() => void) | undefined;
 
     try {
-      const summaryRef = ref(db, 'personal_sensitivity/summary');
+      const summaryRef = ref(database, 'personal_sensitivity/summary');
       unsubSummary = onValue(
         summaryRef,
         (snapshot) => {
@@ -41,13 +41,13 @@ export default function PersonaPage() {
 
   const cumulative = summaryData?.cumulativeSummary;
   const daily = summaryData?.dailyMetrics;
-  const accumulatedDays = summaryData?.totalAccumulatedDays || 3;
+  const accumulatedDays = summaryData?.totalAccumulatedDays ?? 1;
   const evaluatedDate = summaryData?.evaluatedDate || '-';
 
-  // คำนวณแปลงนาที/ชั่วโมงสำหรับ Sleep Stages (หากไม่มีข้อมูล ให้ใช้ค่าจำลองสะสมที่สมจริง)
-  const deepSleepMinutes = daily?.deepSleepMinutes ?? 95; // ~1h 35m
-  const remSleepMinutes = daily?.remSleepMinutes ?? 110;   // ~1h 50m
-  const lightSleepMinutes = daily?.lightSleepMinutes ?? 235; // ~3h 55m
+  // สัดส่วนระยะเวลาการนอน (นาที) พร้อมค่าสำรองหากยังไม่มีข้อมูลคืนแรก
+  const deepSleepMinutes = daily?.deepSleepMinutes ?? 95;   // ~1h 35m
+  const remSleepMinutes = daily?.remSleepMinutes ?? 110;     // ~1h 50m
+  const lightSleepMinutes = daily?.lightSleepMinutes ?? 235;  // ~3h 55m
   const totalSleepMinutes = deepSleepMinutes + remSleepMinutes + lightSleepMinutes;
 
   const formatHoursMinutes = (mins: number) => {
@@ -61,11 +61,11 @@ export default function PersonaPage() {
     return `${Math.round((mins / total) * 100)}% (สะสม)`;
   };
 
-  // Sleep Scores
-  const garminScore = daily?.garminSleepScore ?? daily?.sleepScore ?? 72;
+  // Scores ต่างๆ
+  const garminScore = daily?.garminSleepScore ?? 78;
   const sleepStress = daily?.avgSleepStress ?? 24;
   const sensitivityScore = cumulative?.overallSensitivityScore ?? 41.56;
-  const avgTemp = cumulative?.avgRoomTemp ?? 27.5;
+  const avgTemp = cumulative?.avgRoomTemp ?? 28.3;
 
   return (
     <div style={{
