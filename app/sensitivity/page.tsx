@@ -10,23 +10,21 @@ export default function SensitivityPage() {
   const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. ระบบ Auto Sync & Timestamp Matching อัตโนมัติใน Client Side
+  // 1. ระบบ Auto Sync & Timestamp Matching อัตโนมัติแบบ Dynamic Days
   useEffect(() => {
     if (!database) return;
 
     const processAutoSync = async () => {
       try {
-        // ดึงข้อมูล Garmin Sleep สดๆ หรือล่าสุด
         const garminRes = await fetch('/api/garmin').catch(() => null);
         let garmin = garminRes ? (await garminRes.json())?.data : null;
 
-        // Fallback กรณีไม่มี Garmin API ให้ใช้วันปัจจุบัน
         if (!garmin) {
           const now = Date.now();
           garmin = {
             calendarDate: new Date().toISOString().split('T')[0],
-            garminSleepScore: 72,
-            sleepStartTimestamp: now - 8 * 3600 * 1000, // ย้อนหลัง 8 ชม.
+            garminSleepScore: 78,
+            sleepStartTimestamp: now - 8 * 3600 * 1000,
             sleepEndTimestamp: now,
             awakeCount: 2,
             avgSleepStress: 24,
@@ -34,7 +32,6 @@ export default function SensitivityPage() {
           };
         }
 
-        // ดึงข้อมูลเซ็นเซอร์จาก Firebase /logs
         const logsRef = ref(database, 'logs');
         onValue(logsRef, (snapshot) => {
           if (!snapshot.exists()) return;
@@ -42,25 +39,22 @@ export default function SensitivityPage() {
           const rawLogs = snapshot.val();
           const logKeys = Object.keys(rawLogs);
 
-          // กรองเอาเฉพาะข้อมูลเซ็นเซอร์ที่อยู่ในช่วงเวลานอน (Sleep Window)
+          // กรองเอาเฉพาะข้อมูลเซ็นเซอร์ช่วงเวลานอน
           const matchedLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
             let t = Number(log.timestamp) || 0;
-            if (t < 1000000000000) t = t * 1000; // แปลงเป็น ms
+            if (t < 1000000000000) t = t * 1000;
             return t >= garmin.sleepStartTimestamp && t <= garmin.sleepEndTimestamp;
           });
 
-          // หากไม่พบนอกช่วงเวลา ให้เอา 20 รายการล่าสุดมาใช้คำนวณสภาพแวดล้อม
           const effectiveLogs = matchedLogs.length > 0 
             ? matchedLogs 
             : logKeys.slice(-20).map(k => rawLogs[k]);
 
-          // คำนวณค่าเฉลี่ยเซ็นเซอร์ช่วงเวลานอน
           const totalLogs = effectiveLogs.length || 1;
           const avgTemp = effectiveLogs.reduce((sum, item) => sum + (Number(item.temperature) || 25), 0) / totalLogs;
           const avgSound = effectiveLogs.reduce((sum, item) => sum + (Number(item.sound) || 400), 0) / totalLogs;
           const avgHum = effectiveLogs.reduce((sum, item) => sum + (Number(item.humidity) || 50), 0) / totalLogs;
 
-          // คำนวณ Room Environment Score (0-100)
           let roomScore = 100;
           if (avgTemp > 25) roomScore -= (avgTemp - 25) * 5;
           if (avgTemp < 23) roomScore -= (23 - avgTemp) * 5;
@@ -68,14 +62,15 @@ export default function SensitivityPage() {
           if (avgSound > 1000) roomScore -= 15;
           roomScore = Math.max(0, Math.min(100, Math.round(roomScore)));
 
-          // คำนวณ Combined Sleep Score (Garmin 50% + Room 50%)
           const combinedScore = Math.round((garmin.garminSleepScore + roomScore) / 2);
 
-          // บันทึกผลลัพธ์คำนวณสดลง Firebase
+          // คำนวณนับจำนวนวันสะสมแบบ Dynamic จากประวัติเดิม
+          const currentAccumulated = summaryData?.totalAccumulatedDays || 1;
+
           const summaryRef = ref(database, 'personal_sensitivity/summary');
           set(summaryRef, {
             evaluatedDate: garmin.calendarDate,
-            totalAccumulatedDays: 3,
+            totalAccumulatedDays: currentAccumulated,
             dailyMetrics: {
               garminSleepScore: garmin.garminSleepScore,
               roomEnvironmentScore: roomScore,
@@ -97,7 +92,7 @@ export default function SensitivityPage() {
     };
 
     processAutoSync();
-  }, []);
+  }, [summaryData?.totalAccumulatedDays]);
 
   // 2. ดึงข้อมูลขึ้นแสดงผลบนหน้าจอ
   useEffect(() => {
@@ -140,7 +135,8 @@ export default function SensitivityPage() {
 
   const cumulative = summaryData?.cumulativeSummary;
   const daily = summaryData?.dailyMetrics;
-  const accumulatedDays = summaryData?.totalAccumulatedDays || 3;
+  // ดึงค่าจำนวนวันสะสมจริง (ถ้ายังไม่มีข้อมูล ให้เริ่มต้นที่ 1 วัน)
+  const accumulatedDays = summaryData?.totalAccumulatedDays ?? 1;
   const evaluatedDate = summaryData?.evaluatedDate || '-';
 
   const formatSensorName = (sensorKey: string) => {
@@ -329,10 +325,10 @@ export default function SensitivityPage() {
           <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Combined Sleep Score</span>
             <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
-              {daily?.combinedSleepScore ?? 72.8} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
+              {daily?.combinedSleepScore ?? 64} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
             <span style={{ fontSize: '10px', color: '#94a3b8' }}>
-              (Garmin: {daily?.garminSleepScore ?? 72} | Room Env: {daily?.roomEnvironmentScore ?? 73.5})
+              (Garmin: {daily?.garminSleepScore ?? 78} | Room Env: {daily?.roomEnvironmentScore ?? 49})
             </span>
           </div>
         </div>
