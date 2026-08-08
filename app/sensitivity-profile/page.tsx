@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 
-export default function SensitivityHistoryPage() {
+export default function SensitivityProfilePage() {
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,18 +15,19 @@ export default function SensitivityHistoryPage() {
     let unsubHistory: (() => void) | undefined;
 
     try {
-      // ดึงประวัติการนอนและสภาพแวดล้อมที่บันทึกสะสมมาในแต่ละวัน
+      // ดึงข้อมูลประวัติย้อนหลังที่มีการบันทึกไว้ใน Firebase จริงๆ
       const historyRef = ref(database, 'personal_sensitivity/history');
       unsubHistory = onValue(historyRef, (snapshot) => {
         if (snapshot && snapshot.exists()) {
           const data = snapshot.val();
-          const list = Object.values(data).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          // กรองเอาเฉพาะข้อมูลที่มีอยู่จริง และเรียงลำดับวันที่ล่าสุดขึ้นก่อน
+          const list = Object.values(data)
+            .filter((item: any) => item && item.date)
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          
           setHistoryLogs(list);
         } else {
-          // ค่า Mock สำรอง
-          setHistoryLogs([
-            { date: '2026-08-08', garminScore: 78, roomScore: 49, combinedScore: 64, avgTemp: 28.3, restlessCount: 58 }
-          ]);
+          setHistoryLogs([]);
         }
         setLoading(false);
       });
@@ -40,12 +41,21 @@ export default function SensitivityHistoryPage() {
     };
   }, []);
 
-  // คำนวณค่าเฉลี่ยสะสมจริงจากประวัติทุกวันที่มีการบันทึก
-  const totalDays = historyLogs.length || 1;
-  const avgGarmin = Math.round(historyLogs.reduce((sum, item) => sum + (item.garminScore || 0), 0) / totalDays);
-  const avgRoom = Math.round(historyLogs.reduce((sum, item) => sum + (item.roomScore || 0), 0) / totalDays);
-  const avgCombined = Math.round(historyLogs.reduce((sum, item) => sum + (item.combinedScore || 0), 0) / totalDays);
-  const avgTempAcc = (historyLogs.reduce((sum, item) => sum + (item.avgTemp || 0), 0) / totalDays).toFixed(1);
+  // นับจำนวนวันสะสมจริงจาก Array Length
+  const totalDays = historyLogs.length;
+
+  // คำนวณค่าเฉลี่ยสะสมจากข้อมูลที่มีจริง
+  const avgGarmin = totalDays > 0 
+    ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.garminScore) || 0), 0) / totalDays) 
+    : 0;
+
+  const avgRoom = totalDays > 0 
+    ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.roomScore) || 0), 0) / totalDays) 
+    : 0;
+
+  const avgCombined = totalDays > 0 
+    ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.combinedScore) || 0), 0) / totalDays) 
+    : 0;
 
   return (
     <div style={{
@@ -60,7 +70,7 @@ export default function SensitivityHistoryPage() {
       padding: '24px 14px'
     }}>
       <style jsx>{`
-        .history-container {
+        .profile-container {
           width: 100%;
           max-width: 900px;
           background-color: #151c2c;
@@ -114,14 +124,14 @@ export default function SensitivityHistoryPage() {
         }
       `}</style>
 
-      <main className="history-container">
+      <main className="profile-container">
         {/* Navigation Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/sensitivity" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
             ← กลับหน้าหลัก Sensitivity
           </Link>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
-            DAILY SENSITIVITY HISTORY LOGS
+            SENSITIVITY PROFILE HISTORY
           </span>
         </div>
 
@@ -135,7 +145,7 @@ export default function SensitivityHistoryPage() {
           </p>
         </div>
 
-        {/* 1. สรุปค่าเฉลี่ยสะสมจากประวัติรายวันจริง */}
+        {/* 1. สรุปค่าเฉลี่ยสะสมจริงตามจำนวนวันที่มีข้อมูล */}
         <section style={{
           backgroundColor: '#0f172a',
           padding: '20px',
@@ -192,16 +202,24 @@ export default function SensitivityHistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {historyLogs.map((log, index) => (
-                  <tr key={index}>
-                    <td style={{ fontWeight: '600', color: '#38bdf8' }}>{log.date}</td>
-                    <td>{log.garminScore}</td>
-                    <td style={{ color: log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>{log.roomScore}</td>
-                    <td style={{ fontWeight: '700' }}>{log.combinedScore}</td>
-                    <td>{log.avgTemp}°C</td>
-                    <td>{log.restlessCount} ครั้ง</td>
+                {historyLogs.length > 0 ? (
+                  historyLogs.map((log, index) => (
+                    <tr key={index}>
+                      <td style={{ fontWeight: '600', color: '#38bdf8' }}>{log.date}</td>
+                      <td>{log.garminScore}</td>
+                      <td style={{ color: log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>{log.roomScore}</td>
+                      <td style={{ fontWeight: '700' }}>{log.combinedScore}</td>
+                      <td>{log.avgTemp}°C</td>
+                      <td>{log.restlessCount} ครั้ง</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', color: '#64748b', padding: '24px' }}>
+                      ยังไม่มีประวัติการบันทึกข้อมูล (กรุณาเปิดหน้า Sensitivity เพื่อซิงค์ข้อมูลคืนแรก)
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
