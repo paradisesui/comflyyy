@@ -2,14 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { database } from '@/app/lib/firebase';
 import { ref, onValue, set } from 'firebase/database';
 
 export default function HomePage() {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const pathname = usePathname();
 
   useEffect(() => {
     if (!database) return;
@@ -122,17 +120,84 @@ export default function HomePage() {
       backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.18) 0%, transparent 65%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '16px 12px 90px 12px',
+      padding: '16px 12px 32px 12px',
       display: 'flex',
       justifyContent: 'center'
     }}>
       <style jsx>{`
         .app-container {
           width: 100%;
-          max-width: 900px;
+          max-width: 920px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 18px;
+        }
+
+        .header-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .brand-box {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .account-icon-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: rgba(15, 23, 42, 0.8);
+          border: 1px solid rgba(56, 189, 248, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #f8fafc;
+          text-decoration: none;
+          font-size: 18px;
+          box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+          transition: all 0.2s ease;
+        }
+
+        .account-icon-btn:hover {
+          transform: scale(1.05);
+          border-color: #38bdf8;
+          box-shadow: 0 0 18px rgba(56, 189, 248, 0.4);
+        }
+
+        .nav-scroll {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          overflow-x: auto;
+          padding-bottom: 4px;
+        }
+
+        .nav-scroll::-webkit-scrollbar { display: none; }
+
+        .btn-pill {
+          font-size: 12px;
+          font-weight: 600;
+          color: #cbd5e1;
+          text-decoration: none;
+          padding: 8px 16px;
+          border-radius: 9999px;
+          background: rgba(15, 23, 42, 0.7);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s ease;
+        }
+
+        .btn-pill:hover {
+          color: #38bdf8;
+          background: rgba(56, 189, 248, 0.15);
+          border-color: rgba(56, 189, 248, 0.4);
         }
 
         .glass-card {
@@ -140,88 +205,56 @@ export default function HomePage() {
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 20px;
+          border-radius: 22px;
           padding: 20px;
           display: flex;
           flex-direction: column;
           gap: 12px;
           box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
         }
-
-        /* Bottom Floating Navigation Bar */
-        .bottom-nav {
-          position: fixed;
-          bottom: 16px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: calc(100% - 24px);
-          max-width: 500px;
-          background: rgba(15, 23, 42, 0.85);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 9999px;
-          padding: 6px 12px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          z-index: 100;
-          box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8);
-        }
-
-        .nav-btn {
-          color: #94a3b8;
-          text-decoration: none;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 8px 12px;
-          border-radius: 9999px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          transition: all 0.2s;
-        }
-
-        .nav-btn.active {
-          color: #ffffff;
-          background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
-          box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
-        }
-
-        .account-icon-btn {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #f8fafc;
-          text-decoration: none;
-          font-size: 16px;
-        }
       `}</style>
 
       <main className="app-container">
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px' }}>
-          <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '18px'
-          }}>🌙</div>
-          <span style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc' }}>COMFY SLEEP</span>
-        </div>
+        {/* Top Header Bar */}
+        <header className="header-top">
+          <div className="brand-box">
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              boxShadow: '0 0 14px rgba(56, 189, 248, 0.4)'
+            }}>
+              🌙
+            </div>
+            <span style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', letterSpacing: '0.5px' }}>
+              COMFY SLEEP
+            </span>
+          </div>
 
-        {/* Combined Sleep Score */}
+          {/* Account Icon Button (ขวาบน) */}
+          <Link href="/account" className="account-icon-btn" title="เข้าสู่ระบบ / จัดการบัญชี">
+            👤
+          </Link>
+        </header>
+
+        {/* Horizontal Nav Bar (ปุ่มแคปซูลพร้อมอิโมจิ) */}
+        <nav className="nav-scroll">
+          <Link href="/sensors" className="btn-pill">🛏️ Comfy Room</Link>
+          <Link href="/persona" className="btn-pill">⌚ Smart Watch & Persona</Link>
+          <Link href="/sensitivity" className="btn-pill">🎯 Sensitivity Analysis</Link>
+          <Link href="/sensitivity-profile" className="btn-pill">📜 ประวัติสะสม</Link>
+        </nav>
+
+        {/* Combined Sleep Score Card */}
         <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.35)' }}>
-          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.8px' }}>RESULT: COMBINED SLEEP SCORE</span>
+          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.8px' }}>
+            RESULT: COMBINED SLEEP SCORE
+          </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
             <span style={{ fontSize: '38px', fontWeight: '800', color: '#38bdf8' }}>{daily?.combinedSleepScore ?? '--'}</span>
             <span style={{ fontSize: '14px', color: '#64748b' }}>/ 100</span>
@@ -231,9 +264,11 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* AI Diagnosis */}
+        {/* AI Diagnosis & Recommendation */}
         <section className="glass-card">
-          <span style={{ fontSize: '11px', color: '#facc15', fontWeight: '800' }}>🤖 ผลวิเคราะห์สาเหตุและคำแนะนำจาก AI (GEMINI DIAGNOSIS)</span>
+          <span style={{ fontSize: '11px', color: '#facc15', fontWeight: '800' }}>
+            🤖 ผลวิเคราะห์สาเหตุและคำแนะนำจาก AI (GEMINI DIAGNOSIS)
+          </span>
           <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc', margin: 0, lineHeight: 1.5 }}>
             {aiInsight?.diagnosis || "กำลังประมวลผลวิเคราะห์สาเหตุเชิงลึก..."}
           </h2>
@@ -242,15 +277,6 @@ export default function HomePage() {
           </p>
         </section>
       </main>
-
-      {/* Bottom Floating Navigation */}
-      <nav className="bottom-nav">
-        <Link href="/sensors" className={`nav-btn ${pathname === '/sensors' ? 'active' : ''}`}>🛏️ Room</Link>
-        <Link href="/persona" className={`nav-btn ${pathname === '/persona' ? 'active' : ''}`}>⌚ Persona</Link>
-        <Link href="/sensitivity" className={`nav-btn ${pathname === '/sensitivity' ? 'active' : ''}`}>🎯 Sensitivity</Link>
-        <Link href="/sensitivity-profile" className={`nav-btn ${pathname === '/sensitivity-profile' ? 'active' : ''}`}>📜 History</Link>
-        <Link href="/account" className="account-icon-btn" title="Account">👤</Link>
-      </nav>
     </div>
   );
 }
