@@ -98,8 +98,9 @@ export default function PersonaPage() {
 
       <main className="container">
         <Link href="/" className="btn-pill-back">
-          ← กลับหน้าหลัก
-        </Link>
+            <span className="arrow-circle">←</span>
+            <span>กลับหน้าหลัก</span>
+          </Link>
 
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>

@@ -133,7 +133,8 @@ export default function SensitivityPage() {
         {/* Navigation Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" className="btn-pill-back">
-            ← กลับหน้าหลัก
+            <span className="arrow-circle">←</span>
+            <span>กลับหน้าหลัก</span>
           </Link>
         </div>
 

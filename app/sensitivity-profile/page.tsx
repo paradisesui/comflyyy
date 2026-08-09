@@ -34,14 +34,27 @@ export default function SensitivityProfilePage() {
   const avgRoom = totalDays > 0 ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.roomScore) || 0), 0) / totalDays) : 0;
   const avgCombined = totalDays > 0 ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.combinedScore) || 0), 0) / totalDays) : 0;
 
+  const formatTriggerName = (triggerKey: string) => {
+    if (!triggerKey) return '🟢 ปกติ';
+    switch (triggerKey.toLowerCase()) {
+      case 'co2': return '🫁 CO2 สูง';
+      case 'temperature': case 'temp': return '🌡️ อุณหภูมิห้อง';
+      case 'sound_db': case 'sound': return '🔊 เสียงรบกวน';
+      case 'humidity': case 'hum': return '💧 ความชื้นสัมพัทธ์';
+      case 'pm25': return '🌫️ ฝุ่น PM2.5';
+      case 'light_lux': case 'light': return '💡 แสงสว่าง';
+      default: return triggerKey;
+    }
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#030712',
-      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.18) 0%, transparent 65%)',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.22) 0%, transparent 70%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '48px 16px 48px 16px', /* เพิ่มระยะขอบบนเป็น 48px เพื่อแก้เรื่องติดขอบจอเกินไป */
+      padding: '48px 16px 48px 16px',
       display: 'flex',
       justifyContent: 'center'
     }}>
@@ -51,46 +64,62 @@ export default function SensitivityProfilePage() {
           max-width: 1100px;
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 24px;
         }
 
-        .btn-back-pill {
+        /* ปุ่มแคปซูลย้อนกลับสไตล์ Glassmorphic Glow ปุ่มโดดเด่น */
+        .btn-pill-back {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          color: #f8fafc;
+          gap: 10px;
+          color: #ffffff;
           text-decoration: none;
           font-size: 13px;
-          font-weight: 700;
-          padding: 8px 18px;
+          font-weight: 800;
+          padding: 10px 24px;
           border-radius: 9999px;
-          background: rgba(15, 23, 42, 0.8);
-          border: 1px solid rgba(56, 189, 248, 0.4);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-          transition: all 0.2s ease;
+          background: linear-gradient(135deg, rgba(2, 132, 199, 0.6) 0%, rgba(37, 99, 235, 0.8) 100%);
+          border: 1.5px solid rgba(56, 189, 248, 0.7);
+          box-shadow: 0 0 20px rgba(56, 189, 248, 0.35), 0 8px 20px rgba(0, 0, 0, 0.4);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .btn-back-pill:hover {
-          background: rgba(56, 189, 248, 0.2);
+        .btn-pill-back:hover {
+          transform: translateY(-2px) scale(1.03);
           border-color: #38bdf8;
+          box-shadow: 0 0 30px rgba(56, 189, 248, 0.6), 0 12px 28px rgba(0, 0, 0, 0.5);
+          background: linear-gradient(135deg, rgba(56, 189, 248, 0.8) 0%, rgba(37, 99, 235, 0.95) 100%);
+        }
+
+        .arrow-circle {
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
         }
 
         .glass-card {
-          background: rgba(15, 23, 42, 0.65);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+          background: rgba(15, 23, 42, 0.7);
+          backdrop-filter: blur(20px);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 20px;
-          padding: 20px;
+          border-radius: 24px;
+          padding: 24px;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 16px;
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
         }
 
         .table-container {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
-          border-radius: 12px;
+          border-radius: 16px;
         }
 
         table {
@@ -98,34 +127,37 @@ export default function SensitivityProfilePage() {
           border-collapse: collapse;
           text-align: left;
           font-size: 13px;
-          min-width: 500px;
+          min-width: 600px;
         }
 
         th {
           color: #94a3b8;
-          padding: 14px 12px;
-          background-color: rgba(15, 23, 42, 0.8);
+          padding: 16px 14px;
+          background-color: rgba(15, 23, 42, 0.85);
           border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          font-weight: 600;
+          font-weight: 700;
         }
 
         td {
-          padding: 14px 12px;
+          padding: 16px 14px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.05);
           color: #cbd5e1;
         }
       `}</style>
 
       <main className="profile-container">
+        {/* Navigation Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" className="btn-back-pill">
-            ← กลับหน้าหลัก
+          <Link href="/" className="btn-pill-back">
+            <span className="arrow-circle">←</span>
+            <span>กลับหน้าหลัก</span>
           </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', letterSpacing: '0.8px' }}>
             SENSITIVITY PROFILE HISTORY
           </span>
         </div>
 
+        {/* Title */}
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>
             📜 ประวัติคุณภาพการนอนและสภาพแวดล้อมสะสม
@@ -135,31 +167,31 @@ export default function SensitivityProfilePage() {
           </p>
         </div>
 
-        {/* สรุปค่าเฉลี่ย */}
+        {/* สรุปค่าเฉลี่ยสะสม */}
         <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.35)' }}>
-          <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800' }}>
+          <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.5px' }}>
             📈 สรุปค่าเฉลี่ยสะสมจากประวัติจริง ({totalDays} วัน)
           </span>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '14px' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>Garmin เฉลี่ย</span>
-              <strong style={{ fontSize: '24px', color: '#38bdf8' }}>{avgGarmin}</strong>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: '600' }}>Garmin เฉลี่ย</span>
+              <strong style={{ fontSize: '28px', color: '#38bdf8', fontWeight: '900' }}>{avgGarmin}</strong>
             </div>
 
-            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '14px' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>Room เฉลี่ย</span>
-              <strong style={{ fontSize: '24px', color: '#f43f5e' }}>{avgRoom}</strong>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: '600' }}>Room Env เฉลี่ย</span>
+              <strong style={{ fontSize: '28px', color: '#f43f5e', fontWeight: '900' }}>{avgRoom}</strong>
             </div>
 
-            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '14px' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>Combined เฉลี่ย</span>
-              <strong style={{ fontSize: '24px', color: '#34d399' }}>{avgCombined}</strong>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: '600' }}>Combined เฉลี่ย</span>
+              <strong style={{ fontSize: '28px', color: '#34d399', fontWeight: '900' }}>{avgCombined}</strong>
             </div>
           </div>
         </section>
 
-        {/* ตารางประวัติ */}
+        {/* ตารางประวัติรายวัน */}
         <section className="glass-card">
           <div className="table-container">
             <table>
@@ -169,8 +201,8 @@ export default function SensitivityProfilePage() {
                   <th>Garmin</th>
                   <th>Room Env</th>
                   <th>Combined</th>
-                  <th>อุณหภูมิ</th>
-                  <th>การดิ้น</th>
+                  <th>ปัจจัยรบกวนหลัก (Primary Trigger)</th>
+                  <th>อัตราการดิ้น</th>
                 </tr>
               </thead>
               <tbody>
@@ -178,16 +210,18 @@ export default function SensitivityProfilePage() {
                   historyLogs.map((log, index) => (
                     <tr key={index}>
                       <td style={{ fontWeight: '700', color: '#38bdf8' }}>{log.date}</td>
-                      <td>{log.garminScore}</td>
+                      <td style={{ fontWeight: '600' }}>{log.garminScore}</td>
                       <td style={{ color: log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>{log.roomScore}</td>
-                      <td style={{ fontWeight: '700' }}>{log.combinedScore}</td>
-                      <td>{log.avgTemp}°C</td>
-                      <td>{log.restlessCount} ครั้ง</td>
+                      <td style={{ fontWeight: '800', color: '#ffffff' }}>{log.combinedScore}</td>
+                      <td style={{ fontWeight: '600', color: '#fef08a' }}>
+                        {formatTriggerName(log.primaryTrigger || log.primarySensorTrigger || 'co2')}
+                      </td>
+                      <td style={{ fontWeight: '600' }}>{log.restlessCount ?? '--'} ครั้ง</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', color: '#64748b', padding: '24px' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', color: '#64748b', padding: '28px' }}>
                       ยังไม่มีประวัติบันทึกสะสม
                     </td>
                   </tr>

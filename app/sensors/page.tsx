@@ -122,8 +122,9 @@ export default function SensorsPage() {
       `}</style>
 
       <main className="container">
-        <Link href="/" className="btn-back">
-          ← ย้อนกลับหน้าหลัก
+        <Link href="/" className="btn-pill-back">
+            <span className="arrow-circle">←</span>
+            <span>กลับหน้าหลัก</span>
         </Link>
 
         <div>

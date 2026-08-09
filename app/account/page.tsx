@@ -272,8 +272,9 @@ export default function AccountPage() {
       <main className="account-container">
         {/* Navigation Header */}
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" className="btn-back">
-            ← กลับหน้าหลัก
+          <Link href="/" className="btn-pill-back">
+            <span className="arrow-circle">←</span>
+            <span>กลับหน้าหลัก</span>
           </Link>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', letterSpacing: '0.5px' }}>
             USER ACCOUNT MANAGEMENT
