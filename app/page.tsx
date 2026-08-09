@@ -2,15 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { database } from '@/app/lib/firebase';
 import { ref, onValue, set } from 'firebase/database';
 
 export default function HomePage() {
   const [summaryData, setSummaryData] = useState<any>(null);
-  const [sensorAverages, setSensorAverages] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
 
-  // 1. กระบวนการคำนวณตาม Flowchart
   useEffect(() => {
     if (!database) return;
 
@@ -32,7 +32,6 @@ export default function HomePage() {
           const rawLogs = snapshot.val();
           const logKeys = Object.keys(rawLogs);
 
-          // Data Matching: จับคู่ค่าตัวแปรและเวลานอน
           const matchedSleepLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
             let t = Number(log.timestamp) || 0;
             if (t < 1000000000000) t = t * 1000;
@@ -42,7 +41,6 @@ export default function HomePage() {
           const effectiveLogs = matchedSleepLogs.length > 0 ? matchedSleepLogs : logKeys.slice(-30).map(k => rawLogs[k]);
           const totalLogs = effectiveLogs.length || 1;
 
-          // ค่าเฉลี่ยตัวแปรที่ Matching แล้ว
           const avgs = {
             temp: effectiveLogs.reduce((s, i) => s + (Number(i.temperature) || 26.5), 0) / totalLogs,
             hum: effectiveLogs.reduce((s, i) => s + (Number(i.humidity) || 52), 0) / totalLogs,
@@ -51,9 +49,7 @@ export default function HomePage() {
             co2: effectiveLogs.reduce((s, i) => s + (Number(i.co2) || 650), 0) / totalLogs,
             pm25: effectiveLogs.reduce((s, i) => s + (Number(i.pm25) || 8), 0) / totalLogs
           };
-          setSensorAverages(avgs);
 
-          // Gemini AI Diagnose -> รับ Personalized Weights
           const geminiRes = await fetch('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -64,7 +60,6 @@ export default function HomePage() {
           const aiData = geminiJson?.data;
           const weights = aiData?.weights || { co2: 0.2, temp: 0.25, hum: 0.15, pm25: 0.1, sound: 0.2, light: 0.1 };
 
-          // เทียบเกณฑ์มาตรฐาน (Sub-scores 0-100)
           const co2Score = Math.max(0, 100 - (avgs.co2 > 1000 ? (avgs.co2 - 1000) * 0.1 : 0));
           const tempScore = Math.max(0, 100 - (avgs.temp > 25 ? (avgs.temp - 25) * 10 : (23 - avgs.temp) * 10));
           const humScore = Math.max(0, 100 - (avgs.hum > 60 ? (avgs.hum - 60) * 3 : 0));
@@ -72,7 +67,6 @@ export default function HomePage() {
           const soundScore = avgs.sound > 1000 ? 50 : 100;
           const lightScore = avgs.light > 10 ? 70 : 100;
 
-          // คำนวณ (weight) * (ค่าตัวแปรที่เทียบเกณฑ์) -> Room envi score
           const roomEnviScore = Math.round(
             (co2Score * weights.co2) +
             (tempScore * weights.temp) +
@@ -82,10 +76,8 @@ export default function HomePage() {
             (lightScore * weights.light)
           );
 
-          // Combine กับ Garmin
           const combinedSleepScore = Math.round((garmin.garminSleepScore + roomEnviScore) / 2);
 
-          // บันทึกลง Firebase
           const summaryRef = ref(database, 'personal_sensitivity/summary');
           set(summaryRef, {
             evaluatedDate: garmin.calendarDate,
@@ -112,7 +104,6 @@ export default function HomePage() {
     processAutoSync();
   }, []);
 
-  // 2. อ่านข้อมูลจาก Firebase
   useEffect(() => {
     if (!database) return;
     const summaryRef = ref(database, 'personal_sensitivity/summary');
@@ -128,76 +119,138 @@ export default function HomePage() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#030712',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.18) 0%, transparent 65%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '16px 12px 32px 12px',
+      padding: '16px 12px 90px 12px',
       display: 'flex',
       justifyContent: 'center'
     }}>
-      <main style={{ width: '100%', maxWidth: '920px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        {/* Navigation Header */}
-        <header style={{
-          background: 'rgba(15, 23, 42, 0.85)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '9999px',
-          padding: '8px 16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>🌙</span>
-            <strong style={{ fontSize: '15px', color: '#f8fafc' }}>COMFY SLEEP</strong>
-          </div>
-          <nav style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
-            <Link href="/sensors" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '12px', padding: '6px 12px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)' }}>🛏️ Comfy Room</Link>
-            <Link href="/persona" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '12px', padding: '6px 12px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)' }}>⌚ Smart Watch & Persona</Link>
-            <Link href="/sensitivity" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '12px', padding: '6px 12px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)' }}>🎯 Sensitivity</Link>
-            <Link href="/sensitivity-profile" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '12px', padding: '6px 12px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)' }}>📜 ประวัติสะสม</Link>
-            <Link href="/account" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '12px', padding: '6px 12px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)' }}>👤 Account</Link>
-          </nav>
-        </header>
+      <style jsx>{`
+        .app-container {
+          width: 100%;
+          max-width: 900px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
 
-        {/* Combined Sleep Score Card */}
-        <section style={{
-          background: 'rgba(15, 23, 42, 0.65)',
-          border: '1px solid rgba(56, 189, 248, 0.35)',
-          borderRadius: '20px',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
-          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800' }}>RESULT: COMBINED SLEEP SCORE</span>
+        .glass-card {
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Bottom Floating Navigation Bar */
+        .bottom-nav {
+          position: fixed;
+          bottom: 16px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: calc(100% - 24px);
+          max-width: 500px;
+          background: rgba(15, 23, 42, 0.85);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 9999px;
+          padding: 6px 12px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          z-index: 100;
+          box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8);
+        }
+
+        .nav-btn {
+          color: #94a3b8;
+          text-decoration: none;
+          font-size: 11px;
+          font-weight: 600;
+          padding: 8px 12px;
+          border-radius: 9999px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s;
+        }
+
+        .nav-btn.active {
+          color: #ffffff;
+          background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+          box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+        }
+
+        .account-icon-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #f8fafc;
+          text-decoration: none;
+          font-size: 16px;
+        }
+      `}</style>
+
+      <main className="app-container">
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px'
+          }}>🌙</div>
+          <span style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc' }}>COMFY SLEEP</span>
+        </div>
+
+        {/* Combined Sleep Score */}
+        <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.35)' }}>
+          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.8px' }}>RESULT: COMBINED SLEEP SCORE</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '36px', fontWeight: '800', color: '#38bdf8' }}>{daily?.combinedSleepScore ?? '--'}</span>
+            <span style={{ fontSize: '38px', fontWeight: '800', color: '#38bdf8' }}>{daily?.combinedSleepScore ?? '--'}</span>
             <span style={{ fontSize: '14px', color: '#64748b' }}>/ 100</span>
-            <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: 'auto' }}>
+            <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: 'auto' }}>
               (Garmin: {daily?.garminSleepScore ?? '--'} | Room Env: {daily?.roomEnvironmentScore ?? '--'})
             </span>
           </div>
         </section>
 
-        {/* AI Diagnosis & Recommendations */}
-        <section style={{
-          background: 'rgba(15, 23, 42, 0.65)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '20px',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
+        {/* AI Diagnosis */}
+        <section className="glass-card">
           <span style={{ fontSize: '11px', color: '#facc15', fontWeight: '800' }}>🤖 ผลวิเคราะห์สาเหตุและคำแนะนำจาก AI (GEMINI DIAGNOSIS)</span>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#f8fafc', margin: 0 }}>
-            {aiInsight?.diagnosis || "กำลังวิเคราะห์สาเหตุเชิงลึก..."}
+          <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#f8fafc', margin: 0, lineHeight: 1.5 }}>
+            {aiInsight?.diagnosis || "กำลังประมวลผลวิเคราะห์สาเหตุเชิงลึก..."}
           </h2>
           <p style={{ fontSize: '12px', color: '#cbd5e1', margin: 0, lineHeight: 1.6 }}>
             💡 <strong>คำแนะนำ AI:</strong> {aiInsight?.recommendation || "กำลังประมวลผลคำแนะนำ..."}
           </p>
         </section>
       </main>
+
+      {/* Bottom Floating Navigation */}
+      <nav className="bottom-nav">
+        <Link href="/sensors" className={`nav-btn ${pathname === '/sensors' ? 'active' : ''}`}>🛏️ Room</Link>
+        <Link href="/persona" className={`nav-btn ${pathname === '/persona' ? 'active' : ''}`}>⌚ Persona</Link>
+        <Link href="/sensitivity" className={`nav-btn ${pathname === '/sensitivity' ? 'active' : ''}`}>🎯 Sensitivity</Link>
+        <Link href="/sensitivity-profile" className={`nav-btn ${pathname === '/sensitivity-profile' ? 'active' : ''}`}>📜 History</Link>
+        <Link href="/account" className="account-icon-btn" title="Account">👤</Link>
+      </nav>
     </div>
   );
 }
