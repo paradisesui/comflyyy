@@ -122,7 +122,7 @@ export default function PersonaPage() {
       <main className="container">
         <Link href="/" className="btn-back-glow">
           <div className="arrow-badge">←</div>
-          <span>กลับหน้าหลัก</span>
+          <span> </span>
         </Link>
 
         <div>

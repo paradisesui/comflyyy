@@ -189,7 +189,7 @@ export default function SensorsPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" className="btn-back-glow">
             <div className="arrow-badge">←</div>
-            <span>กลับหน้าหลัก</span>
+            <span> </span>
           </Link>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', letterSpacing: '0.8px' }}>
             DAILY AVERAGE SENSOR METRICS

@@ -315,7 +315,7 @@ export default function AccountPage() {
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" className="btn-back-glow">
             <div className="arrow-badge">←</div>
-            <span>กลับหน้าหลัก</span>
+            <span> </span>
           </Link>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', letterSpacing: '0.5px' }}>
             USER ACCOUNT MANAGEMENT
