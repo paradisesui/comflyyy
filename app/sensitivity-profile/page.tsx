@@ -38,10 +38,10 @@ export default function SensitivityProfilePage() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#030712',
-      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.2) 0%, transparent 70%)',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.18) 0%, transparent 65%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '48px 16px 48px 16px', /* เพิ่มระยะขอบบนเป็น 48px ให้สบายตา */
+      padding: '48px 16px 48px 16px', /* เพิ่มระยะขอบบนเป็น 48px เพื่อแก้เรื่องติดขอบจอเกินไป */
       display: 'flex',
       justifyContent: 'center'
     }}>
@@ -54,41 +54,43 @@ export default function SensitivityProfilePage() {
           gap: 20px;
         }
 
-        .btn-pill-back {
+        .btn-back-pill {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          color: #38bdf8;
+          color: #f8fafc;
           text-decoration: none;
           font-size: 13px;
           font-weight: 700;
           padding: 8px 18px;
           border-radius: 9999px;
-          background: rgba(56, 189, 248, 0.12);
-          border: 1px solid rgba(56, 189, 248, 0.35);
-          box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+          background: rgba(15, 23, 42, 0.8);
+          border: 1px solid rgba(56, 189, 248, 0.4);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
           transition: all 0.2s ease;
         }
 
-        .btn-pill-back:hover {
-          background: rgba(56, 189, 248, 0.25);
-          transform: translateX(-2px);
+        .btn-back-pill:hover {
+          background: rgba(56, 189, 248, 0.2);
+          border-color: #38bdf8;
         }
 
         .glass-card {
-          background: rgba(15, 23, 42, 0.7);
-          backdrop-filter: blur(20px);
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 24px;
-          padding: 24px;
+          border-radius: 20px;
+          padding: 20px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 14px;
         }
 
         .table-container {
           overflow-x: auto;
-          border-radius: 16px;
+          -webkit-overflow-scrolling: touch;
+          border-radius: 12px;
         }
 
         table {
@@ -96,14 +98,15 @@ export default function SensitivityProfilePage() {
           border-collapse: collapse;
           text-align: left;
           font-size: 13px;
+          min-width: 500px;
         }
 
         th {
           color: #94a3b8;
           padding: 14px 12px;
-          background-color: rgba(15, 23, 42, 0.85);
+          background-color: rgba(15, 23, 42, 0.8);
           border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          font-weight: 700;
+          font-weight: 600;
         }
 
         td {
@@ -114,12 +117,11 @@ export default function SensitivityProfilePage() {
       `}</style>
 
       <main className="profile-container">
-        {/* Navigation Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" className="btn-pill-back">
-            ← ย้อนกลับหน้าหลัก
+          <Link href="/" className="btn-back-pill">
+            ← กลับหน้าหลัก
           </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', letterSpacing: '0.5px' }}>
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>
             SENSITIVITY PROFILE HISTORY
           </span>
         </div>
@@ -128,36 +130,36 @@ export default function SensitivityProfilePage() {
           <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>
             📜 ประวัติคุณภาพการนอนและสภาพแวดล้อมสะสม
           </h1>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+          <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
             {loading ? 'กำลังดึงประวัติย้อนหลัง...' : `บันทึกข้อมูลย้อนหลังรวม ${totalDays} วัน`}
           </p>
         </div>
 
-        {/* Summary Card */}
+        {/* สรุปค่าเฉลี่ย */}
         <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.35)' }}>
           <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800' }}>
             📈 สรุปค่าเฉลี่ยสะสมจากประวัติจริง ({totalDays} วัน)
           </span>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '14px' }}>
               <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>Garmin เฉลี่ย</span>
               <strong style={{ fontSize: '24px', color: '#38bdf8' }}>{avgGarmin}</strong>
             </div>
 
-            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '14px' }}>
               <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>Room เฉลี่ย</span>
               <strong style={{ fontSize: '24px', color: '#f43f5e' }}>{avgRoom}</strong>
             </div>
 
-            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '14px' }}>
               <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>Combined เฉลี่ย</span>
               <strong style={{ fontSize: '24px', color: '#34d399' }}>{avgCombined}</strong>
             </div>
           </div>
         </section>
 
-        {/* Logs Table Card */}
+        {/* ตารางประวัติ */}
         <section className="glass-card">
           <div className="table-container">
             <table>
@@ -177,15 +179,15 @@ export default function SensitivityProfilePage() {
                     <tr key={index}>
                       <td style={{ fontWeight: '700', color: '#38bdf8' }}>{log.date}</td>
                       <td>{log.garminScore}</td>
-                      <td style={{ color: log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '700' }}>{log.roomScore}</td>
-                      <td style={{ fontWeight: '800' }}>{log.combinedScore}</td>
+                      <td style={{ color: log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>{log.roomScore}</td>
+                      <td style={{ fontWeight: '700' }}>{log.combinedScore}</td>
                       <td>{log.avgTemp}°C</td>
                       <td>{log.restlessCount} ครั้ง</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', color: '#64748b', padding: '32px' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', color: '#64748b', padding: '24px' }}>
                       ยังไม่มีประวัติบันทึกสะสม
                     </td>
                   </tr>

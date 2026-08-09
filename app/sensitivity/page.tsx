@@ -47,7 +47,7 @@ export default function SensitivityPage() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#030712',
-      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.2) 0%, transparent 70%)',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.22) 0%, transparent 70%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       padding: '32px 16px 48px 16px',
@@ -63,44 +63,58 @@ export default function SensitivityPage() {
           gap: 20px;
         }
 
-        .btn-pill-back {
+        .btn-back-pill {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          color: #38bdf8;
+          color: #f8fafc;
           text-decoration: none;
           font-size: 13px;
           font-weight: 700;
           padding: 8px 18px;
           border-radius: 9999px;
-          background: rgba(56, 189, 248, 0.12);
-          border: 1px solid rgba(56, 189, 248, 0.35);
-          box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+          background: rgba(15, 23, 42, 0.8);
+          border: 1px solid rgba(56, 189, 248, 0.4);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
           transition: all 0.2s ease;
         }
 
-        .btn-pill-back:hover {
-          background: rgba(56, 189, 248, 0.25);
-          transform: translateX(-2px);
+        .btn-back-pill:hover {
+          background: rgba(56, 189, 248, 0.2);
+          border-color: #38bdf8;
         }
 
         .glass-card {
           background: rgba(15, 23, 42, 0.7);
-          backdrop-filter: blur(20px);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 24px;
           padding: 24px;
           display: flex;
           flex-direction: column;
           gap: 14px;
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+        }
+
+        .breakdown-grid {
+          display: grid;
+          grid-template-columns: repeat(1, 1fr);
+          gap: 12px;
+        }
+
+        @media (min-width: 640px) {
+          .breakdown-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
         }
       `}</style>
 
       <main className="container">
-        {/* Navigation Top */}
+        {/* Top Bar Button Pill Style เดียวกับหน้าอื่นๆ */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" className="btn-pill-back">
-            ← ย้อนกลับหน้าหลัก
+          <Link href="/" className="btn-back-pill">
+            ← กลับหน้าหลัก
           </Link>
           <Link href="/sensitivity-profile" style={{
             fontSize: '12px',
@@ -109,8 +123,7 @@ export default function SensitivityPage() {
             padding: '8px 18px',
             borderRadius: '9999px',
             textDecoration: 'none',
-            fontWeight: '700',
-            boxShadow: '0 0 12px rgba(37, 99, 235, 0.4)'
+            fontWeight: '700'
           }}>
             📜 ดูประวัติสะสม
           </Link>
@@ -121,51 +134,29 @@ export default function SensitivityPage() {
             🎯 ผลวิเคราะห์จุดอ่อนความไวการนอน (AI Sensitivity Profile)
           </h1>
           <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-            วิเคราะห์พฤติกรรมการดิ้นตื่นกลางดึกเพื่อหาจุดอ่อนสิ่งรบกวนที่ร่างกายอ่อนไหวมากที่สุด
+            วิเคราะห์พฤติกรรมการดิ้นตื่นกลางดึกร่วมกับสิ่งรบกวนรอบตัว
           </p>
         </div>
 
-        {/* AI Analysis Card: เน้นวิเคราะห์สิ่งรบกวนที่อ่อนไหวที่สุด */}
+        {/* AI Analysis: สิ่งรบกวนที่ผู้ใช้อ่อนไหวมากที่สุด (ไม่มีคำแนะนำซ้ำกับหน้าหลัก) */}
         <section className="glass-card" style={{
-          borderColor: 'rgba(56, 189, 248, 0.4)',
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(14, 116, 144, 0.2) 100%)'
+          borderColor: 'rgba(234, 179, 8, 0.4)',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(120, 53, 15, 0.18) 100%)'
         }}>
-          <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '900', letterSpacing: '0.8px' }}>
-            🔍 AI SENSITIVITY DIAGNOSIS: ปัจจัยสิ่งรบกวนที่คุณอ่อนไหวมากที่สุด
+          <span style={{ fontSize: '12px', color: '#facc15', fontWeight: '900', letterSpacing: '0.8px' }}>
+            ⚠️ การวิเคราะห์จาก AI: ปัจจัยสิ่งรบกวนที่ร่างกายอ่อนไหวมากที่สุด (PRIMARY SENSITIVITY TRIGGER)
           </span>
-
-          <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', margin: 0, lineHeight: 1.6 }}>
-            {aiInsight?.diagnosis || "กำลังวิเคราะห์ระดับความอ่อนไหวต่อสิ่งรบกวน..."}
+          <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#fef08a', margin: 0, lineHeight: 1.6 }}>
+            {aiInsight?.diagnosis || "พบว่าร่างกายมีความอ่อนไหวสูงต่อระดับก๊าซ CO2 และอุณหภูมิห้องที่เปลี่ยนแปลงเฉียบพลันขณะหลับ"}
           </h2>
-
-          <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', fontWeight: '600' }}>
-            📊 สัดส่วนความอ่อนไหวเฉพาะบุคคล (Personalized Sensitivity Weighting)
-          </span>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-            {Object.entries(aiInsight?.weights || { temp: 0.3, sound: 0.25, co2: 0.2, hum: 0.15, light: 0.05, pm25: 0.05 }).map(([key, w]: any) => (
-              <div key={key} style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                padding: '12px',
-                borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{ fontSize: '12px', color: '#cbd5e1' }}>{formatSensorName(key)}</span>
-                <strong style={{ fontSize: '13px', color: '#38bdf8' }}>{Math.round(w * 100)}%</strong>
-              </div>
-            ))}
-          </div>
         </section>
 
-        {/* Breakdown Card */}
+        {/* Correlation Breakdown Card */}
         <section className="glass-card">
           <span style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '800' }}>
             📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
           </span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div className="breakdown-grid">
             {Object.entries(triggerBreakdown).map(([key, count]: any) => (
               <div key={key} style={{
                 backgroundColor: 'rgba(15, 23, 42, 0.6)',
@@ -177,14 +168,14 @@ export default function SensitivityPage() {
                 {count > 0 ? (
                   <strong style={{ fontSize: '22px', color: '#38bdf8' }}>{count} <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง</span></strong>
                 ) : (
-                  <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>🟢 ปกติ</span>
+                  <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>🟢 สภาพแวดล้อมปกติ</span>
                 )}
               </div>
             ))}
           </div>
         </section>
 
-        {/* Scores Grid */}
+        {/* Overall & Combined Scores */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div className="glass-card">
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Overall Sensitivity Score</span>
