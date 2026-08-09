@@ -135,9 +135,6 @@ export default function SensitivityPage() {
             <div className="arrow-badge">←</div>
             <span> </span>
           </Link>
-          <Link href="/sensitivity-profile" className="btn-back-glow" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.6) 0%, rgba(99, 102, 241, 0.8) 100%)' }}>
-            📜 ดูประวัติสะสม
-          </Link>
         </div>
 
         <div>
