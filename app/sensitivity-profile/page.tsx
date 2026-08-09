@@ -6,56 +6,46 @@ import { database } from '@/app/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 
 export default function SensitivityProfilePage() {
-  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [summaryData, setSummaryData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!database) return;
 
-    let unsubHistory: (() => void) | undefined;
+    // 1. ดึงประวัติสะสมรายวันจาก Firebase (/personal_sensitivity/history)
+    const historyRef = ref(database, 'personal_sensitivity/history');
+    const unsubHistory = onValue(historyRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const rawData = snapshot.val();
+        // แปลง Object ให้เป็น Array และเรียงลำดับวันที่จากล่าสุดขึ้นก่อน
+        const list = Object.keys(rawData).map(key => ({
+          id: key,
+          ...rawData[key]
+        })).sort((a, b) => b.date.localeCompare(a.date));
+        setHistoryList(list);
+      } else {
+        setHistoryList([]);
+      }
+    });
 
-    try {
-      // ดึงข้อมูลประวัติย้อนหลังที่มีการบันทึกไว้ใน Firebase จริงๆ
-      const historyRef = ref(database, 'personal_sensitivity/history');
-      unsubHistory = onValue(historyRef, (snapshot) => {
-        if (snapshot && snapshot.exists()) {
-          const data = snapshot.val();
-          // กรองเอาเฉพาะข้อมูลที่มีอยู่จริง และเรียงลำดับวันที่ล่าสุดขึ้นก่อน
-          const list = Object.values(data)
-            .filter((item: any) => item && item.date)
-            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          
-          setHistoryLogs(list);
-        } else {
-          setHistoryLogs([]);
-        }
-        setLoading(false);
-      });
-    } catch (err) {
-      console.error('Firebase read error:', err);
+    // 2. ดึงค่าเฉลี่ยสะสมรวมจาก Summary
+    const summaryRef = ref(database, 'personal_sensitivity/summary');
+    const unsubSummary = onValue(summaryRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSummaryData(snapshot.val());
+      }
       setLoading(false);
-    }
+    });
 
     return () => {
-      if (unsubHistory) unsubHistory();
+      unsubHistory();
+      unsubSummary();
     };
   }, []);
 
-  // นับจำนวนวันสะสมจริงจาก Array Length
-  const totalDays = historyLogs.length;
-
-  // คำนวณค่าเฉลี่ยสะสมจากข้อมูลที่มีจริง
-  const avgGarmin = totalDays > 0 
-    ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.garminScore) || 0), 0) / totalDays) 
-    : 0;
-
-  const avgRoom = totalDays > 0 
-    ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.roomScore) || 0), 0) / totalDays) 
-    : 0;
-
-  const avgCombined = totalDays > 0 
-    ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.combinedScore) || 0), 0) / totalDays) 
-    : 0;
+  const cumulative = summaryData?.cumulativeSummary;
+  const totalDays = historyList.length || summaryData?.totalAccumulatedDays || 1;
 
   return (
     <div style={{
@@ -83,140 +73,127 @@ export default function SensitivityProfilePage() {
           gap: 20px;
         }
 
-        .metrics-grid {
-          display: grid;
-          grid-template-columns: 1fr;
+        .summary-card {
+          background-color: #0f172a;
+          padding: 20px;
+          border-radius: 20px;
+          border: 1px solid #38bdf840;
+          display: flex;
+          flex-direction: column;
           gap: 12px;
         }
 
-        .table-container {
-          width: 100%;
-          overflow-x: auto;
-          border-radius: 14px;
+        .table-box {
+          background-color: #0f172a;
+          border-radius: 16px;
           border: 1px solid #1e293b;
+          overflow: hidden;
         }
 
         table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 13px;
           text-align: left;
+          font-size: 13px;
         }
 
         th {
-          background-color: #0f172a;
+          background-color: #151c2c;
           color: #94a3b8;
-          padding: 14px 16px;
-          border-bottom: 1px solid #1e293b;
+          padding: 12px 16px;
           font-weight: 600;
+          border-bottom: 1px solid #1e293b;
         }
 
         td {
           padding: 14px 16px;
           border-bottom: 1px solid #1e293b;
-          color: #f8fafc;
+          color: #cbd5e1;
         }
 
-        @media (min-width: 768px) {
-          .metrics-grid {
-            grid-template-columns: 1fr 1fr 1fr;
-          }
+        tr:last-child td {
+          border-bottom: none;
         }
       `}</style>
 
       <main className="profile-container">
         {/* Navigation Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/sensitivity" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
-            ← กลับหน้าหลัก Sensitivity
+          <Link href="/" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+            ← ย้อนกลับหน้าหลัก
           </Link>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
-            SENSITIVITY PROFILE HISTORY
+            CUMULATIVE SENSITIVITY PROFILE
           </span>
         </div>
 
-        {/* Header Title */}
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
-            📜 ประวัติคุณภาพการนอนและสภาพแวดล้อมสะสม
+            📜 ประวัติสะสมสถิติการนอน (Sensitivity Profile)
           </h1>
           <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-            {loading ? 'กำลังดึงประวัติย้อนหลัง...' : `บันทึกข้อมูลย้อนหลังรวม ${totalDays} วัน`}
+            {loading ? 'กำลังโหลดประวัติ...' : `สะสมข้อมูลทั้งหมด ${totalDays} คืนที่มี Timestamp ตรงกัน`}
           </p>
         </div>
 
-        {/* 1. สรุปค่าเฉลี่ยสะสมจริงตามจำนวนวันที่มีข้อมูล */}
-        <section style={{
-          backgroundColor: '#0f172a',
-          padding: '20px',
-          borderRadius: '20px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
-          <span style={{ fontSize: '13px', color: '#818cf8', fontWeight: '700' }}>
-            📈 สรุปค่าเฉลี่ยสะสมจากประวัติการใช้งานจริง ({totalDays} วัน)
+        {/* การ์ดสรุปค่าเฉลี่ยสะสม N วัน */}
+        <section className="summary-card">
+          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', textTransform: 'uppercase' }}>
+            📊 ค่าเฉลี่ยสถิติสะสมรวม {totalDays} วันย้อนหลัง
           </span>
 
-          <div className="metrics-grid">
-            <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '14px', border: '1px solid #1e293b' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>เฉลี่ย Garmin Score</span>
-              <strong style={{ fontSize: '24px', color: '#38bdf8', display: 'block', margin: '4px 0' }}>
-                {avgGarmin} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
-              </strong>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '8px' }}>
+            <div style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Garmin Score เฉลี่ย</span>
+              <strong style={{ fontSize: '20px', color: '#f8fafc' }}>{cumulative?.avgGarminScore || '--'}</strong>
             </div>
 
-            <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '14px', border: '1px solid #1e293b' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>เฉลี่ย Room Env Score</span>
-              <strong style={{ fontSize: '24px', color: '#f43f5e', display: 'block', margin: '4px 0' }}>
-                {avgRoom} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
-              </strong>
+            <div style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Room Score เฉลี่ย</span>
+              <strong style={{ fontSize: '20px', color: '#34d399' }}>{cumulative?.avgRoomScore || '--'}</strong>
             </div>
 
-            <div style={{ backgroundColor: '#151c2c', padding: '14px', borderRadius: '14px', border: '1px solid #1e293b' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>เฉลี่ย Combined Score</span>
-              <strong style={{ fontSize: '24px', color: '#34d399', display: 'block', margin: '4px 0' }}>
-                {avgCombined} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
-              </strong>
+            <div style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Combined Score เฉลี่ย</span>
+              <strong style={{ fontSize: '20px', color: '#38bdf8' }}>{cumulative?.avgCombinedScore || '--'}</strong>
             </div>
           </div>
         </section>
 
-        {/* 2. ตารางแสดงประวัติค่าของแต่ละวัน */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700' }}>
-            🗓️ รายละเอียดคะแนนและสภาพแวดล้อมรายวัน (Daily Logs)
-          </span>
+        {/* ตารางแสดงประวัติสะสมรายวัน */}
+        <section className="table-box">
+          <div style={{ padding: '14px 16px', backgroundColor: '#151c2c', borderBottom: '1px solid #1e293b', fontWeight: '700', fontSize: '13px' }}>
+            🗓️ บันทึกประวัติสถิติรายคืน (Daily History Logs)
+          </div>
 
-          <div className="table-container">
+          <div style={{ overflowX: 'auto' }}>
             <table>
               <thead>
                 <tr>
-                  <th>วันที่</th>
+                  <th>วันที่ (Date)</th>
                   <th>Garmin Score</th>
-                  <th>Room Env</th>
-                  <th>Combined</th>
-                  <th>อุณหภูมิเฉลี่ย</th>
-                  <th>การดิ้น/ตื่น</th>
+                  <th>Room Score</th>
+                  <th>Combined Score</th>
+                  <th>อุณหภูมิห้องเฉลี่ย</th>
+                  <th>การดิ้น (ครั้ง)</th>
                 </tr>
               </thead>
               <tbody>
-                {historyLogs.length > 0 ? (
-                  historyLogs.map((log, index) => (
-                    <tr key={index}>
-                      <td style={{ fontWeight: '600', color: '#38bdf8' }}>{log.date}</td>
-                      <td>{log.garminScore}</td>
-                      <td style={{ color: log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>{log.roomScore}</td>
-                      <td style={{ fontWeight: '700' }}>{log.combinedScore}</td>
-                      <td>{log.avgTemp}°C</td>
-                      <td>{log.restlessCount} ครั้ง</td>
+                {historyList.length > 0 ? (
+                  historyList.map((item) => (
+                    <tr key={item.id}>
+                      <td style={{ fontWeight: '700', color: '#f8fafc' }}>{item.date}</td>
+                      <td>{item.garminScore || '--'}</td>
+                      <td style={{ color: '#34d399', fontWeight: '600' }}>{item.roomScore || '--'}</td>
+                      <td style={{ color: '#38bdf8', fontWeight: '700' }}>{item.combinedScore || '--'}</td>
+                      <td>{item.avgTemp ? `${item.avgTemp}°C` : '--'}</td>
+                      <td>{item.restlessCount ?? '--'} ครั้ง</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', color: '#64748b', padding: '24px' }}>
-                      ยังไม่มีประวัติการบันทึกข้อมูล (กรุณาเปิดหน้า Sensitivity เพื่อซิงค์ข้อมูลคืนแรก)
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                      ยังไม่มีข้อมูลบันทึกประวัติสะสมแบบ Exact Match
                     </td>
                   </tr>
                 )}

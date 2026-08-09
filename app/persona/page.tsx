@@ -25,7 +25,7 @@ export default function PersonaPage() {
     fetchLatestGarmin();
   }, []);
 
-  // ข้อมูลสถิติการนอน (ใช้ค่าจาก API หรือ Mock สำรองตามภาพล่าสุด)
+  // ข้อมูลสถิติการนอน
   const score = garminData?.garminSleepScore || 87;
   const dateStr = garminData?.calendarDate || '2026-08-09';
   const restlessCount = garminData?.restlessMomentsCount || 39;
@@ -38,9 +38,9 @@ export default function PersonaPage() {
   const totalSleepMins = deepSleepMins + remSleepMins + lightSleepMins; // 465 mins (7h 45m)
 
   // คำนวณเปอร์เซ็นต์ตามเกณฑ์สรีรวิทยา (AASM Criteria)
-  const deepPct = Math.round((deepSleepMins / totalSleepMins) * 100);  // ~18% (เกณฑ์ดี: 15-25%)
-  const remPct = Math.round((remSleepMins / totalSleepMins) * 100);    // ~27% (เกณฑ์ดี: 20-25%)
-  const lightPct = Math.round((lightSleepMins / totalSleepMins) * 100); // ~55% (เกณฑ์ดี: 50-60%)
+  const deepPct = Math.round((deepSleepMins / totalSleepMins) * 100);
+  const remPct = Math.round((remSleepMins / totalSleepMins) * 100);
+  const lightPct = Math.round((lightSleepMins / totalSleepMins) * 100);
 
   return (
     <div style={{
@@ -120,7 +120,7 @@ export default function PersonaPage() {
           </p>
         </div>
 
-        {/* 1. สรุปภาพรวม Sleep Architecture */}
+        {/* สรุปภาพรวม Sleep Architecture */}
         <section style={{
           backgroundColor: '#0f172a',
           padding: '20px',
@@ -151,7 +151,7 @@ export default function PersonaPage() {
           </p>
         </section>
 
-        {/* 2. สัดส่วนระยะการนอนหลับ (Sleep Stages Analysis) */}
+        {/* สัดส่วนระยะการนอนหลับ */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700' }}>
             📊 สัดส่วนระยะการนอนหลับเทียบเกณฑ์มาตรฐาน (AASM Standards)
@@ -199,7 +199,7 @@ export default function PersonaPage() {
           </div>
         </section>
 
-        {/* 3. สถิติวัดระดับความเครียดและการเคลื่อนไหว */}
+        {/* ความเครียดและการเคลื่อนไหว */}
         <section style={{
           backgroundColor: '#0f172a',
           padding: '16px',
