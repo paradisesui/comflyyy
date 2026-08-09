@@ -1,79 +1,60 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export async function POST(req: Request) {
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+export async function POST(request: Request) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'API Error: ไม่พบ GEMINI_API_KEY ใน Environment Variables ของระบบ' }, 
-        { status: 500 }
-      );
-    }
+    const body = await request.json();
+    const { sensorAverages, restlessCount } = body;
 
-    const { sensorData } = await req.json();
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    if (!sensorData) {
-      return NextResponse.json(
-        { error: 'API Error: ไม่พบข้อมูลเซนเซอร์สำหรับประมวลผล' }, 
-        { status: 400 }
-      );
-    }
+    // Prompt กำหนดให้ Gemini AI คำนวณ Personalized Weights 6 ตัวแปรให้ผลรวมเท่ากับ 1.0 (100%)
+    const prompt = `
+      คุณเป็น AI ผู้เชี่ยวชาญด้านสรีรวิทยาการนอนหลับ
+      จงวิเคราะห์ (Diagnose) ข้อมูลสภาพแวดล้อมห้องนอนกับการดิ้นตื่น (${restlessCount || 0} ครั้ง) ต่อไปนี้:
+      - อุณหภูมิเฉลี่ย: ${sensorAverages?.temp?.toFixed(1) || 25}°C
+      - ความชื้นเฉลี่ย: ${sensorAverages?.hum?.toFixed(1) || 50}%
+      - เสียงเฉลี่ย: ${sensorAverages?.sound?.toFixed(1) || 400}
+      - แสงเฉลี่ย: ${sensorAverages?.light?.toFixed(1) || 0} Lux
+      - CO2 เฉลี่ย: ${sensorAverages?.co2?.toFixed(1) || 600} ppm
+      - PM2.5 เฉลี่ย: ${sensorAverages?.pm25?.toFixed(1) || 10} µg/m³
 
-    const promptText = `
-      ข้อมูลเซนเซอร์ห้องนอนขณะนี้:
-      - อุณหภูมิ: ${sensorData.temperature?.toFixed(1) ?? '25'} °C (เกณฑ์เหมาะสม: 22-25 °C)
-      - ความชื้น: ${sensorData.humidity?.toFixed(0) ?? '50'} % (เกณฑ์เหมาะสม: 40-60 %)
-      - CO2: ${sensorData.co2 ?? '500'} ppm (เกณฑ์เหมาะสม: < 800 ppm)
-      - แสงสว่าง: ${sensorData.lux?.toFixed(1) ?? '0'} Lux (เกณฑ์เหมาะสม: < 5 Lux)
-      - เสียงรบกวน: ${sensorData.sound ?? '0'} Raw Signal (เกณฑ์เงียบ: < 1000)
+      จงคำนวณค่าน้ำหนักเฉพาะบุคคล (Personalized Weight) ของทั้ง 6 ตัวแปร โดยผลรวมทั้ง 6 ตัวแปรต้องเท่ากับ 1.0 (100%) พอดี
+      พร้อมทั้งระบุสาเหตุเชิงลึกและคำแนะนำปรับปรุงห้องนอน
 
-      ข้อบังคับในการตอบอย่างเข้มงวด:
-      1. ห้ามมีคำทักทาย คำเกริ่นนำ คำอวยพร หรือคำลงท้ายเด็ดขาด (เช่น "สวัสดีค่ะ", "โค้ชขอแนะนำ", "จัดการตามนี้แล้วนอนหลับสนิทฝันดี")
-      2. แสดงเฉพาะรายการคำแนะนำที่เป็นข้อๆ (1., 2., 3.) ทันทีในบรรทัดแรก
-      3. จำนวนข้อต้องเท่ากับจำนวนปัญหาของเซนเซอร์ที่หลุดเกณฑ์มาตรฐานพอดี
-      4. แต่ละข้อให้เขียนสั้น กระชับ เป็น Action ที่ผู้ใช้ต้องทำทันที และต่อด้วยเหตุผลที่ให้คำแนะนำนี้ห้ามรายงานค่าตัวเลขเด็ดขาด
-      5. กรณีไม่มีปัญหาเลย ให้ตอบเพียงข้อเดียวสั้นๆ ว่า "สภาพแวดล้อมเหมาะสมกับการนอนแล้ว เข้านอนได้เลย"
+      ตอบกลับเป็น JSON โครงสร้างนี้เท่านั้น (ห้ามมี Markdown หรือตัวอักษรอื่น):
+      {
+        "weights": {
+          "temp": 0.30,
+          "hum": 0.15,
+          "sound": 0.25,
+          "light": 0.10,
+          "co2": 0.10,
+          "pm25": 0.10
+        },
+        "diagnosis": "ข้อสรุปสาเหตุเชิงลึกสั้นๆ 1-2 ประโยค",
+        "recommendation": "คำแนะนำการปรับห้องนอน"
+      }
     `;
 
-    const availableModels = [
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash',
-      'gemini-2.5-flash'
-    ];
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    const cleanJsonStr = responseText.replace(/```json|```/g, '').trim();
+    const parsedData = JSON.parse(cleanJsonStr);
 
-    let lastErrorMessage = '';
-
-    for (const modelName of availableModels) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          return NextResponse.json({ result: data.candidates[0].content.parts[0].text.trim() });
-        } else {
-          lastErrorMessage = `[${modelName}] ${data.error?.message || JSON.stringify(data)}`;
-        }
-      } catch (err: any) {
-        lastErrorMessage = `[${modelName}] ${err.message || 'Network failure'}`;
+    return NextResponse.json({ status: 'success', data: parsedData });
+  } catch (error) {
+    console.error('Gemini API Error:', error);
+    // Fallback Data กรณีเกิด Error
+    return NextResponse.json({
+      status: 'fallback',
+      data: {
+        weights: { temp: 0.30, hum: 0.15, sound: 0.25, light: 0.10, co2: 0.10, pm25: 0.10 },
+        diagnosis: "พบปัจจัยรบกวนหลักจากอุณหภูมิห้องและระดับเสียงขณะหลับ",
+        recommendation: "ปรับอุณหภูมิเครื่องปรับอากาศให้อยู่ช่วง 23-25°C และลดแหล่งกำเนิดเสียงรบกวน"
       }
-    }
-
-    return NextResponse.json({ 
-      error: `Gemini API Error: ${lastErrorMessage}` 
-    }, { status: 500 });
-
-  } catch (error: any) {
-    return NextResponse.json({ 
-      error: `Server Internal Error: ${error.message || 'Unknown Server Error'}` 
-    }, { status: 500 });
+    });
   }
 }

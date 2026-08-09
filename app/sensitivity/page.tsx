@@ -10,18 +10,17 @@ export default function SensitivityPage() {
   const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. ระบบ Dynamic Auto Sync & Timestamp Matching
+  // 1. กระบวนการตาม Flowchart: Garmin API + Matching + Gemini AI Diagnose + Room Score Calculation
   useEffect(() => {
     if (!database) return;
 
     const processAutoSync = async () => {
       try {
-        // ยิง API ดึงข้อมูล Garmin ล่าสุดโดยไม่ Hardcode วันที่
+        // ดึงข้อมูล Garmin Connect API ล่าสุด
         const garminRes = await fetch('/api/garmin?latest=true').catch(() => null);
         const garminJson = garminRes ? await garminRes.json() : null;
         const garmin = garminJson?.data;
 
-        // หากยังไม่มีข้อมูลจาก Garmin ให้ข้ามการประมวลผล เพื่อไม่ให้เขียนทับด้วยข้อมูลเพี้ยน
         if (!garmin || !garmin.garminSleepScore) {
           console.warn('Garmin sleep data is not ready yet.');
           return;
@@ -32,13 +31,13 @@ export default function SensitivityPage() {
 
         // ดึง Log เซ็นเซอร์จาก Firebase
         const logsRef = ref(database, 'logs');
-        onValue(logsRef, (snapshot) => {
+        onValue(logsRef, async (snapshot) => {
           if (!snapshot.exists()) return;
 
           const rawLogs = snapshot.val();
           const logKeys = Object.keys(rawLogs);
 
-          // Dynamic Windowing Filter: กรองเอาเฉพาะเซ็นเซอร์ช่วงเวลานอนจริงจาก Garmin
+          // Data Matching: จับคู่ค่าตัวแปรและเวลานอนจริง
           const matchedSleepLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
             let t = Number(log.timestamp) || 0;
             if (t < 1000000000000) t = t * 1000;
@@ -46,73 +45,103 @@ export default function SensitivityPage() {
           });
 
           const hasExactTimestampMatch = matchedSleepLogs.length > 0;
-
-          // Fallback Strategy: ถ้ามี Log เวลาตรงกันให้ใช้ Log ช่วงนั้น ถ้าไม่มีให้ดึงค่าสำรองย้อนหลัง
           const effectiveLogs = hasExactTimestampMatch 
             ? matchedSleepLogs 
             : logKeys.slice(-30).map(k => rawLogs[k]);
 
           const totalLogs = effectiveLogs.length || 1;
-          const avgTemp = effectiveLogs.reduce((sum, item) => sum + (Number(item.temperature) || 25), 0) / totalLogs;
-          const avgSound = effectiveLogs.reduce((sum, item) => sum + (Number(item.sound) || 400), 0) / totalLogs;
-          const avgHum = effectiveLogs.reduce((sum, item) => sum + (Number(item.humidity) || 50), 0) / totalLogs;
+          const sensorAverages = {
+            temp: effectiveLogs.reduce((sum, item) => sum + (Number(item.temperature) || 25), 0) / totalLogs,
+            hum: effectiveLogs.reduce((sum, item) => sum + (Number(item.humidity) || 50), 0) / totalLogs,
+            sound: effectiveLogs.reduce((sum, item) => sum + (Number(item.sound) || 400), 0) / totalLogs,
+            light: effectiveLogs.reduce((sum, item) => sum + (Number(item.light_lux) || 0), 0) / totalLogs,
+            co2: effectiveLogs.reduce((sum, item) => sum + (Number(item.co2) || 600), 0) / totalLogs,
+            pm25: effectiveLogs.reduce((sum, item) => sum + (Number(item.pm25) || 10), 0) / totalLogs
+          };
 
-          // คำนวณ Room Environment Score
-          let roomScore = 100;
-          if (avgTemp > 25) roomScore -= (avgTemp - 25) * 5;
-          if (avgTemp < 23) roomScore -= (23 - avgTemp) * 5;
-          if (avgHum > 60) roomScore -= (avgHum - 60) * 2;
-          if (avgSound > 1000) roomScore -= 15;
-          roomScore = Math.max(0, Math.min(100, Math.round(roomScore)));
+          // Gemini AI ทำการ Diagnose ปัญหาเชิงลึก และ ส่งค่า Personalized Weight ทั้ง 6 ตัวแปร
+          const geminiRes = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sensorAverages,
+              restlessCount: garmin.restlessMomentsCount || 0
+            })
+          }).catch(() => null);
 
-          // คำนวณ Combined Sleep Score จากค่า Garmin ล่าสุดที่ดึงมาได้จริง
-          const combinedScore = Math.round((garmin.garminSleepScore + roomScore) / 2);
+          const geminiJson = geminiRes ? await geminiRes.json() : null;
+          const aiData = geminiJson?.data;
+          const weights = aiData?.weights || { temp: 0.30, hum: 0.15, sound: 0.25, light: 0.10, co2: 0.10, pm25: 0.10 };
 
-          // อัปเดตข้อมูลสรุปประจำวันลง Firebase
+          // คำนวณ Sub-score ของตัวแปรเทียบกับเกณฑ์มาตรฐาน
+          const tempSubScore = Math.max(0, 100 - (sensorAverages.temp > 25 ? (sensorAverages.temp - 25) * 10 : (23 - sensorAverages.temp) * 10));
+          const humSubScore = Math.max(0, 100 - (sensorAverages.hum > 60 ? (sensorAverages.hum - 60) * 4 : 0));
+          const soundSubScore = sensorAverages.sound > 1000 ? 50 : 100;
+          const lightSubScore = sensorAverages.light > 10 ? 70 : 100;
+          const co2SubScore = sensorAverages.co2 > 1000 ? 60 : 100;
+          const pm25SubScore = sensorAverages.pm25 > 37.5 ? 50 : 100;
+
+          // นำ (weight) มาคำนวณกับ (ค่าตัวแปรที่เทียบกับเกณฑ์แล้ว) เพื่อหา Room envi score
+          const weightedRoomScore = Math.round(
+            (tempSubScore * weights.temp) +
+            (humSubScore * weights.hum) +
+            (soundSubScore * weights.sound) +
+            (lightSubScore * weights.light) +
+            (co2SubScore * weights.co2) +
+            (pm25SubScore * weights.pm25)
+          );
+
+          const combinedScore = Math.round((garmin.garminSleepScore + weightedRoomScore) / 2);
+
+          // ส่งผลลัพธ์คะแนนห้องนอน คำแนะนำ และสาเหตุ ขึ้นไปบันทึกลง Firebase
           const summaryRef = ref(database, 'personal_sensitivity/summary');
           set(summaryRef, {
-            evaluatedDate: garmin.calendarDate, // วันที่จริงจาก Garmin
+            evaluatedDate: garmin.calendarDate,
             totalAccumulatedDays: summaryData?.totalAccumulatedDays || 1,
             dailyMetrics: {
               garminSleepScore: garmin.garminSleepScore,
-              roomEnvironmentScore: roomScore,
+              roomEnvironmentScore: weightedRoomScore,
               combinedSleepScore: combinedScore,
               restlessMoments: garmin.restlessMomentsCount || 0,
               todaySensitivity: 41.56,
               isExactMatch: hasExactTimestampMatch
             },
+            aiInsight: {
+              weights,
+              diagnosis: aiData?.diagnosis || "พบปัจจัยรบกวนหลักจากอุณหภูมิห้องและระดับเสียงขณะหลับ",
+              recommendation: aiData?.recommendation || "ปรับอุณหภูมิเครื่องปรับอากาศให้อยู่ช่วง 23-25°C และลดแหล่งกำเนิดเสียงรบกวน"
+            },
             cumulativeSummary: {
               overallSensitivityScore: 41.56,
-              avgRoomTemp: Number(avgTemp.toFixed(1)),
+              avgRoomTemp: Number(sensorAverages.temp.toFixed(1)),
               avgGarminScore: garmin.garminSleepScore,
-              avgRoomScore: roomScore,
+              avgRoomScore: weightedRoomScore,
               avgCombinedScore: combinedScore,
               primarySensitivityFactor: 'อุณหภูมิห้อง (Temperature)'
             }
           });
 
-          // บันทึกเข้าตารางประวัติสะสมรายวันเฉพาะกรณีที่มีข้อมูลเวลาตรงกันจริง
           if (hasExactTimestampMatch) {
             const historyRef = ref(database, `personal_sensitivity/history/${garmin.calendarDate}`);
             set(historyRef, {
               date: garmin.calendarDate,
               garminScore: garmin.garminSleepScore,
-              roomScore: roomScore,
+              roomScore: weightedRoomScore,
               combinedScore: combinedScore,
-              avgTemp: Number(avgTemp.toFixed(1)),
+              avgTemp: Number(sensorAverages.temp.toFixed(1)),
               restlessCount: garmin.restlessMomentsCount || 0
             });
           }
         }, { onlyOnce: true });
       } catch (e) {
-        console.error('Dynamic Auto Sync Matching Error:', e);
+        console.error('Flowchart Processing Error:', e);
       }
     };
 
     processAutoSync();
   }, [summaryData?.totalAccumulatedDays]);
 
-  // 2. ดึงข้อมูลขึ้นแสดงผลบน UI
+  // 2. อ่านข้อมูลเพื่อนำไปแสดงผลบน Dashboard ให้ผู้ใช้ทราบ
   useEffect(() => {
     if (!database) return;
 
@@ -153,6 +182,7 @@ export default function SensitivityPage() {
 
   const cumulative = summaryData?.cumulativeSummary;
   const daily = summaryData?.dailyMetrics;
+  const aiInsight = summaryData?.aiInsight;
   const accumulatedDays = summaryData?.totalAccumulatedDays ?? 1;
   const evaluatedDate = summaryData?.evaluatedDate || '-';
 
@@ -173,19 +203,16 @@ export default function SensitivityPage() {
     }
   };
 
-  const renderTriggerStatus = (count: number) => {
-    if (count > 0) {
-      return (
-        <strong style={{ fontSize: '18px', color: '#38bdf8', display: 'block', marginTop: '2px' }}>
-          {count} <span style={{ fontSize: '11px', fontWeight: '400', color: '#94a3b8' }}>ครั้ง</span>
-        </strong>
-      );
+  const getSensorIcon = (key: string) => {
+    switch (key) {
+      case 'sound_db': case 'sound': return '🔊';
+      case 'temperature': case 'temp': return '🌡️';
+      case 'light_lux': case 'light': case 'lux': return '💡';
+      case 'humidity': case 'hum': return '💧';
+      case 'co2': return '🫁';
+      case 'pm25': case 'pm2_5': return '🌫️';
+      default: return '🌡️';
     }
-    return (
-      <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700', display: 'block', marginTop: '6px' }}>
-        🟢 สภาพแวดล้อมปกติ
-      </span>
-    );
   };
 
   const triggerBreakdown = eventData?.sensorTriggerBreakdown || {
@@ -200,80 +227,75 @@ export default function SensitivityPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#090d16',
-      backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 60%)',
+      backgroundColor: '#030712',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.18) 0%, transparent 65%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
+      padding: '16px 12px 32px 12px',
       display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'flex-start',
-      padding: '24px 14px'
+      justifyContent: 'center'
     }}>
       <style jsx>{`
-        .sensitivity-container {
+        .app-container {
           width: 100%;
-          max-width: 900px;
-          background-color: #151c2c;
-          border-radius: 24px;
-          border: 1px solid #1e293b;
-          padding: 20px 16px;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          max-width: 920px;
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 16px;
         }
 
-        .header-box {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+        .btn-back {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #38bdf8;
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 8px 16px;
+          border-radius: 9999px;
+          background: rgba(56, 189, 248, 0.1);
+          border: 1px solid rgba(56, 189, 248, 0.25);
+          transition: all 0.2s ease;
         }
 
-        .main-card {
-          background-color: #0f172a;
-          padding: 20px;
+        .btn-back:hover {
+          background: rgba(56, 189, 248, 0.2);
+          transform: translateX(-2px);
+        }
+
+        .glass-card {
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 20px;
-          border: 1px solid #eab30840;
+          padding: 20px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 14px;
         }
 
-        .metrics-grid {
+        .grid-weights {
           display: grid;
-          grid-template-columns: 1fr;
-          gap: 12px;
-        }
-
-        .breakdown-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: repeat(2, 1fr);
           gap: 10px;
         }
 
-        @media (min-width: 768px) {
-          .sensitivity-container {
-            padding: 28px;
-            gap: 24px;
-          }
-          .header-box {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-          }
-          .metrics-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-          .breakdown-grid {
-            grid-template-columns: 1fr 1fr 1fr;
-          }
+        .grid-breakdown {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+        }
+
+        @media (min-width: 640px) {
+          .grid-weights, .grid-breakdown { grid-template-columns: repeat(3, 1fr); }
         }
       `}</style>
 
-      <main className="sensitivity-container">
-        {/* Header Bar */}
-        <div className="header-box">
-          <Link href="/" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+      <main className="app-container">
+        {/* Navigation Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link href="/" className="btn-back">
             ← ย้อนกลับหน้าหลัก
           </Link>
           <Link href="/sensitivity-profile" style={{
@@ -281,96 +303,119 @@ export default function SensitivityPage() {
             color: '#f8fafc',
             backgroundColor: '#3b82f6',
             padding: '6px 14px',
-            borderRadius: '8px',
+            borderRadius: '9999px',
             textDecoration: 'none',
             fontWeight: '600'
           }}>
-            📜 ดูประวัติสะสม (Sensitivity Profile)
+            📜 ดูประวัติสะสม
           </Link>
         </div>
 
+        {/* Header Title */}
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
             🎯 ผลวิเคราะห์จุดอ่อนความไวการนอน (AI Sensitivity Profile)
           </h1>
-          <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-            {loading ? 'กำลังซิงค์ข้อมูลจาก Garmin และ Firebase...' : `คำนวณสะสมแล้ว ${accumulatedDays} วัน (อัปเดตล่าสุด: ${evaluatedDate})`}
+          <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>
+            {loading ? 'กำลังซิงค์ข้อมูล Gemini AI...' : `คำนวณสะสมแล้ว ${accumulatedDays} วัน (อัปเดตล่าสุด: ${evaluatedDate})`}
           </p>
         </div>
 
-        {/* 1. ปัจจัยหลักที่กระตุ้นการดิ้นตื่น */}
-        <section className="main-card">
-          <span style={{ fontSize: '11px', color: '#facc15', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            ⚠️ ปัจจัยหลักที่กระตุ้นให้เกิดการดิ้น/ตื่น (MINUTE-BY-MINUTE ANALYSIS)
-          </span>
-          <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fef08a', margin: 0 }}>
-            {formatSensorName(eventData?.primarySensorTrigger)}
-          </h2>
-          <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: 1.6 }}>
-            จากการจับคู่เวลาที่ร่างกายดิ้น ({daily?.restlessMoments || 0} ครั้ง) เข้ากับเซ็นเซอร์ห้องพบว่า สภาพแวดล้อมประเภทนี้พุ่งสูงตรงกับช่วงที่คุณกำลังหลับตื้นมากที่สุด
-          </p>
-        </section>
-
-        {/* 2. รายละเอียดแยกตามเซ็นเซอร์ */}
-        <section style={{
-          backgroundColor: '#0f172a',
-          padding: '16px',
-          borderRadius: '16px',
-          border: '1px solid #1e293b',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
+        {/* Gemini AI Diagnosis & Personalized Weights Card */}
+        <section className="glass-card" style={{
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(14, 116, 144, 0.18) 100%)',
+          borderColor: 'rgba(56, 189, 248, 0.35)'
         }}>
-          <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700' }}>
-            📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
+          <div style={{ fontSize: '10px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+            🤖 GEMINI AI DIAGNOSE & PERSONALIZED WEIGHTS
+          </div>
+
+          <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#f8fafc', margin: 0, lineHeight: 1.5 }}>
+            {aiInsight?.diagnosis || "พบปัจจัยรบกวนหลักจากอุณหภูมิห้องและระดับเสียงขณะหลับ"}
+          </h2>
+
+          <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.6 }}>
+            💡 <strong style={{ color: '#e2e8f0' }}>คำแนะนำจาก AI:</strong> {aiInsight?.recommendation || "ปรับอุณหภูมิเครื่องปรับอากาศให้อยู่ช่วง 23-25°C และลดแหล่งกำเนิดเสียงรบกวน"}
+          </p>
+
+          <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', fontWeight: '600' }}>
+            📊 Personalized Weight ทั้ง 6 ตัวแปร (ประมวลผลโดย Gemini AI)
           </span>
-          
-          <div className="breakdown-grid">
-            {Object.entries(triggerBreakdown).map(([key, count]) => (
-              <div key={key} style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '12px', border: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>{formatSensorName(key)}</span>
-                {renderTriggerStatus(count as number)}
+
+          <div className="grid-weights">
+            {Object.entries(aiInsight?.weights || { temp: 0.30, hum: 0.15, sound: 0.25, light: 0.10, co2: 0.10, pm25: 0.10 }).map(([key, w]: any) => (
+              <div key={key} style={{
+                fontSize: '11px',
+                color: '#cbd5e1',
+                backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                padding: '10px 12px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span>{getSensorIcon(key)} {formatSensorName(key)}</span>
+                <strong style={{ color: '#38bdf8' }}>{Math.round(w * 100)}%</strong>
               </div>
             ))}
           </div>
         </section>
 
-        {/* 3. Overall Sensitivity Score และ Combined Score */}
-        <div className="metrics-grid">
-          <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Overall Sensitivity Score</span>
-            <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', margin: '4px 0' }}>
+        {/* Correlation Breakdown Card */}
+        <section className="glass-card">
+          <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700' }}>
+            📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
+          </span>
+
+          <div className="grid-breakdown">
+            {Object.entries(triggerBreakdown).map(([key, count]: any) => (
+              <div key={key} style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                padding: '12px 14px',
+                borderRadius: '14px',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+              }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {getSensorIcon(key)} {formatSensorName(key)}
+                </span>
+                {count > 0 ? (
+                  <strong style={{ fontSize: '18px', color: '#38bdf8', marginTop: '2px' }}>
+                    {count} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '400' }}>ครั้ง</span>
+                  </strong>
+                ) : (
+                  <span style={{ fontSize: '11px', color: '#34d399', fontWeight: '700', marginTop: '4px', display: 'block' }}>
+                    🟢 ปกติ
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Dashboard Scores */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="glass-card">
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Overall Sensitivity Score</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', margin: '2px 0' }}>
               {cumulative?.overallSensitivityScore ?? 41.56} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>ความไวในการอ่อนไหวต่อเสียงรบกวน</span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>ความไวในการอ่อนไหวต่อสิ่งรบกวน</span>
           </div>
 
-          <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Combined Sleep Score</span>
-            <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
+          <div className="glass-card">
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Combined Sleep Score</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '2px 0' }}>
               {daily?.combinedSleepScore ?? '--'} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
-            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+            <span style={{ fontSize: '10px', color: '#64748b' }}>
               (Garmin: {daily?.garminSleepScore ?? '--'} | Room Env: {daily?.roomEnvironmentScore ?? '--'})
             </span>
           </div>
         </div>
-
-        {/* Back Button */}
-        <Link href="/" style={{
-          backgroundColor: '#1e293b',
-          color: '#f8fafc',
-          padding: '14px',
-          borderRadius: '14px',
-          textAlign: 'center',
-          fontWeight: '600',
-          fontSize: '13px',
-          textDecoration: 'none',
-          border: '1px solid #334155',
-          marginTop: 'auto'
-        }}>
-          กลับหน้าหลัก
-        </Link>
       </main>
     </div>
   );
