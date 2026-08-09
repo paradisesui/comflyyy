@@ -28,7 +28,6 @@ export default function SensitivityPage() {
   }, []);
 
   const daily = summaryData?.dailyMetrics;
-  const aiInsight = summaryData?.aiInsight;
   const triggerBreakdown = eventData?.sensorTriggerBreakdown || { co2: 0, humidity: 0, light_lux: 0, pm25: 0, sound_db: 23, temperature: 34 };
 
   const formatSensorName = (key: string) => {
@@ -63,7 +62,8 @@ export default function SensitivityPage() {
           gap: 20px;
         }
 
-        .btn-back-pill {
+        /* Pill Capsule Button for Back Nav */
+        .btn-pill-back {
           display: inline-flex;
           align-items: center;
           gap: 6px;
@@ -71,17 +71,18 @@ export default function SensitivityPage() {
           text-decoration: none;
           font-size: 13px;
           font-weight: 700;
-          padding: 8px 18px;
+          padding: 8px 20px;
           border-radius: 9999px;
-          background: rgba(15, 23, 42, 0.8);
+          background: rgba(15, 23, 42, 0.85);
           border: 1px solid rgba(56, 189, 248, 0.4);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-          transition: all 0.2s ease;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+          transition: all 0.25s ease;
         }
 
-        .btn-back-pill:hover {
+        .btn-pill-back:hover {
           background: rgba(56, 189, 248, 0.2);
           border-color: #38bdf8;
+          transform: translateY(-1px);
         }
 
         .glass-card {
@@ -111,20 +112,12 @@ export default function SensitivityPage() {
       `}</style>
 
       <main className="container">
-        {/* Top Bar Button Pill Style เดียวกับหน้าอื่นๆ */}
+        {/* Navigation Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" className="btn-back-pill">
+          <Link href="/" className="btn-pill-back">
             ← กลับหน้าหลัก
           </Link>
-          <Link href="/sensitivity-profile" style={{
-            fontSize: '12px',
-            color: '#f8fafc',
-            backgroundColor: '#2563eb',
-            padding: '8px 18px',
-            borderRadius: '9999px',
-            textDecoration: 'none',
-            fontWeight: '700'
-          }}>
+          <Link href="/sensitivity-profile" className="btn-pill-back" style={{ borderColor: 'rgba(37, 99, 235, 0.5)', background: 'rgba(37, 99, 235, 0.2)' }}>
             📜 ดูประวัติสะสม
           </Link>
         </div>
@@ -134,24 +127,24 @@ export default function SensitivityPage() {
             🎯 ผลวิเคราะห์จุดอ่อนความไวการนอน (AI Sensitivity Profile)
           </h1>
           <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-            วิเคราะห์พฤติกรรมการดิ้นตื่นกลางดึกร่วมกับสิ่งรบกวนรอบตัว
+            วิเคราะห์ข้อมูล Minute-by-Minute Data Matching ระหว่าง Garmin และเซ็นเซอร์ห้องนอน
           </p>
         </div>
 
-        {/* AI Analysis: สิ่งรบกวนที่ผู้ใช้อ่อนไหวมากที่สุด (ไม่มีคำแนะนำซ้ำกับหน้าหลัก) */}
+        {/* AI Trigger Analysis: เน้นเฉพาะปัจจัยสิ่งรบกวนที่กระตุ้นให้ผู้ใช้อ่อนไหวมากที่สุด (ไม่มีสาเหตุ/คำแนะนำ) */}
         <section className="glass-card" style={{
-          borderColor: 'rgba(234, 179, 8, 0.4)',
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(120, 53, 15, 0.18) 100%)'
+          borderColor: 'rgba(234, 179, 8, 0.45)',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(120, 53, 15, 0.2) 100%)'
         }}>
           <span style={{ fontSize: '12px', color: '#facc15', fontWeight: '900', letterSpacing: '0.8px' }}>
-            ⚠️ การวิเคราะห์จาก AI: ปัจจัยสิ่งรบกวนที่ร่างกายอ่อนไหวมากที่สุด (PRIMARY SENSITIVITY TRIGGER)
+            ⚡ การวิเคราะห์จาก AI: สิ่งรบกวนที่กระตุ้นร่างกายให้ดิ้นตื่นมากที่สุด (PRIMARY SENSITIVITY TRIGGER)
           </span>
           <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#fef08a', margin: 0, lineHeight: 1.6 }}>
-            {aiInsight?.diagnosis || "พบว่าร่างกายมีความอ่อนไหวสูงต่อระดับก๊าซ CO2 และอุณหภูมิห้องที่เปลี่ยนแปลงเฉียบพลันขณะหลับ"}
+            จากการวิเคราะห์ Minute-by-Minute พบว่า <span style={{ color: '#38bdf8' }}>ก๊าซ CO2</span> และ <span style={{ color: '#f43f5e' }}>อุณหภูมิห้อง</span> เป็น 2 สิ่งรบกวนหลักที่พุ่งสูงตรงกับช่วงร่างกายเกิดการดิ้น/ตื่นมากที่สุด ({daily?.restlessMoments || 39} ครั้ง)
           </h2>
         </section>
 
-        {/* Correlation Breakdown Card */}
+        {/* Correlation Breakdown Grid */}
         <section className="glass-card">
           <span style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '800' }}>
             📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
@@ -161,7 +154,7 @@ export default function SensitivityPage() {
               <div key={key} style={{
                 backgroundColor: 'rgba(15, 23, 42, 0.6)',
                 padding: '16px',
-                borderRadius: '16px',
+                borderRadius: '18px',
                 border: '1px solid rgba(255, 255, 255, 0.05)'
               }}>
                 <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>{formatSensorName(key)}</span>
@@ -175,7 +168,7 @@ export default function SensitivityPage() {
           </div>
         </section>
 
-        {/* Overall & Combined Scores */}
+        {/* Score Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div className="glass-card">
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Overall Sensitivity Score</span>

@@ -143,10 +143,10 @@ export default function HomePage() {
         }
 
         .account-btn {
-          width: 46px;
-          height: 46px;
+          width: 48px;
+          height: 48px;
           border-radius: 50%;
-          background: rgba(15, 23, 42, 0.8);
+          background: rgba(15, 23, 42, 0.85);
           border: 1px solid rgba(56, 189, 248, 0.4);
           display: flex;
           align-items: center;
@@ -161,39 +161,41 @@ export default function HomePage() {
         .account-btn:hover {
           transform: scale(1.08);
           border-color: #38bdf8;
+          box-shadow: 0 0 24px rgba(56, 189, 248, 0.5);
         }
 
-        /* 4 Large Rounded Capsule Buttons */
+        /* 4 Capsule Rounded Interactive Buttons */
         .nav-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 14px;
+          gap: 16px;
         }
 
         .btn-pill-card {
-          padding: 16px 20px;
-          border-radius: 20px;
+          padding: 18px 24px;
+          border-radius: 9999px; /* ขอบมนแคปซูลโค้งละมุน */
           text-decoration: none;
           display: flex;
           align-items: center;
           gap: 14px;
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(12px);
         }
 
         .btn-pill-card:hover {
           transform: translateY(-2px);
-          filter: brightness(1.15);
+          filter: brightness(1.2);
         }
 
         .btn-icon-wrapper {
-          width: 44px;
-          height: 44px;
-          border-radius: 14px;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 22px;
+          font-size: 20px;
           background: rgba(0, 0, 0, 0.25);
           flex-shrink: 0;
         }
@@ -202,7 +204,7 @@ export default function HomePage() {
           background: rgba(15, 23, 42, 0.7);
           backdrop-filter: blur(20px);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 24px;
+          border-radius: 28px;
           padding: 28px;
           box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.7);
         }
@@ -216,7 +218,7 @@ export default function HomePage() {
         .score-main-circle {
           background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%);
           border: 2px solid rgba(56, 189, 248, 0.4);
-          border-radius: 24px;
+          border-radius: 28px;
           padding: 32px;
           display: flex;
           flex-direction: column;
@@ -234,7 +236,7 @@ export default function HomePage() {
         .score-sub-card {
           background: rgba(15, 23, 42, 0.6);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 20px;
+          border-radius: 24px;
           padding: 20px;
           display: flex;
           flex-direction: column;
@@ -285,12 +287,12 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 4 Colored Capsule Buttons (ข้อความและไอคอนรวมในกรอบปุ่มเดียว) */}
+        {/* 4 Large Rounded Pill Capsule Buttons */}
         <nav className="nav-grid">
           <Link href="/sensors" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(14, 116, 144, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%)',
-            borderColor: 'rgba(56, 189, 248, 0.4)',
-            boxShadow: '0 8px 20px rgba(14, 116, 144, 0.2)'
+            background: 'linear-gradient(135deg, rgba(14, 116, 144, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            borderColor: 'rgba(56, 189, 248, 0.45)',
+            boxShadow: '0 8px 24px rgba(14, 116, 144, 0.25)'
           }}>
             <div className="btn-icon-wrapper">🛏️</div>
             <div>
@@ -300,9 +302,9 @@ export default function HomePage() {
           </Link>
 
           <Link href="/persona" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%)',
-            borderColor: 'rgba(168, 85, 247, 0.4)',
-            boxShadow: '0 8px 20px rgba(88, 28, 135, 0.2)'
+            background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            borderColor: 'rgba(168, 85, 247, 0.45)',
+            boxShadow: '0 8px 24px rgba(88, 28, 135, 0.25)'
           }}>
             <div className="btn-icon-wrapper">⌚</div>
             <div>
@@ -312,9 +314,9 @@ export default function HomePage() {
           </Link>
 
           <Link href="/sensitivity" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(159, 18, 57, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%)',
-            borderColor: 'rgba(244, 63, 94, 0.4)',
-            boxShadow: '0 8px 20px rgba(159, 18, 57, 0.2)'
+            background: 'linear-gradient(135deg, rgba(159, 18, 57, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            borderColor: 'rgba(244, 63, 94, 0.45)',
+            boxShadow: '0 8px 24px rgba(159, 18, 57, 0.25)'
           }}>
             <div className="btn-icon-wrapper">🎯</div>
             <div>
@@ -324,9 +326,9 @@ export default function HomePage() {
           </Link>
 
           <Link href="/sensitivity-profile" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(20, 83, 45, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%)',
-            borderColor: 'rgba(52, 211, 153, 0.4)',
-            boxShadow: '0 8px 20px rgba(20, 83, 45, 0.2)'
+            background: 'linear-gradient(135deg, rgba(20, 83, 45, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            borderColor: 'rgba(52, 211, 153, 0.45)',
+            boxShadow: '0 8px 24px rgba(20, 83, 45, 0.25)'
           }}>
             <div className="btn-icon-wrapper">📜</div>
             <div>
@@ -336,7 +338,7 @@ export default function HomePage() {
           </Link>
         </nav>
 
-        {/* Hero Combined Sleep Score */}
+        {/* Hero Combined Score */}
         <section className="score-hero-container">
           <div className="score-main-circle">
             <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
