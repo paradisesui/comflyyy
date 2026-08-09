@@ -135,9 +135,6 @@ export default function SensitivityPage() {
           <Link href="/" className="btn-pill-back">
             ← กลับหน้าหลัก
           </Link>
-          <Link href="/sensitivity-profile" className="btn-pill-back" style={{ borderColor: 'rgba(37, 99, 235, 0.5)', background: 'rgba(37, 99, 235, 0.2)' }}>
-            📜 ดูประวัติสะสม
-          </Link>
         </div>
 
         <div>

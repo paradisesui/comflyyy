@@ -110,6 +110,14 @@ export default function HomePage() {
   const daily = summaryData?.dailyMetrics;
   const aiInsight = summaryData?.aiInsight;
 
+  // โครงสร้างปุ่มแบบ Inline Pill ที่ป้องกันโดน CSS ตัวอื่นดักทับ
+  const navButtons = [
+    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', bg: 'linear-gradient(135deg, rgba(14, 116, 144, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%)', border: 'rgba(56, 189, 248, 0.6)', glow: '0 8px 24px rgba(56, 189, 248, 0.3)' },
+    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', bg: 'linear-gradient(135deg, rgba(88, 28, 135, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%)', border: 'rgba(168, 85, 247, 0.6)', glow: '0 8px 24px rgba(168, 85, 247, 0.3)' },
+    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', bg: 'linear-gradient(135deg, rgba(159, 18, 57, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%)', border: 'rgba(244, 63, 94, 0.6)', glow: '0 8px 24px rgba(244, 63, 94, 0.3)' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', bg: 'linear-gradient(135deg, rgba(20, 83, 45, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%)', border: 'rgba(52, 211, 153, 0.6)', glow: '0 8px 24px rgba(52, 211, 153, 0.3)' },
+  ];
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -127,7 +135,7 @@ export default function HomePage() {
           max-width: 1100px;
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 28px;
         }
 
         .header-bar {
@@ -136,118 +144,15 @@ export default function HomePage() {
           align-items: center;
         }
 
-        .brand-box {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-        }
-
-        .account-btn {
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          background: rgba(15, 23, 42, 0.85);
-          border: 1px solid rgba(56, 189, 248, 0.4);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #f8fafc;
-          text-decoration: none;
-          font-size: 20px;
-          box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
-          transition: all 0.25s ease;
-        }
-
-        .account-btn:hover {
-          transform: scale(1.08);
-          border-color: #38bdf8;
-          box-shadow: 0 0 24px rgba(56, 189, 248, 0.5);
-        }
-
-        /* Modern Pill Capsule Nav Bar */
-        .nav-grid {
+        .pill-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 14px;
-        }
-
-        .btn-pill-card {
-          padding: 14px 22px;
-          border-radius: 9999px; /* ขอบมนแคปซูลสมบูรณ์แบบ */
-          text-decoration: none;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-        }
-
-        .btn-pill-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 25px rgba(56, 189, 248, 0.25);
-          filter: brightness(1.2);
-        }
-
-        .btn-emoji {
-          font-size: 22px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .glass-card {
-          background: rgba(15, 23, 42, 0.7);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 28px;
-          padding: 28px;
-          box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.7);
-        }
-
-        .score-hero-container {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 20px;
-        }
-
-        .score-main-circle {
-          background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%);
-          border: 2px solid rgba(56, 189, 248, 0.4);
-          border-radius: 28px;
-          padding: 32px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-        }
-
-        .score-sub-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
           gap: 16px;
         }
 
-        .score-sub-card {
-          background: rgba(15, 23, 42, 0.6);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 24px;
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-        }
-
         @media (min-width: 768px) {
-          .nav-grid {
+          .pill-grid {
             grid-template-columns: repeat(4, 1fr);
-          }
-          .score-hero-container {
-            grid-template-columns: 1.2fr 1fr;
           }
         }
       `}</style>
@@ -255,7 +160,7 @@ export default function HomePage() {
       <main className="app-container">
         {/* Header Bar */}
         <header className="header-bar">
-          <div className="brand-box">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
               width: '48px',
               height: '48px',
@@ -279,61 +184,72 @@ export default function HomePage() {
             </div>
           </div>
 
-          <Link href="/account" className="account-btn" title="เข้าสู่ระบบ / จัดการบัญชี">
+          <Link href="/account" style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            background: 'rgba(15, 23, 42, 0.85)',
+            border: '1px solid rgba(56, 189, 248, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#f8fafc',
+            textDecoration: 'none',
+            fontSize: '20px',
+            boxShadow: '0 0 16px rgba(56, 189, 248, 0.25)'
+          }} title="เข้าสู่ระบบ / จัดการบัญชี">
             👤
           </Link>
         </header>
 
-        {/* 4 Interactive Pill Capsule Buttons (ไม่มีสี่เหลี่ยมด้านใน) */}
-        <nav className="nav-grid">
-          <Link href="/sensors" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(14, 116, 144, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%)',
-            borderColor: 'rgba(56, 189, 248, 0.4)'
-          }}>
-            <span className="btn-emoji">🛏️</span>
-            <div>
-              <strong style={{ fontSize: '14px', display: 'block', color: '#f8fafc' }}>Comfy Room</strong>
-              <span style={{ fontSize: '11px', color: '#38bdf8' }}>คุณภาพห้องนอน</span>
-            </div>
-          </Link>
-
-          <Link href="/persona" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%)',
-            borderColor: 'rgba(168, 85, 247, 0.4)'
-          }}>
-            <span className="btn-emoji">⌚</span>
-            <div>
-              <strong style={{ fontSize: '14px', display: 'block', color: '#f8fafc' }}>Smart Watch</strong>
-              <span style={{ fontSize: '11px', color: '#c084fc' }}>Garmin Persona</span>
-            </div>
-          </Link>
-
-          <Link href="/sensitivity" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(159, 18, 57, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%)',
-            borderColor: 'rgba(244, 63, 94, 0.4)'
-          }}>
-            <span className="btn-emoji">🎯</span>
-            <div>
-              <strong style={{ fontSize: '14px', display: 'block', color: '#f8fafc' }}>Sensitivity</strong>
-              <span style={{ fontSize: '11px', color: '#fb7185' }}>จุดอ่อนการนอน</span>
-            </div>
-          </Link>
-
-          <Link href="/sensitivity-profile" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(20, 83, 45, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%)',
-            borderColor: 'rgba(52, 211, 153, 0.4)'
-          }}>
-            <span className="btn-emoji">📜</span>
-            <div>
-              <strong style={{ fontSize: '14px', display: 'block', color: '#f8fafc' }}>ประวัติสะสม</strong>
-              <span style={{ fontSize: '11px', color: '#34d399' }}>History Logs</span>
-            </div>
-          </Link>
+        {/* 4 True Pill Capsule Buttons (ใช้ Inline Style การันตีความโค้งมน 100%) */}
+        <nav className="pill-grid">
+          {navButtons.map((btn, idx) => (
+            <Link key={idx} href={btn.href} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              padding: '16px 24px',
+              borderRadius: '9999px', // บังคับรูปทรงแคปซูลโค้งมน
+              background: btn.bg,
+              border: `1.5px solid ${btn.border}`,
+              boxShadow: btn.glow,
+              textDecoration: 'none',
+              backdropFilter: 'blur(16px)',
+              transition: 'transform 0.2s ease, filter 0.2s ease'
+            }}>
+              <span style={{ fontSize: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {btn.icon}
+              </span>
+              <div>
+                <strong style={{ fontSize: '15px', display: 'block', color: '#ffffff', fontWeight: '800' }}>
+                  {btn.title}
+                </strong>
+                <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: '500' }}>
+                  {btn.desc}
+                </span>
+              </div>
+            </Link>
+          ))}
         </nav>
 
         {/* Hero Combined Sleep Score */}
-        <section className="score-hero-container">
-          <div className="score-main-circle">
+        <section style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '20px'
+        }}>
+          <div style={{
+            background: 'radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%)',
+            border: '2px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '28px',
+            padding: '32px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center'
+          }}>
             <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
               🎯 COMBINED SLEEP SCORE
             </span>
@@ -348,8 +264,18 @@ export default function HomePage() {
             </span>
           </div>
 
-          <div className="score-sub-grid">
-            <div className="score-sub-card" style={{ borderColor: 'rgba(168, 85, 247, 0.35)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{
+              background: 'rgba(15, 23, 42, 0.6)',
+              border: '1px solid rgba(168, 85, 247, 0.35)',
+              borderRadius: '24px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center'
+            }}>
               <span style={{ fontSize: '24px', marginBottom: '4px' }}>⌚</span>
               <span style={{ fontSize: '12px', color: '#a855f7', fontWeight: '800', textTransform: 'uppercase' }}>GARMIN SCORE</span>
               <strong style={{ fontSize: '32px', fontWeight: '900', color: '#a855f7', margin: '4px 0' }}>
@@ -358,7 +284,17 @@ export default function HomePage() {
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนจากนาฬิกา</span>
             </div>
 
-            <div className="score-sub-card" style={{ borderColor: 'rgba(52, 211, 153, 0.35)' }}>
+            <div style={{
+              background: 'rgba(15, 23, 42, 0.6)',
+              border: '1px solid rgba(52, 211, 153, 0.35)',
+              borderRadius: '24px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center'
+            }}>
               <span style={{ fontSize: '24px', marginBottom: '4px' }}>🌿</span>
               <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '800', textTransform: 'uppercase' }}>ROOM ENV SCORE</span>
               <strong style={{ fontSize: '32px', fontWeight: '900', color: '#34d399', margin: '4px 0' }}>
@@ -370,9 +306,11 @@ export default function HomePage() {
         </section>
 
         {/* AI Diagnosis Banner */}
-        <section className="glass-card" style={{
+        <section style={{
           background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(14, 116, 144, 0.25) 100%)',
-          borderColor: 'rgba(56, 189, 248, 0.4)'
+          border: '1px solid rgba(56, 189, 248, 0.4)',
+          borderRadius: '28px',
+          padding: '28px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
             <span style={{ fontSize: '24px' }}>🤖</span>
