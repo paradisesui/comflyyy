@@ -209,46 +209,58 @@ export default function HomePage() {
         }
 
         .navbar-premium {
-          background: rgba(15, 23, 42, 0.75);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 9999px;
-          padding: 8px 12px 8px 18px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          position: sticky;
-          top: 12px;
-          z-index: 50;
-        }
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8);
+}
 
-        .nav-scroll {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          overflow-x: auto;
-        }
+.nav-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+}
 
-        .nav-scroll::-webkit-scrollbar { display: none; }
+.nav-scroll::-webkit-scrollbar { display: none; }
 
-        .btn-nav-item {
-          font-size: 12px;
-          font-weight: 600;
-          color: #94a3b8;
-          text-decoration: none;
-          padding: 8px 16px;
-          border-radius: 9999px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          white-space: nowrap;
-        }
+/* ตัวนี้คือตัวที่ทำให้กลายเป็นปุ่มแคปซูลสวยๆ */
+.btn-nav-item {
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
-        .btn-nav-item.active {
-          color: #ffffff;
-          background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
-          border-color: rgba(56, 189, 248, 0.6);
-        }
+.btn-nav-item:hover {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-nav-item.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+}
 
         .glass-card {
           background: rgba(15, 23, 42, 0.65);
@@ -281,27 +293,30 @@ export default function HomePage() {
       <main className="app-container">
         {/* Navbar */}
         <header className="navbar-premium">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px'
-            }}>🌙</div>
-            <span style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>COMFY SLEEP</span>
-          </div>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '8px' }}>
+    <div style={{
+      width: '32px',
+      height: '32px',
+      borderRadius: '50%',
+      background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '15px',
+      boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)'
+    }}>🌙</div>
+    <span style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc', letterSpacing: '0.5px' }}>
+      COMFY SLEEP
+    </span>
+  </div>
 
-          <nav className="nav-scroll">
-            <Link href="/sensors" className="btn-nav-item">🛏️ Comfy Room</Link>
-            <Link href="/persona" className="btn-nav-item active">⌚ Smart Watch & Persona</Link>
-            <Link href="/sensitivity-profile" className="btn-nav-item">📜 ประวัติสะสม</Link>
-            <Link href="/account" className="btn-nav-item">👤 Account</Link>
-          </nav>
-        </header>
+  <nav className="nav-scroll">
+    <Link href="/sensors" className="btn-nav-item">🛏️ Comfy Room</Link>
+    <Link href="/persona" className="btn-nav-item active">⌚ Smart Watch & Persona</Link>
+    <Link href="/sensitivity-profile" className="btn-nav-item">📜 ประวัติสะสม</Link>
+    <Link href="/account" className="btn-nav-item">👤 Account</Link>
+  </nav>
+</header>
 
         {/* Title */}
         <div style={{ padding: '4px 6px 0 6px' }}>

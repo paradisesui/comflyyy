@@ -11,10 +11,13 @@ export default function PersonaPage() {
     const fetchLatestGarmin = async () => {
       try {
         const res = await fetch('/api/garmin?latest=true');
+        if (!res.ok) throw new Error('Garmin API error');
         const json = await res.json();
-        if (json?.data) setGarminData(json.data);
+        if (json?.data) {
+          setGarminData(json.data);
+        }
       } catch (err) {
-        console.error('Error fetching Garmin:', err);
+        console.error('Error fetching Garmin data:', err);
       } finally {
         setLoading(false);
       }
@@ -22,15 +25,17 @@ export default function PersonaPage() {
     fetchLatestGarmin();
   }, []);
 
-  const score = garminData?.garminSleepScore || 87;
-  const dateStr = garminData?.calendarDate || '2026-08-09';
-  const restlessCount = garminData?.restlessMomentsCount || 39;
-  const sleepStress = garminData?.avgSleepStress || 8;
+  // อ่านค่าจาก API ถ้าไม่มีให้ตั้งไว้เป็นค่าเปล่าเพื่อแสดงความพร้อมรับข้อมูล Dynamic
+  const score = garminData?.garminSleepScore ?? '--';
+  const dateStr = garminData?.calendarDate || 'ไม่มีข้อมูลสด';
+  const restlessCount = garminData?.restlessMomentsCount ?? '--';
+  const sleepStress = garminData?.avgSleepStress ?? '--';
 
-  const deepSleepMins = 82;
-  const remSleepMins = 125;
-  const lightSleepMins = 258;
-  const totalSleepMins = deepSleepMins + remSleepMins + lightSleepMins;
+  // ตัวอย่างคำนวณสัดส่วนการนอนถ้ามีข้อมูลจริง
+  const deepSleepMins = garminData?.deepSleepMins || 82;
+  const remSleepMins = garminData?.remSleepMins || 125;
+  const lightSleepMins = garminData?.lightSleepMins || 258;
+  const totalSleepMins = deepSleepMins + remSleepMins + lightSleepMins || 1;
 
   const deepPct = Math.round((deepSleepMins / totalSleepMins) * 100);
   const remPct = Math.round((remSleepMins / totalSleepMins) * 100);
@@ -40,7 +45,7 @@ export default function PersonaPage() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#030712',
-      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.15) 0%, transparent 60%)',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.18) 0%, transparent 65%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       padding: '16px 12px 32px 12px',
@@ -126,13 +131,13 @@ export default function PersonaPage() {
             🧠 โครงสร้างการนอน (Garmin Sleep Persona)
           </h1>
           <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>
-            {loading ? 'กำลังซิงค์ Garmin...' : `ประจำวันที่ ${dateStr} (คะแนนการนอน: ${score}/100)`}
+            {loading ? 'กำลังซิงค์ Garmin...' : `ประจำวันที่ ${dateStr} (คะแนนคุณภาพการนอน: ${score}/100)`}
           </p>
         </div>
 
         {/* Overview Card */}
         <section className="glass-card" style={{
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(14, 116, 144, 0.15) 100%)',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(14, 116, 144, 0.18) 100%)',
           borderColor: 'rgba(56, 189, 248, 0.35)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
