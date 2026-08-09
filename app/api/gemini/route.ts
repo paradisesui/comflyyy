@@ -8,22 +8,26 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { sensorAverages, restlessCount } = body;
 
+    if (!sensorAverages) {
+      return NextResponse.json({ status: 'error', message: 'Sensor data is missing' }, { status: 400 });
+    }
+
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
-      คุณเป็น AI ผู้เชี่ยวชาญด้านสรีรวิทยาการนอนหลับและสภาพแวดล้อมห้องนอน
-      จงวิเคราะห์ข้อมูลสภาพแวดล้อมห้องนอนกับการดิ้นตื่น (${restlessCount} ครั้ง) ต่อไปนี้:
-      - อุณหภูมิเฉลี่ย: ${sensorAverages?.temp || 25}°C
-      - ความชื้นเฉลี่ย: ${sensorAverages?.hum || 50}%
-      - เสียงเฉลี่ย: ${sensorAverages?.sound || 400}
-      - แสงเฉลี่ย: ${sensorAverages?.light || 0} Lux
-      - CO2 เฉลี่ย: ${sensorAverages?.co2 || 600} ppm
-      - PM2.5 เฉลี่ย: ${sensorAverages?.pm25 || 10} µg/m³
+      คุณเป็น AI ผู้เชี่ยวชาญด้านสรีรวิทยาการนอนหลับ
+      จงวิเคราะห์ข้อมูลสภาพแวดล้อมจริงจากการนอนคืนนี้ (ดิ้น ${restlessCount} ครั้ง):
+      - อุณหภูมิเฉลี่ย: ${sensorAverages.temp.toFixed(1)}°C
+      - ความชื้นเฉลี่ย: ${sensorAverages.hum.toFixed(1)}%
+      - เสียงเฉลี่ย: ${sensorAverages.sound.toFixed(1)}
+      - แสงเฉลี่ย: ${sensorAverages.light.toFixed(1)} Lux
+      - CO2 เฉลี่ย: ${sensorAverages.co2.toFixed(1)} ppm
+      - PM2.5 เฉลี่ย: ${sensorAverages.pm25.toFixed(1)} µg/m³
 
-      จงคำนวณค่าน้ำหนักความสำคัญเฉพาะบุคคล (Personalized Weight) ของทั้ง 6 ตัวแปร โดยผลรวมของทั้ง 6 Weights ต้องเท่ากับ 1.0 (100%) พอดี 
-      พร้อมทั้งสรุปสาเหตุเชิงลึกและคำแนะนำปรับปรุงห้องนอน
+      จงคำนวณค่าน้ำหนักเฉพาะบุคคล (Personalized Weight) ของทั้ง 6 ตัวแปร (ผลรวมเท่ากับ 1.0 หรือ 100%)
+      พร้อมสรุปสาเหตุเชิงลึกและคำแนะนำปรับปรุงห้องนอน
 
-      ตอบกลับเป็น JSON เท่านั้น (ห้ามมีอักษร Markdown หรือคำอธิบายอื่น) โครงสร้างดังนี้:
+      ตอบเป็น JSON โครงสร้างนี้เท่านั้น:
       {
         "weights": {
           "temp": 0.30,
@@ -33,8 +37,8 @@ export async function POST(request: Request) {
           "co2": 0.10,
           "pm25": 0.10
         },
-        "diagnosis": "สรุปสาเหตุเชิงลึกสั้นๆ 1-2 ประโยค",
-        "recommendation": "คำแนะนำการปรับห้องนอน"
+        "diagnosis": "ข้อสรุปสาเหตุการดิ้นตื่น",
+        "recommendation": "คำแนะนำสั้นๆ 1 ประโยค"
       }
     `;
 
@@ -46,13 +50,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'success', data: parsedData });
   } catch (error) {
     console.error('Gemini API Error:', error);
-    return NextResponse.json({
-      status: 'fallback',
-      data: {
-        weights: { temp: 0.30, hum: 0.15, sound: 0.25, light: 0.10, co2: 0.10, pm25: 0.10 },
-        diagnosis: "พบปัจจัยรบกวนหลักจากอุณหภูมิห้องและระดับเสียงขณะหลับ",
-        recommendation: "ปรับอุณหภูมิเครื่องปรับอากาศให้อยู่ช่วง 23-25°C และลดแหล่งกำเนิดเสียงรบกวน"
-      }
-    });
+    return NextResponse.json({ status: 'error', message: 'Gemini AI calculation failed' }, { status: 500 });
   }
 }

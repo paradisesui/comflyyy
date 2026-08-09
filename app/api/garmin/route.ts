@@ -5,8 +5,8 @@ export interface GarminSleepData {
   garminSleepScore: number;
   sleepStartTimestamp: number;
   sleepEndTimestamp: number;
-  restlessMomentsCount?: number;
-  avgSleepStress?: number;
+  restlessMomentsCount: number;
+  avgSleepStress: number;
 }
 
 export async function GET(request: Request) {
@@ -15,24 +15,17 @@ export async function GET(request: Request) {
     let targetDate = searchParams.get('date');
 
     if (!targetDate) {
-      const now = new Date();
-      targetDate = now.toISOString().split('T')[0];
+      targetDate = new Date().toISOString().split('T')[0];
     }
 
-    let sleepData: GarminSleepData | null = await fetchGarminDataFromSession(targetDate);
+    // ดึงข้อมูลจริงจาก Garmin Session / Client
+    const sleepData: GarminSleepData | null = await fetchGarminDataFromSession(targetDate);
 
-    if (!sleepData || !sleepData.garminSleepScore) {
-      const sleepStart = new Date(`${targetDate}T02:45:00`).getTime();
-      const sleepEnd = new Date(`${targetDate}T10:30:00`).getTime();
-
-      sleepData = {
-        calendarDate: targetDate,
-        garminSleepScore: 87,
-        sleepStartTimestamp: isNaN(sleepStart) ? Date.now() - 8 * 3600 * 1000 : sleepStart,
-        sleepEndTimestamp: isNaN(sleepEnd) ? Date.now() : sleepEnd,
-        restlessMomentsCount: 39,
-        avgSleepStress: 8
-      };
+    if (!sleepData) {
+      return NextResponse.json(
+        { status: 'error', message: 'No sleep data found from Garmin for this date' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
@@ -40,25 +33,33 @@ export async function GET(request: Request) {
       data: sleepData
     });
   } catch (error) {
-    const todayStr = new Date().toISOString().split('T')[0];
-    return NextResponse.json({
-      status: 'success',
-      data: {
-        calendarDate: todayStr,
-        garminSleepScore: 87,
-        sleepStartTimestamp: new Date(`${todayStr}T02:45:00`).getTime(),
-        sleepEndTimestamp: new Date(`${todayStr}T10:30:00`).getTime(),
-        restlessMomentsCount: 39,
-        avgSleepStress: 8
-      }
-    });
+    console.error('Garmin API Route Error:', error);
+    return NextResponse.json(
+      { status: 'error', message: 'Failed to fetch Garmin data' },
+      { status: 500 }
+    );
   }
 }
 
 async function fetchGarminDataFromSession(dateStr: string): Promise<GarminSleepData | null> {
   try {
-    return null;
+    // 1. ยิงเรียก API / Script Garmin ของคุณ
+    const res = await fetch(`http://localhost:3000/api/watch-sync?date=${dateStr}`);
+    if (!res.ok) return null;
+
+    const raw = await res.json();
+
+    // 2. ส่งค่ากลับโดยใช้ชื่อตัวแปร raw ให้ตรงกันทั้งหมด
+    return {
+      calendarDate: dateStr,
+      garminSleepScore: raw.sleepScore || raw.garminSleepScore || 0,
+      sleepStartTimestamp: new Date(raw.startTimestampGMT || raw.sleepStartTimestamp || Date.now()).getTime(),
+      sleepEndTimestamp: new Date(raw.endTimestampGMT || raw.sleepEndTimestamp || Date.now()).getTime(),
+      restlessMomentsCount: raw.restlessMomentsCount || 0,
+      avgSleepStress: raw.avgSleepStress || 0
+    };
   } catch (e) {
+    console.error('Fetch Garmin Session Error:', e);
     return null;
   }
 }
