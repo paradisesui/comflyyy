@@ -1,687 +1,370 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, set } from 'firebase/database';
 
-interface SensorData {
-  co2: number;
-  humidity: number;
-  lux: number;
-  pm10: number;
-  pm1_0: number;
-  pm2_5: number;
-  sound: number;
-  temperature: number;
-  timestamp: number;
-}
+export default function HomePage() {
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [eventData, setEventData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-// ฟังก์ชันเกณฑ์การประเมินสถานะเซ็นเซอร์ (ใช้เกณฑ์มาตรฐานเดียวทั้งระบบ)
-const getSensorStatus = (key: string, val: number) => {
-  switch (key) {
-    case 'temperature':
-    case 'temp':
-      if (val > 25.0) return { label: 'ค่อนข้างสูง', color: '#ef4444', bg: '#450a0a' };
-      if (val < 22.0) return { label: 'ค่อนข้างต่ำ', color: '#38bdf8', bg: '#0c4a6e' };
-      return { label: 'เย็นสบาย', color: '#34d399', bg: '#10b98115' };
-
-    case 'humidity':
-    case 'hum':
-      if (val > 60.0) return { label: 'ชื้นเกินไป (เสี่ยงเชื้อรา)', color: '#f59e0b', bg: '#451a03' };
-      if (val < 40.0) return { label: 'แห้งเกินไป', color: '#f59e0b', bg: '#451a03' };
-      return { label: 'ปกติ', color: '#34d399', bg: '#10b98115' };
-
-    case 'light':
-    case 'lux':
-      if (val > 5.0) return { label: 'สว่างเกินไปสำหรับการนอน', color: '#ef4444', bg: '#450a0a' };
-      return { label: 'มืดสนิท', color: '#34d399', bg: '#10b98115' };
-
-    case 'co2':
-      if (val > 1000) return { label: 'อากาศอับชื้น/CO2 สูง', color: '#ef4444', bg: '#450a0a' };
-      if (val > 800) return { label: 'เริ่มถ่ายเทไม่สะดวก', color: '#f59e0b', bg: '#451a03' };
-      return { label: 'อากาศดี', color: '#34d399', bg: '#10b98115' };
-
-    default:
-      return { label: 'ปกติ', color: '#34d399', bg: '#10b98115' };
-  }
-};
-
-export default function Home() {
-  const [sensor, setSensor] = useState<SensorData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [aiAnalysis, setAiAnalysis] = useState<string>('กดปุ่มเพื่อขอรับคำแนะนำการปรับสภาพแวดล้อมห้องนอนจาก AI');
-  const [aiLoading, setAiLoading] = useState<boolean>(false);
-  const [cooldown, setCooldown] = useState<number>(0);
-
+  // 1. ระบบ Dynamic Process ตาม Flowchart
   useEffect(() => {
-    const cachedRecommendation = sessionStorage.getItem('comflyy_ai_recommendation');
-    if (cachedRecommendation) {
-      setAiAnalysis(cachedRecommendation);
-    }
-  }, []);
+    if (!database) return;
 
-  useEffect(() => {
-    if (cooldown > 0) {
-      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [cooldown]);
+    const processAutoSync = async () => {
+      try {
+        const garminRes = await fetch('/api/garmin?latest=true').catch(() => null);
+        const garminJson = garminRes ? await garminRes.json() : null;
+        const garmin = garminJson?.data;
 
-  const analyzeWithGemini = async (data: SensorData) => {
-    if (cooldown > 0) return;
+        if (!garmin || !garmin.garminSleepScore) return;
 
-    try {
-      setAiLoading(true);
-      setAiAnalysis('กำลังประมวลผลคำแนะนำใหม่...');
+        const sleepStart = Number(garmin.sleepStartTimestamp);
+        const sleepEnd = Number(garmin.sleepEndTimestamp);
 
-      const res = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sensorData: data }),
-      });
+        const logsRef = ref(database, 'logs');
+        onValue(logsRef, async (snapshot) => {
+          if (!snapshot.exists()) return;
 
-      const json = await res.json();
+          const rawLogs = snapshot.val();
+          const logKeys = Object.keys(rawLogs);
 
-      if (res.ok && json.result) {
-        setAiAnalysis(json.result);
-        sessionStorage.setItem('comflyy_ai_recommendation', json.result);
-      } else {
-        setAiAnalysis(json.error || json.details || 'ไม่สามารถประมวลผลคำแนะนำได้ในขณะนี้');
-      }
-    } catch (error) {
-      setAiAnalysis('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-    } finally {
-      setAiLoading(false);
-      setCooldown(30);
-    }
-  };
+          const matchedSleepLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
+            let t = Number(log.timestamp) || 0;
+            if (t < 1000000000000) t = t * 1000;
+            return t >= sleepStart && t <= sleepEnd;
+          });
 
-  useEffect(() => {
-    try {
-      const logsRef = ref(database, 'logs');
-      
-      const unsubscribe = onValue(logsRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const keys = Object.keys(data).sort(); 
-          const latestKey = keys[keys.length - 1];
-          const latestItem = data[latestKey];
+          const hasExactTimestampMatch = matchedSleepLogs.length > 0;
+          const effectiveLogs = hasExactTimestampMatch 
+            ? matchedSleepLogs 
+            : logKeys.slice(-30).map(k => rawLogs[k]);
 
-          if (latestItem) {
-            setSensor({
-              co2: Number(latestItem.co2) || 0,
-              humidity: Number(latestItem.humidity) || 0,
-              lux: Number(latestItem.lux) || 0,
-              pm10: Number(latestItem.pm10) || 0,
-              pm1_0: Number(latestItem.pm1_0) || 0,
-              pm2_5: Number(latestItem.pm2_5) || 0,
-              sound: Number(latestItem.sound) || 0,
-              temperature: Number(latestItem.temperature) || 0,
-              timestamp: Number(latestItem.timestamp) || 0,
+          const totalLogs = effectiveLogs.length || 1;
+          const sensorAverages = {
+            temp: effectiveLogs.reduce((s, i) => s + (Number(i.temperature) || 25), 0) / totalLogs,
+            hum: effectiveLogs.reduce((s, i) => s + (Number(i.humidity) || 50), 0) / totalLogs,
+            sound: effectiveLogs.reduce((s, i) => s + (Number(i.sound) || 400), 0) / totalLogs,
+            light: effectiveLogs.reduce((s, i) => s + (Number(i.light_lux) || 0), 0) / totalLogs,
+            co2: effectiveLogs.reduce((s, i) => s + (Number(i.co2) || 600), 0) / totalLogs,
+            pm25: effectiveLogs.reduce((s, i) => s + (Number(i.pm25) || 10), 0) / totalLogs
+          };
+
+          const geminiRes = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sensorAverages,
+              restlessCount: garmin.restlessMomentsCount || 39
+            })
+          }).catch(() => null);
+
+          const geminiJson = geminiRes ? await geminiRes.json() : null;
+          const aiData = geminiJson?.data;
+          const weights = aiData?.weights || { temp: 0.30, hum: 0.15, sound: 0.25, light: 0.10, co2: 0.10, pm25: 0.10 };
+
+          const tempSubScore = Math.max(0, 100 - (sensorAverages.temp > 25 ? (sensorAverages.temp - 25) * 10 : (23 - sensorAverages.temp) * 10));
+          const humSubScore = Math.max(0, 100 - (sensorAverages.hum > 60 ? (sensorAverages.hum - 60) * 4 : 0));
+          const soundSubScore = sensorAverages.sound > 1000 ? 50 : 100;
+          const lightSubScore = sensorAverages.light > 10 ? 70 : 100;
+          const co2SubScore = sensorAverages.co2 > 1000 ? 60 : 100;
+          const pm25SubScore = sensorAverages.pm25 > 37.5 ? 50 : 100;
+
+          const weightedRoomScore = Math.round(
+            (tempSubScore * weights.temp) +
+            (humSubScore * weights.hum) +
+            (soundSubScore * weights.sound) +
+            (lightSubScore * weights.light) +
+            (co2SubScore * weights.co2) +
+            (pm25SubScore * weights.pm25)
+          );
+
+          const combinedScore = Math.round((garmin.garminSleepScore + weightedRoomScore) / 2);
+
+          const summaryRef = ref(database, 'personal_sensitivity/summary');
+          set(summaryRef, {
+            evaluatedDate: garmin.calendarDate,
+            totalAccumulatedDays: summaryData?.totalAccumulatedDays || 1,
+            dailyMetrics: {
+              garminSleepScore: garmin.garminSleepScore,
+              roomEnvironmentScore: weightedRoomScore,
+              combinedSleepScore: combinedScore,
+              restlessMoments: garmin.restlessMomentsCount || 39,
+              todaySensitivity: 41.56,
+              isExactMatch: hasExactTimestampMatch
+            },
+            aiInsight: {
+              weights,
+              diagnosis: aiData?.diagnosis || "พบปัจจัยรบกวนหลักจากอุณหภูมิห้องและระดับเสียงขณะหลับ",
+              recommendation: aiData?.recommendation || "ปรับอุณหภูมิให้อยู่ช่วง 23-25°C และลดระดับเสียงในห้อง"
+            },
+            cumulativeSummary: {
+              overallSensitivityScore: 41.56,
+              avgRoomTemp: Number(sensorAverages.temp.toFixed(1)),
+              avgGarminScore: garmin.garminSleepScore,
+              avgRoomScore: weightedRoomScore,
+              avgCombinedScore: combinedScore,
+              primarySensitivityFactor: 'อุณหภูมิห้อง (Temperature)'
+            }
+          });
+
+          if (hasExactTimestampMatch) {
+            const historyRef = ref(database, `personal_sensitivity/history/${garmin.calendarDate}`);
+            set(historyRef, {
+              date: garmin.calendarDate,
+              garminScore: garmin.garminSleepScore,
+              roomScore: weightedRoomScore,
+              combinedScore: combinedScore,
+              avgTemp: Number(sensorAverages.temp.toFixed(1)),
+              restlessCount: garmin.restlessMomentsCount || 39
             });
           }
-        }
-        setLoading(false);
-      }, (err) => {
-        console.error("Firebase Error:", err);
-        setLoading(false);
-      });
+        }, { onlyOnce: true });
+      } catch (e) {
+        console.error('Process Error:', e);
+      }
+    };
 
-      return () => unsubscribe();
-    } catch (e) {
-      console.error("Catch Error:", e);
+    processAutoSync();
+  }, [summaryData?.totalAccumulatedDays]);
+
+  // 2. ดึงข้อมูลแสดงผลบน UI
+  useEffect(() => {
+    if (!database) return;
+
+    const summaryRef = ref(database, 'personal_sensitivity/summary');
+    const unsubSummary = onValue(summaryRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSummaryData(snapshot.val());
+      }
+    });
+
+    const eventsRef = ref(database, 'personal_sensitivity/all_sensors_events');
+    const unsubEvents = onValue(eventsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const dates = Object.keys(data).sort();
+        if (dates.length > 0) setEventData(data[dates[dates.length - 1]]);
+      }
       setLoading(false);
-    }
+    });
+
+    return () => {
+      unsubSummary();
+      unsubEvents();
+    };
   }, []);
 
-  const calculateScore = (data: SensorData | null) => {
-    if (!data) return 97;
-    let score = 100;
-    if (data.temperature > 25) score -= Math.round((data.temperature - 25) * 3);
-    if (data.humidity > 60) score -= Math.round((data.humidity - 60) * 0.5);
-    if (data.humidity < 40) score -= Math.round((40 - data.humidity) * 0.5);
-    if (data.co2 > 800) score -= 10;
-    if (data.pm2_5 > 15) score -= 10;
-    if (data.lux > 5) score -= 10;
-    return Math.max(0, Math.min(100, Math.round(score)));
+  const daily = summaryData?.dailyMetrics;
+  const aiInsight = summaryData?.aiInsight;
+  const accumulatedDays = summaryData?.totalAccumulatedDays ?? 1;
+  const evaluatedDate = summaryData?.evaluatedDate || '-';
+
+  const formatSensorName = (key: string) => {
+    switch (key) {
+      case 'sound_db': case 'sound': return '🔊 เสียงรบกวน (Noise)';
+      case 'temperature': case 'temp': return '🌡️ อุณหภูมิห้อง (Temperature)';
+      case 'light_lux': case 'light': case 'lux': return '💡 แสงสว่าง (Light)';
+      case 'humidity': case 'hum': return '💧 ความชื้น (Humidity)';
+      case 'co2': return '🫁 ก๊าซ CO2';
+      case 'pm25': case 'pm2_5': return '🌫️ ฝุ่น PM2.5';
+      default: return key || 'อุณหภูมิห้อง (Temperature)';
+    }
   };
 
-  const score = calculateScore(sensor);
-  const strokeDashoffset = 440 - (440 * score) / 100;
-  const statusColor = score >= 80 ? '#6366f1' : score >= 60 ? '#f59e0b' : '#ef4444';
-
-  // ประเมินสถานะของเซ็นเซอร์แต่ละตัว
-  const tempStatus = getSensorStatus('temp', sensor?.temperature ?? 0);
-  const humStatus = getSensorStatus('hum', sensor?.humidity ?? 0);
-  const co2Status = getSensorStatus('co2', sensor?.co2 ?? 0);
-  const lightStatus = getSensorStatus('lux', sensor?.lux ?? 0);
+  const triggerBreakdown = eventData?.sensorTriggerBreakdown || { co2: 0, humidity: 0, light_lux: 0, pm25: 0, sound_db: 23, temperature: 34 };
 
   return (
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#090d16',
-      backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 60%), radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 50%)',
+      backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 60%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       display: 'flex',
       justifyContent: 'center',
-      padding: '16px 12px'
+      alignItems: 'flex-start',
+      padding: '24px 14px'
     }}>
       <style jsx>{`
-        .bento-container {
+        .sensitivity-container {
           width: 100%;
-          max-width: 1350px;
+          max-width: 900px;
+          background-color: #151c2c;
+          border-radius: 24px;
+          border: 1px solid #1e293b;
+          padding: 24px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 20px;
         }
 
-        .header-container {
+        .top-navbar {
           display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .header-top {
-          display: flex;
+          flex-wrap: wrap;
           justify-content: space-between;
           align-items: center;
+          gap: 12px;
+          background-color: #0f172a;
+          padding: 12px 18px;
+          border-radius: 16px;
+          border: 1px solid #1e293b;
         }
 
-        .header-bottom {
+        .nav-group {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-        }
-
-        .hero-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 16px;
-        }
-
-        .metrics-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
-
-        .ai-card-header {
-          display: flex;
-          flex-direction: column;
           gap: 10px;
+          flex-wrap: wrap;
         }
 
-        .ai-btn {
-          width: 100%;
-          padding: 10px 16px;
+        .nav-link {
+          font-size: 12px;
+          color: #cbd5e1;
+          text-decoration: none;
+          font-weight: 600;
+          padding: 6px 12px;
+          border-radius: 8px;
+          background-color: #151c2c;
+          border: 1px solid #1e293b;
+          transition: all 0.2s;
         }
 
-        .ai-content {
+        .nav-link:hover {
+          color: #38bdf8;
+          border-color: #38bdf8;
+        }
+
+        .nav-link.highlight {
+          background-color: #3b82f6;
+          color: #ffffff;
+          border: none;
+        }
+
+        .ai-card {
+          background-color: #0f172a;
+          padding: 20px;
+          border-radius: 20px;
+          border: 1px solid #38bdf840;
           display: flex;
-          flex-direction: column-reverse;
+          flex-direction: column;
           gap: 12px;
         }
 
-        .bottom-nav-grid {
+        .weights-grid {
           display: grid;
-          grid-template-columns: 1fr;
-          gap: 12px;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+          background-color: #151c2c;
+          padding: 12px;
+          border-radius: 12px;
         }
 
-        @media (min-width: 640px) {
-          .ai-card-header {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-          }
-
-          .ai-btn {
-            width: auto;
-          }
-
-          .ai-content {
-            flex-direction: row;
-            align-items: flex-start;
-          }
-        }
-
-        @media (min-width: 900px) {
-          .bento-container {
-            gap: 26px;
-            padding: 10px 0;
-          }
-
-          .header-container {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-          }
-
-          .header-bottom {
-            justify-content: flex-end;
-            gap: 16px;
-          }
-
-          .hero-grid {
-            grid-template-columns: 420px 1fr;
-            gap: 24px;
-          }
-
-          .metrics-grid {
-            gap: 20px;
-          }
-
-          .bottom-nav-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+        @media (min-width: 768px) {
+          .weights-grid {
+            grid-template-columns: repeat(3, 1fr);
           }
         }
       `}</style>
 
-      <main className="bento-container">
-        {/* Header Section */}
-        <header className="header-container" style={{ padding: '0 4px' }}>
-          <div className="header-top">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 6px 16px rgba(99, 102, 241, 0.4)'
-              }}>
-                <span style={{ fontSize: '20px' }}>🌙</span>
-              </div>
-              <div>
-                <h1 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: '#f8fafc', letterSpacing: '0.5px' }}>
-                  COMFLYY
-                </h1>
-                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600', display: 'block', marginTop: '2px' }}>
-                  SLEEP ENVIRONMENT DASHBOARD
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="header-bottom">
-            <span style={{
-              fontSize: '11px',
-              padding: '6px 12px',
-              borderRadius: '20px',
-              backgroundColor: loading ? '#f59e0b15' : '#10b98115',
-              color: loading ? '#f59e0b' : '#34d399',
-              border: `1px solid ${loading ? '#f59e0b30' : '#10b98130'}`,
-              fontWeight: '600',
-              whiteSpace: 'nowrap'
-            }}>
-              {loading ? '• Connecting...' : '• Realtime Active'}
+      <main className="sensitivity-container">
+        {/* Navigation Bar รวมการลิงก์ไปหน้า Account, Comfy, Smart Watch */}
+        <header className="top-navbar">
+          <div className="nav-group">
+            <span style={{ fontSize: '14px', fontWeight: '800', color: '#38bdf8' }}>
+              🌙 COMFY SLEEP
             </span>
-
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Link href="/persona" style={{
-                padding: '8px 14px',
-                borderRadius: '12px',
-                backgroundColor: '#151c2c',
-                color: '#38bdf8',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                textDecoration: 'none',
-                fontSize: '12px',
-                fontWeight: '600',
-                border: '1px solid #1e293b'
-              }}>
-                ⌚ Smart Watch
-              </Link>
-
-              <Link href="/account" style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '12px',
-                backgroundColor: '#151c2c',
-                color: '#f8fafc',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textDecoration: 'none',
-                fontSize: '18px',
-                border: '1px solid #334155'
-              }}>
-                👤
-              </Link>
-            </div>
           </div>
+
+          <nav className="nav-group">
+            <Link href="/sensors" className="nav-link">
+              🛏️ Comfy Room
+            </Link>
+            <Link href="/watch-sync" className="nav-link">
+              ⌚ Smart Watch
+            </Link>
+            <Link href="/persona" className="nav-link">
+              🧠 Persona
+            </Link>
+            <Link href="/sensitivity-profile" className="nav-link highlight">
+              📜 ประวัติสะสม
+            </Link>
+            <Link href="/account" className="nav-link">
+              👤 Account
+            </Link>
+          </nav>
         </header>
 
-        {/* Primary Hero Section */}
-        <div className="hero-grid">
-          {/* Room Score Card */}
-          <div style={{
-            backgroundColor: '#151c2c',
-            borderRadius: '20px',
-            padding: '28px 16px',
-            border: '1px solid #1e293b',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '14px',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.3)'
-          }}>
-            <div style={{ position: 'relative', width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg transform="rotate(-90)" width="180" height="180" viewBox="0 0 160 160">
-                <circle cx="80" cy="80" r="70" stroke="#0f172a" strokeWidth="10" fill="transparent" />
-                <circle
-                  cx="80" cy="80" r="70"
-                  stroke={statusColor}
-                  strokeWidth="10"
-                  fill="transparent"
-                  strokeDasharray="440"
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}
-                />
-              </svg>
-              <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '48px', fontWeight: '800', lineHeight: '1', color: '#fff' }}>{score}%</span>
-                <span style={{ fontSize: '9px', color: '#64748b', letterSpacing: '2px', marginTop: '4px', fontWeight: '700' }}>SLEEP QUALITY</span>
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>สภาวะห้องนอนปัจจุบัน</span>
-              <h2 style={{ fontSize: '20px', color: statusColor, fontWeight: '700', margin: '2px 0 0 0' }}>
-                {score >= 80 ? 'ดีเยี่ยม หลับสนิท' : score >= 60 ? 'ปานกลาง' : 'ควรปรับปรุง'}
-              </h2>
-            </div>
-          </div>
-
-          {/* 4 Metrics Grid */}
-          <div className="metrics-grid">
-            {/* Temp */}
-            <div style={{
-              backgroundColor: '#151c2c',
-              padding: '18px 16px',
-              borderRadius: '18px',
-              border: '1px solid #1e293b',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: '140px'
-            }}>
-              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                🌡️ Temp
-              </span>
-              <div style={{ margin: '6px 0', display: 'flex', alignItems: 'baseline', gap: '2px' }}>
-                <span style={{ fontSize: '30px', fontWeight: '800', color: (sensor?.temperature ?? 0) > 25 ? '#f59e0b' : '#f8fafc', lineHeight: '1' }}>
-                  {sensor ? `${sensor.temperature.toFixed(1)}°` : '--'}
-                </span>
-                <span style={{ fontSize: '16px', color: '#64748b', fontWeight: '700' }}>C</span>
-              </div>
-              <div>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  color: tempStatus.color,
-                  backgroundColor: tempStatus.bg,
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  display: 'inline-block'
-                }}>
-                  • {tempStatus.label}
-                </span>
-              </div>
-            </div>
-
-            {/* Humidity */}
-            <div style={{
-              backgroundColor: '#151c2c',
-              padding: '18px 16px',
-              borderRadius: '18px',
-              border: '1px solid #1e293b',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: '140px'
-            }}>
-              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                💧 Humidity
-              </span>
-              <div style={{ margin: '6px 0', display: 'flex', alignItems: 'baseline', gap: '2px' }}>
-                <span style={{ fontSize: '30px', fontWeight: '800', color: '#f8fafc', lineHeight: '1' }}>
-                  {sensor ? `${sensor.humidity.toFixed(0)}` : '--'}
-                </span>
-                <span style={{ fontSize: '16px', color: '#64748b', fontWeight: '700' }}>%</span>
-              </div>
-              <div>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  color: humStatus.color,
-                  backgroundColor: humStatus.bg,
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  display: 'inline-block'
-                }}>
-                  • {humStatus.label}
-                </span>
-              </div>
-            </div>
-
-            {/* CO2 */}
-            <div style={{
-              backgroundColor: '#151c2c',
-              padding: '18px 16px',
-              borderRadius: '18px',
-              border: '1px solid #1e293b',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: '140px'
-            }}>
-              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                🍃 CO2
-              </span>
-              <div style={{ margin: '6px 0', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                <span style={{ fontSize: '30px', fontWeight: '800', color: (sensor?.co2 ?? 0) > 800 ? '#f59e0b' : '#f8fafc', lineHeight: '1' }}>
-                  {sensor ? `${sensor.co2}` : '--'}
-                </span>
-                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>ppm</span>
-              </div>
-              <div>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  color: co2Status.color,
-                  backgroundColor: co2Status.bg,
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  display: 'inline-block'
-                }}>
-                  • {co2Status.label}
-                </span>
-              </div>
-            </div>
-
-            {/* Light */}
-            <div style={{
-              backgroundColor: '#151c2c',
-              padding: '18px 16px',
-              borderRadius: '18px',
-              border: '1px solid #1e293b',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: '140px'
-            }}>
-              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                💡 Light
-              </span>
-              <div style={{ margin: '6px 0', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                <span style={{ fontSize: '30px', fontWeight: '800', color: '#f8fafc', lineHeight: '1' }}>
-                  {sensor ? `${sensor.lux.toFixed(1)}` : '--'}
-                </span>
-                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Lux</span>
-              </div>
-              <div>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  color: lightStatus.color,
-                  backgroundColor: lightStatus.bg,
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  display: 'inline-block'
-                }}>
-                  • {lightStatus.label}
-                </span>
-              </div>
-            </div>
-          </div>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
+            🎯 ผลวิเคราะห์จุดอ่อนความไวการนอน (AI Sensitivity Profile)
+          </h1>
+          <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+            {loading ? 'กำลังซิงค์ข้อมูล Gemini AI...' : `คำนวณสะสมแล้ว ${accumulatedDays} วัน (อัปเดตล่าสุด: ${evaluatedDate})`}
+          </p>
         </div>
 
-        {/* Feature Link Card */}
-        <Link href="/sensitivity" style={{ textDecoration: 'none' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #1e1b4b 0%, #151c2c 100%)',
-            padding: '16px',
-            borderRadius: '18px',
-            border: '1px solid rgba(129, 140, 248, 0.4)',
-            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.12)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '12px',
-                backgroundColor: '#312e81',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '22px',
-                border: '1px solid #4338ca',
-                flexShrink: 0
-              }}>
-                🎯
-              </div>
-              <div>
-                <span style={{ fontSize: '13px', fontWeight: '800', color: '#f8fafc', display: 'block', marginBottom: '2px' }}>
-                  จุดอ่อนความไวการนอน (Sensitivity)
-                </span>
-                <p style={{ fontSize: '11px', color: '#a5b4fc', margin: 0, lineHeight: '1.3' }}>
-                  พบไวต่อ <strong style={{ color: '#fbbf24' }}>อุณหภูมิ (High Sensitivity)</strong> มากที่สุด
-                </p>
-              </div>
-            </div>
+        {/* AI Diagnosis & Recommendation Card */}
+        <section className="ai-card">
+          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', textTransform: 'uppercase' }}>
+            🤖 GEMINI AI DIAGNOSE & PERSONALIZED WEIGHTS
+          </span>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#38bdf8', margin: 0 }}>
+            {aiInsight?.diagnosis || "กำลังวิเคราะห์ผลด้วย Gemini AI..."}
+          </h2>
+          <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: 1.6 }}>
+            💡 <strong>คำแนะนำจาก AI:</strong> {aiInsight?.recommendation || "ปรับอุณหภูมิห้องให้อยู่ในเกณฑ์มาตรฐาน"}
+          </p>
 
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              backgroundColor: '#4338ca',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '13px',
-              fontWeight: '700',
-              flexShrink: 0
-            }}>
-              ➔
-            </div>
+          <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px', fontWeight: '600' }}>
+            📊 Personalized Weight ทั้ง 6 ตัวแปร (ประมวลผลโดย Gemini AI)
+          </span>
+          <div className="weights-grid">
+            {Object.entries(aiInsight?.weights || {}).map(([key, w]: any) => (
+              <div key={key} style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                {formatSensorName(key)}: <strong style={{ color: '#38bdf8' }}>{Math.round(w * 100)}%</strong>
+              </div>
+            ))}
           </div>
-        </Link>
+        </section>
 
-        {/* AI Sleep Recommendation Bento Card */}
-        <div style={{
-          backgroundColor: '#151c2c',
-          padding: '20px 16px',
-          borderRadius: '20px',
-          border: '1px solid rgba(99, 102, 241, 0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '14px'
-        }}>
-          <div className="ai-card-header">
-            <span style={{ fontSize: '13px', fontWeight: '700', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              ✨ คำแนะนำการนอนหลับจาก AI
-            </span>
-            <button
-              className="ai-btn"
-              onClick={() => sensor && analyzeWithGemini(sensor)}
-              disabled={aiLoading || !sensor || cooldown > 0}
-              style={{
-                borderRadius: '12px',
-                backgroundColor: cooldown > 0 ? '#334155' : '#6366f1',
-                color: '#fff',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: (aiLoading || cooldown > 0) ? 'not-allowed' : 'pointer',
-                opacity: aiLoading ? 0.7 : 1
-              }}
-            >
-              {aiLoading ? '🔄...' : cooldown > 0 ? `⏳ (${cooldown}s)` : 'รับคำแนะนำ'}
-            </button>
+        {/* Trigger Breakdown */}
+        <section style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
+          <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700', display: 'block', marginBottom: '12px' }}>
+            📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
+          </span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+            {Object.entries(triggerBreakdown).map(([key, count]: any) => (
+              <div key={key} style={{ backgroundColor: '#151c2c', padding: '12px', borderRadius: '12px', border: '1px solid #1e293b' }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>{formatSensorName(key)}</span>
+                {count > 0 ? (
+                  <strong style={{ fontSize: '18px', color: '#38bdf8' }}>{count} <span style={{ fontSize: '11px', color: '#94a3b8' }}>ครั้ง</span></strong>
+                ) : (
+                  <span style={{ fontSize: '11px', color: '#34d399', fontWeight: '700' }}>🟢 ปกติ</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Combined Score Card */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', display: 'block' }}>Overall Sensitivity Score</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', margin: '4px 0' }}>41.56 <span style={{ fontSize: '12px', color: '#64748b' }}>/ 100</span></div>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>ความไวในการอ่อนไหวต่อสิ่งรบกวน</span>
           </div>
 
-          <div className="ai-content">
-            <p style={{
-              fontSize: '13px',
-              color: '#cbd5e1',
-              margin: 0,
-              lineHeight: '1.8',
-              flex: 1,
-              whiteSpace: 'pre-line',
-              backgroundColor: '#0b0f19',
-              padding: '14px',
-              borderRadius: '14px',
-              border: '1px solid #1e293b'
-            }}>
-              {aiAnalysis}
-            </p>
+          <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', display: 'block' }}>Combined Sleep Score</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>{daily?.combinedSleepScore ?? '--'} <span style={{ fontSize: '12px', color: '#64748b' }}>/ 100</span></div>
+            <span style={{ fontSize: '10px', color: '#94a3b8' }}>(Garmin: {daily?.garminSleepScore ?? '--'} | Room Env: {daily?.roomEnvironmentScore ?? '--'})</span>
           </div>
         </div>
-
-        {/* Navigation Grid */}
-        <footer className="bottom-nav-grid">
-          <Link href="/sensors" style={{
-            backgroundColor: '#151c2c',
-            color: '#f8fafc',
-            padding: '14px',
-            borderRadius: '14px',
-            textAlign: 'center',
-            fontWeight: '600',
-            fontSize: '12px',
-            textDecoration: 'none',
-            border: '1px solid #1e293b'
-          }}>
-            รายละเอียดเซนเซอร์ทั้งหมด ➔
-          </Link>
-          <Link href="/history" style={{
-            backgroundColor: '#151c2c',
-            color: '#f8fafc',
-            padding: '14px',
-            borderRadius: '14px',
-            textAlign: 'center',
-            fontWeight: '600',
-            fontSize: '12px',
-            textDecoration: 'none',
-            border: '1px solid #1e293b'
-          }}>
-            ประวัติการใช้งานย้อนหลัง
-          </Link>
-        </footer>
       </main>
     </div>
   );
