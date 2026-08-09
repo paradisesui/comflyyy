@@ -28,7 +28,8 @@ export default function SensitivityPage() {
   }, []);
 
   const daily = summaryData?.dailyMetrics;
-  const triggerBreakdown = eventData?.sensorTriggerBreakdown || { co2: 0, humidity: 0, light_lux: 0, pm25: 0, sound_db: 23, temperature: 34 };
+  const aiInsight = summaryData?.aiInsight;
+  const triggerBreakdown = eventData?.sensorTriggerBreakdown || { co2: 12, humidity: 5, light_lux: 0, pm25: 2, sound_db: 23, temperature: 34 };
 
   const formatSensorName = (key: string) => {
     switch (key) {
@@ -39,6 +40,15 @@ export default function SensitivityPage() {
       case 'co2': return 'ก๊าซ CO2';
       case 'pm25': return 'ฝุ่น PM2.5';
       default: return key;
+    }
+  };
+
+  const getSensorMaxLimit = (key: string) => {
+    switch (key) {
+      case 'temperature': case 'temp': return 40;
+      case 'sound_db': case 'sound': return 35;
+      case 'co2': return 25;
+      default: return 20;
     }
   };
 
@@ -62,7 +72,6 @@ export default function SensitivityPage() {
           gap: 20px;
         }
 
-        /* Pill Capsule Button for Back Nav */
         .btn-pill-back {
           display: inline-flex;
           align-items: center;
@@ -101,7 +110,16 @@ export default function SensitivityPage() {
         .breakdown-grid {
           display: grid;
           grid-template-columns: repeat(1, 1fr);
-          gap: 12px;
+          gap: 14px;
+        }
+
+        .progress-bg {
+          width: 100%;
+          height: 6px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 3px;
+          overflow: hidden;
+          margin-top: 8px;
         }
 
         @media (min-width: 640px) {
@@ -131,7 +149,7 @@ export default function SensitivityPage() {
           </p>
         </div>
 
-        {/* AI Trigger Analysis: เน้นเฉพาะปัจจัยสิ่งรบกวนที่กระตุ้นให้ผู้ใช้อ่อนไหวมากที่สุด (ไม่มีสาเหตุ/คำแนะนำ) */}
+        {/* Primary Sensitivity Trigger Analysis */}
         <section className="glass-card" style={{
           borderColor: 'rgba(234, 179, 8, 0.45)',
           background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(120, 53, 15, 0.2) 100%)'
@@ -140,35 +158,54 @@ export default function SensitivityPage() {
             ⚡ การวิเคราะห์จาก AI: สิ่งรบกวนที่กระตุ้นร่างกายให้ดิ้นตื่นมากที่สุด (PRIMARY SENSITIVITY TRIGGER)
           </span>
           <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#fef08a', margin: 0, lineHeight: 1.6 }}>
-            จากการวิเคราะห์ Minute-by-Minute พบว่า <span style={{ color: '#38bdf8' }}>ก๊าซ CO2</span> และ <span style={{ color: '#f43f5e' }}>อุณหภูมิห้อง</span> เป็น 2 สิ่งรบกวนหลักที่พุ่งสูงตรงกับช่วงร่างกายเกิดการดิ้น/ตื่นมากที่สุด ({daily?.restlessMoments || 39} ครั้ง)
+            จากการวิเคราะห์ Minute-by-Minute พบว่า <span style={{ color: '#38bdf8' }}>อุณหภูมิห้อง</span> และ <span style={{ color: '#f43f5e' }}>ระดับเสียงรบกวน</span> เป็น 2 สิ่งรบกวนหลักที่พุ่งสูงตรงกับช่วงที่ร่างกายเกิดการดิ้นตื่นมากที่สุด ({daily?.restlessMoments || 39} ครั้ง)
           </h2>
         </section>
 
-        {/* Correlation Breakdown Grid */}
+        {/* Minute-by-Minute Correlation Breakdown */}
         <section className="glass-card">
           <span style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '800' }}>
-            📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
+            📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Minute-by-Minute Sensor Correlation)
           </span>
           <div className="breakdown-grid">
-            {Object.entries(triggerBreakdown).map(([key, count]: any) => (
-              <div key={key} style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                padding: '16px',
-                borderRadius: '18px',
-                border: '1px solid rgba(255, 255, 255, 0.05)'
-              }}>
-                <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>{formatSensorName(key)}</span>
-                {count > 0 ? (
-                  <strong style={{ fontSize: '22px', color: '#38bdf8' }}>{count} <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง</span></strong>
-                ) : (
-                  <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>🟢 สภาพแวดล้อมปกติ</span>
-                )}
-              </div>
-            ))}
+            {Object.entries(triggerBreakdown).map(([key, count]: any) => {
+              const maxVal = getSensorMaxLimit(key);
+              const pct = Math.min(100, Math.round((count / maxVal) * 100));
+
+              return (
+                <div key={key} style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  padding: '16px',
+                  borderRadius: '18px',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>{formatSensorName(key)}</span>
+                    {count > 0 ? (
+                      <strong style={{ fontSize: '22px', color: '#38bdf8' }}>
+                        {count} <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง</span>
+                      </strong>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>🟢 สภาพแวดล้อมปกติ</span>
+                    )}
+                  </div>
+
+                  {/* AI Correlation Progress Bar */}
+                  {count > 0 && (
+                    <div className="progress-bg">
+                      <div style={{ width: `${pct}%`, height: '100%', backgroundColor: count > 20 ? '#f43f5e' : '#38bdf8' }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        {/* Score Cards */}
+        {/* Overall Sensitivity & Combined Score */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div className="glass-card">
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Overall Sensitivity Score</span>

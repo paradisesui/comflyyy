@@ -164,40 +164,37 @@ export default function HomePage() {
           box-shadow: 0 0 24px rgba(56, 189, 248, 0.5);
         }
 
-        /* 4 Capsule Rounded Interactive Buttons */
+        /* Modern Pill Capsule Nav Bar */
         .nav-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 16px;
+          gap: 14px;
         }
 
         .btn-pill-card {
-          padding: 18px 24px;
-          border-radius: 9999px; /* ขอบมนแคปซูลโค้งละมุน */
+          padding: 14px 22px;
+          border-radius: 9999px; /* ขอบมนแคปซูลสมบูรณ์แบบ */
           text-decoration: none;
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 12px;
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           border: 1px solid rgba(255, 255, 255, 0.12);
-          backdrop-filter: blur(12px);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
         }
 
         .btn-pill-card:hover {
           transform: translateY(-2px);
+          box-shadow: 0 10px 25px rgba(56, 189, 248, 0.25);
           filter: brightness(1.2);
         }
 
-        .btn-icon-wrapper {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
+        .btn-emoji {
+          font-size: 22px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 20px;
-          background: rgba(0, 0, 0, 0.25);
-          flex-shrink: 0;
         }
 
         .glass-card {
@@ -287,14 +284,13 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 4 Large Rounded Pill Capsule Buttons */}
+        {/* 4 Interactive Pill Capsule Buttons (ไม่มีสี่เหลี่ยมด้านใน) */}
         <nav className="nav-grid">
           <Link href="/sensors" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(14, 116, 144, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%)',
-            borderColor: 'rgba(56, 189, 248, 0.45)',
-            boxShadow: '0 8px 24px rgba(14, 116, 144, 0.25)'
+            background: 'linear-gradient(135deg, rgba(14, 116, 144, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            borderColor: 'rgba(56, 189, 248, 0.4)'
           }}>
-            <div className="btn-icon-wrapper">🛏️</div>
+            <span className="btn-emoji">🛏️</span>
             <div>
               <strong style={{ fontSize: '14px', display: 'block', color: '#f8fafc' }}>Comfy Room</strong>
               <span style={{ fontSize: '11px', color: '#38bdf8' }}>คุณภาพห้องนอน</span>
@@ -302,11 +298,10 @@ export default function HomePage() {
           </Link>
 
           <Link href="/persona" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%)',
-            borderColor: 'rgba(168, 85, 247, 0.45)',
-            boxShadow: '0 8px 24px rgba(88, 28, 135, 0.25)'
+            background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            borderColor: 'rgba(168, 85, 247, 0.4)'
           }}>
-            <div className="btn-icon-wrapper">⌚</div>
+            <span className="btn-emoji">⌚</span>
             <div>
               <strong style={{ fontSize: '14px', display: 'block', color: '#f8fafc' }}>Smart Watch</strong>
               <span style={{ fontSize: '11px', color: '#c084fc' }}>Garmin Persona</span>
@@ -314,11 +309,10 @@ export default function HomePage() {
           </Link>
 
           <Link href="/sensitivity" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(159, 18, 57, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%)',
-            borderColor: 'rgba(244, 63, 94, 0.45)',
-            boxShadow: '0 8px 24px rgba(159, 18, 57, 0.25)'
+            background: 'linear-gradient(135deg, rgba(159, 18, 57, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            borderColor: 'rgba(244, 63, 94, 0.4)'
           }}>
-            <div className="btn-icon-wrapper">🎯</div>
+            <span className="btn-emoji">🎯</span>
             <div>
               <strong style={{ fontSize: '14px', display: 'block', color: '#f8fafc' }}>Sensitivity</strong>
               <span style={{ fontSize: '11px', color: '#fb7185' }}>จุดอ่อนการนอน</span>
@@ -326,11 +320,10 @@ export default function HomePage() {
           </Link>
 
           <Link href="/sensitivity-profile" className="btn-pill-card" style={{
-            background: 'linear-gradient(135deg, rgba(20, 83, 45, 0.45) 0%, rgba(15, 23, 42, 0.85) 100%)',
-            borderColor: 'rgba(52, 211, 153, 0.45)',
-            boxShadow: '0 8px 24px rgba(20, 83, 45, 0.25)'
+            background: 'linear-gradient(135deg, rgba(20, 83, 45, 0.35) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            borderColor: 'rgba(52, 211, 153, 0.4)'
           }}>
-            <div className="btn-icon-wrapper">📜</div>
+            <span className="btn-emoji">📜</span>
             <div>
               <strong style={{ fontSize: '14px', display: 'block', color: '#f8fafc' }}>ประวัติสะสม</strong>
               <span style={{ fontSize: '11px', color: '#34d399' }}>History Logs</span>
@@ -338,7 +331,7 @@ export default function HomePage() {
           </Link>
         </nav>
 
-        {/* Hero Combined Score */}
+        {/* Hero Combined Sleep Score */}
         <section className="score-hero-container">
           <div className="score-main-circle">
             <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
