@@ -162,12 +162,12 @@ export default function HomePage() {
   const formatSensorName = (key: string) => {
     switch (key) {
       case 'sound_db': case 'sound': return 'เสียงรบกวน (Noise)';
-      case 'temperature': case 'temp': return 'อุณหภูมิห้อง (Temperature)';
+      case 'temperature': case 'temp': return 'อุณหภูมิห้อง (Temp)';
       case 'light_lux': case 'light': case 'lux': return 'แสงสว่าง (Light)';
       case 'humidity': case 'hum': return 'ความชื้น (Humidity)';
       case 'co2': return 'ก๊าซ CO2';
       case 'pm25': case 'pm2_5': return 'ฝุ่น PM2.5';
-      default: return key || 'อุณหภูมิห้อง (Temperature)';
+      default: return key || 'อุณหภูมิห้อง (Temp)';
     }
   };
 
@@ -188,72 +188,103 @@ export default function HomePage() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#05070f',
-      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.08) 0%, transparent 70%)',
+      backgroundColor: '#030712',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.15) 0%, transparent 60%), radial-gradient(ellipse at 80% 100%, rgba(99, 102, 241, 0.1) 0%, transparent 50%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '16px 12px',
+      padding: '16px 12px 32px 12px',
       display: 'flex',
       justifyContent: 'center'
     }}>
       <style jsx>{`
         .app-container {
           width: 100%;
-          max-width: 900px;
+          max-width: 920px;
           display: flex;
           flex-direction: column;
           gap: 16px;
         }
 
         .navbar {
-          background: rgba(13, 21, 39, 0.8);
-          backdrop-filter: blur(12px);
+          background: rgba(15, 23, 42, 0.75);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 18px;
+          border-radius: 20px;
           padding: 12px 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .nav-links {
-          display: flex;
-          gap: 8px;
-          overflow-x: auto;
-          padding-bottom: 4px;
-        }
-
-        .nav-button {
-          font-size: 12px;
-          font-weight: 600;
-          color: #94a3b8;
-          text-decoration: none;
-          padding: 8px 14px;
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          white-space: nowrap;
-          transition: all 0.2s;
-        }
-
-        .nav-button:hover, .nav-button.active {
-          color: #38bdf8;
-          background: rgba(56, 189, 248, 0.1);
-          border-color: rgba(56, 189, 248, 0.3);
-        }
-
-        .glass-card {
-          background: #0b1120;
-          border: 1px solid #1e293b;
-          border-radius: 18px;
-          padding: 18px;
           display: flex;
           flex-direction: column;
           gap: 12px;
           box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
         }
 
-        .grid-responsive {
+        .nav-scroll {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          scroll-behavior: smooth;
+          padding-bottom: 4px;
+        }
+
+        .nav-scroll::-webkit-scrollbar {
+          display: none;
+        }
+
+        .btn-pill {
+          font-size: 12px;
+          font-weight: 600;
+          color: #94a3b8;
+          text-decoration: none;
+          padding: 8px 16px;
+          border-radius: 9999px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          white-space: nowrap;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .btn-pill:hover {
+          color: #38bdf8;
+          background: rgba(56, 189, 248, 0.12);
+          border-color: rgba(56, 189, 248, 0.4);
+          transform: translateY(-1px);
+        }
+
+        .btn-pill.active {
+          color: #ffffff;
+          background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+          border-color: rgba(56, 189, 248, 0.6);
+          box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+        }
+
+        .glass-card {
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+          transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .glass-card:hover {
+          border-color: rgba(56, 189, 248, 0.25);
+        }
+
+        .grid-weights {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+        }
+
+        .grid-breakdown {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
           gap: 10px;
@@ -271,7 +302,10 @@ export default function HomePage() {
             justify-content: space-between;
             align-items: center;
           }
-          .grid-responsive {
+          .grid-weights {
+            grid-template-columns: repeat(3, 1fr);
+          }
+          .grid-breakdown {
             grid-template-columns: repeat(3, 1fr);
           }
           .grid-scores {
@@ -283,53 +317,91 @@ export default function HomePage() {
       <main className="app-container">
         {/* Top Navbar */}
         <header className="navbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '18px' }}>🌙</span>
-            <span style={{ fontSize: '15px', fontWeight: '800', color: '#38bdf8', letterSpacing: '0.5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)'
+            }}>
+              🌙
+            </div>
+            <span style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', letterSpacing: '0.5px' }}>
               COMFY SLEEP
             </span>
           </div>
 
-          <nav className="nav-links">
-            <Link href="/sensors" className="nav-button">🛏️ Comfy Room</Link>
-            <Link href="/persona" className="nav-button active">⌚ Smart Watch & Persona</Link>
-            <Link href="/sensitivity-profile" className="nav-button">📜 ประวัติสะสม</Link>
-            <Link href="/account" className="nav-button">👤 Account</Link>
+          <nav className="nav-scroll">
+            <Link href="/sensors" className="btn-pill">🛏️ Comfy Room</Link>
+            <Link href="/persona" className="btn-pill active">⌚ Smart Watch & Persona</Link>
+            <Link href="/sensitivity-profile" className="btn-pill">📜 ประวัติสะสม</Link>
+            <Link href="/account" className="btn-pill">👤 Account</Link>
           </nav>
         </header>
 
-        {/* Title */}
-        <div>
-          <h1 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
+        {/* Title Section */}
+        <div style={{ padding: '0 4px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
             🎯 AI Sensitivity Profile
           </h1>
           <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>
-            คำนวณสะสมแล้ว {accumulatedDays} วัน (อัปเดตล่าสุด: {evaluatedDate})
+            สะสมข้อมูลแล้ว {accumulatedDays} วัน (อัปเดตล่าสุด: {evaluatedDate})
           </p>
         </div>
 
         {/* Gemini AI Card */}
-        <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.3)' }}>
-          <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.5px' }}>
+        <section className="glass-card" style={{
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(14, 116, 144, 0.15) 100%)',
+          borderColor: 'rgba(56, 189, 248, 0.35)',
+          boxShadow: '0 0 25px rgba(56, 189, 248, 0.1)'
+        }}>
+          <div style={{
+            fontSize: '10px',
+            color: '#38bdf8',
+            fontWeight: '800',
+            letterSpacing: '0.8px',
+            textTransform: 'uppercase',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
             🤖 GEMINI AI DIAGNOSE & PERSONALIZED WEIGHTS
           </div>
 
-          <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#38bdf8', margin: 0, lineHeight: 1.5 }}>
+          <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#f8fafc', margin: 0, lineHeight: 1.5 }}>
             {aiInsight?.diagnosis || "พบปัจจัยรบกวนหลักจากอุณหภูมิห้องและระดับเสียงขณะหลับ"}
           </h2>
 
-          <p style={{ fontSize: '12px', color: '#cbd5e1', margin: 0, lineHeight: 1.6 }}>
-            💡 <strong>คำแนะนำจาก AI:</strong> {aiInsight?.recommendation || "ปรับอุณหภูมิเครื่องปรับอากาศให้อยู่ช่วง 23-25°C และลดแหล่งกำเนิดเสียงรบกวน"}
+          <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.6 }}>
+            💡 <strong style={{ color: '#e2e8f0' }}>คำแนะนำจาก AI:</strong> {aiInsight?.recommendation || "ปรับอุณหภูมิเครื่องปรับอากาศให้อยู่ช่วง 23-25°C และลดแหล่งกำเนิดเสียงรบกวน"}
           </p>
 
-          <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', fontWeight: '600' }}>
+          <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', fontWeight: '600' }}>
             📊 Personalized Weight ทั้ง 6 ตัวแปร
           </span>
 
-          <div className="grid-responsive">
+          <div className="grid-weights">
             {Object.entries(aiInsight?.weights || { temp: 0.30, hum: 0.15, sound: 0.25, light: 0.10, co2: 0.10, pm25: 0.10 }).map(([key, w]: any) => (
-              <div key={key} style={{ fontSize: '11px', color: '#cbd5e1', backgroundColor: '#0f172a', padding: '8px 10px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                <span>{getSensorIcon(key)} {formatSensorName(key)}:</span> <strong style={{ color: '#38bdf8' }}>{Math.round(w * 100)}%</strong>
+              <div key={key} style={{
+                fontSize: '11px',
+                color: '#cbd5e1',
+                backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                padding: '10px 12px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {getSensorIcon(key)} {formatSensorName(key)}
+                </span>
+                <strong style={{ color: '#38bdf8' }}>{Math.round(w * 100)}%</strong>
               </div>
             ))}
           </div>
@@ -337,20 +409,32 @@ export default function HomePage() {
 
         {/* Breakdown Card */}
         <section className="glass-card">
-          <span style={{ fontSize: '12px', color: '#f8fafc', fontWeight: '700' }}>
+          <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: '700' }}>
             📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
           </span>
 
-          <div className="grid-responsive">
+          <div className="grid-breakdown">
             {Object.entries(triggerBreakdown).map(([key, count]: any) => (
-              <div key={key} style={{ backgroundColor: '#0f172a', padding: '10px 12px', borderRadius: '10px', border: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+              <div key={key} style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                padding: '12px 14px',
+                borderRadius: '14px',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+              }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {getSensorIcon(key)} {formatSensorName(key)}
                 </span>
                 {count > 0 ? (
-                  <strong style={{ fontSize: '16px', color: '#38bdf8' }}>{count} <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '400' }}>ครั้ง</span></strong>
+                  <strong style={{ fontSize: '18px', color: '#38bdf8', marginTop: '2px' }}>
+                    {count} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '400' }}>ครั้ง</span>
+                  </strong>
                 ) : (
-                  <span style={{ fontSize: '10px', color: '#34d399', fontWeight: '700' }}>🟢 ปกติ</span>
+                  <span style={{ fontSize: '11px', color: '#34d399', fontWeight: '700', marginTop: '4px', display: 'block' }}>
+                    🟢 ปกติ
+                  </span>
                 )}
               </div>
             ))}
@@ -361,16 +445,16 @@ export default function HomePage() {
         <div className="grid-scores">
           <div className="glass-card">
             <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Overall Sensitivity Score</span>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: '#34d399', margin: '2px 0' }}>
-              41.56 <span style={{ fontSize: '12px', color: '#64748b' }}>/ 100</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#34d399', margin: '2px 0' }}>
+              41.56 <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
-            <span style={{ fontSize: '10px', color: '#64748b' }}>ความไวในการอ่อนไหวต่อสิ่งรบกวน</span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>ความไวในการอ่อนไหวต่อสิ่งรบกวน</span>
           </div>
 
           <div className="glass-card">
             <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Combined Sleep Score</span>
-            <div style={{ fontSize: '26px', fontWeight: '800', color: '#38bdf8', margin: '2px 0' }}>
-              {daily?.combinedSleepScore ?? 83} <span style={{ fontSize: '12px', color: '#64748b' }}>/ 100</span>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '2px 0' }}>
+              {daily?.combinedSleepScore ?? 83} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
             <span style={{ fontSize: '10px', color: '#64748b' }}>
               (Garmin: {daily?.garminSleepScore ?? 87} | Room Env: {daily?.roomEnvironmentScore ?? 79})

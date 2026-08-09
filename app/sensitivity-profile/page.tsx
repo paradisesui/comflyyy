@@ -45,36 +45,60 @@ export default function SensitivityProfilePage() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#05070f',
-      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.08) 0%, transparent 70%)',
+      backgroundColor: '#030712',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.15) 0%, transparent 60%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '16px 12px',
+      padding: '16px 12px 32px 12px',
       display: 'flex',
       justifyContent: 'center'
     }}>
       <style jsx>{`
         .app-container {
           width: 100%;
-          max-width: 900px;
+          max-width: 920px;
           display: flex;
           flex-direction: column;
           gap: 16px;
         }
 
+        .btn-back {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #38bdf8;
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 8px 16px;
+          border-radius: 9999px;
+          background: rgba(56, 189, 248, 0.1);
+          border: 1px solid rgba(56, 189, 248, 0.25);
+          transition: all 0.2s ease;
+        }
+
+        .btn-back:hover {
+          background: rgba(56, 189, 248, 0.2);
+          transform: translateX(-2px);
+        }
+
         .glass-card {
-          background: #0b1120;
-          border: 1px solid #1e293b;
-          border-radius: 18px;
-          padding: 18px;
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 20px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 14px;
+          box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
         }
 
         .table-container {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
+          border-radius: 12px;
         }
 
         table {
@@ -82,34 +106,37 @@ export default function SensitivityProfilePage() {
           border-collapse: collapse;
           text-align: left;
           font-size: 12px;
-          min-width: 500px;
+          min-width: 520px;
         }
 
         th {
           color: #94a3b8;
-          padding: 10px;
-          border-bottom: 1px solid #1e293b;
+          padding: 12px 10px;
+          background-color: rgba(15, 23, 42, 0.8);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          font-weight: 600;
         }
 
         td {
-          padding: 12px 10px;
-          border-bottom: 1px solid #1e293b;
+          padding: 14px 10px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
           color: #cbd5e1;
         }
       `}</style>
 
       <main className="app-container">
+        {/* Navigation Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+          <Link href="/" className="btn-back">
             ← ย้อนกลับหน้าหลัก
           </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
-            CUMULATIVE SENSITIVITY HISTORY
+          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', letterSpacing: '0.5px' }}>
+            📜 SENSITIVITY HISTORY
           </span>
         </div>
 
         <div>
-          <h1 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 4px 0', color: '#f8fafc' }}>
             📜 ประวัติสถิติสะสมรายคืน
           </h1>
           <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>
@@ -118,24 +145,27 @@ export default function SensitivityProfilePage() {
         </div>
 
         {/* Summary Averages */}
-        <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.3)' }}>
-          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800' }}>
+        <section className="glass-card" style={{
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(14, 116, 144, 0.15) 100%)',
+          borderColor: 'rgba(56, 189, 248, 0.35)'
+        }}>
+          <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.8px' }}>
             📊 ค่าเฉลี่ยสะสมรวม {totalDays} คืน
           </span>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-            <div style={{ backgroundColor: '#0f172a', padding: '10px', borderRadius: '10px' }}>
-              <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>Garmin เฉลี่ย</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '12px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Garmin เฉลี่ย</span>
               <strong style={{ fontSize: '18px', color: '#f8fafc' }}>{cumulative?.avgGarminScore || '--'}</strong>
             </div>
 
-            <div style={{ backgroundColor: '#0f172a', padding: '10px', borderRadius: '10px' }}>
-              <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>Room เฉลี่ย</span>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '12px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Room เฉลี่ย</span>
               <strong style={{ fontSize: '18px', color: '#34d399' }}>{cumulative?.avgRoomScore || '--'}</strong>
             </div>
 
-            <div style={{ backgroundColor: '#0f172a', padding: '10px', borderRadius: '10px' }}>
-              <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>Combined เฉลี่ย</span>
+            <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '12px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>Combined เฉลี่ย</span>
               <strong style={{ fontSize: '18px', color: '#38bdf8' }}>{cumulative?.avgCombinedScore || '--'}</strong>
             </div>
           </div>
@@ -169,7 +199,7 @@ export default function SensitivityProfilePage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                       ยังไม่มีประวัติบันทึกสะสม
                     </td>
                   </tr>
