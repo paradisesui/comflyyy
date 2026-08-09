@@ -10,28 +10,27 @@ export default function SensitivityPage() {
   const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Auto Sync & Timestamp Matching
+  // 1. ระบบ Dynamic Auto Sync & Timestamp Matching
   useEffect(() => {
     if (!database) return;
 
     const processAutoSync = async () => {
       try {
-        const garminRes = await fetch('/api/garmin').catch(() => null);
-        let garmin = garminRes ? (await garminRes.json())?.data : null;
+        // ยิง API ดึงข้อมูล Garmin ล่าสุดโดยไม่ Hardcode วันที่
+        const garminRes = await fetch('/api/garmin?latest=true').catch(() => null);
+        const garminJson = garminRes ? await garminRes.json() : null;
+        const garmin = garminJson?.data;
 
-        if (!garmin) {
-          const now = Date.now();
-          garmin = {
-            calendarDate: new Date().toISOString().split('T')[0],
-            garminSleepScore: 78,
-            sleepStartTimestamp: now - 8 * 3600 * 1000,
-            sleepEndTimestamp: now,
-            awakeCount: 2,
-            avgSleepStress: 24,
-            restlessMomentsCount: 58
-          };
+        // หากยังไม่มีข้อมูลจาก Garmin ให้ข้ามการประมวลผล เพื่อไม่ให้เขียนทับด้วยข้อมูลเพี้ยน
+        if (!garmin || !garmin.garminSleepScore) {
+          console.warn('Garmin sleep data is not ready yet.');
+          return;
         }
 
+        const sleepStart = Number(garmin.sleepStartTimestamp);
+        const sleepEnd = Number(garmin.sleepEndTimestamp);
+
+        // ดึง Log เซ็นเซอร์จาก Firebase
         const logsRef = ref(database, 'logs');
         onValue(logsRef, (snapshot) => {
           if (!snapshot.exists()) return;
@@ -39,13 +38,16 @@ export default function SensitivityPage() {
           const rawLogs = snapshot.val();
           const logKeys = Object.keys(rawLogs);
 
+          // Dynamic Windowing Filter: กรองเอาเฉพาะเซ็นเซอร์ช่วงเวลานอนจริงจาก Garmin
           const matchedSleepLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
             let t = Number(log.timestamp) || 0;
             if (t < 1000000000000) t = t * 1000;
-            return t >= garmin.sleepStartTimestamp && t <= garmin.sleepEndTimestamp;
+            return t >= sleepStart && t <= sleepEnd;
           });
 
           const hasExactTimestampMatch = matchedSleepLogs.length > 0;
+
+          // Fallback Strategy: ถ้ามี Log เวลาตรงกันให้ใช้ Log ช่วงนั้น ถ้าไม่มีให้ดึงค่าสำรองย้อนหลัง
           const effectiveLogs = hasExactTimestampMatch 
             ? matchedSleepLogs 
             : logKeys.slice(-30).map(k => rawLogs[k]);
@@ -55,6 +57,7 @@ export default function SensitivityPage() {
           const avgSound = effectiveLogs.reduce((sum, item) => sum + (Number(item.sound) || 400), 0) / totalLogs;
           const avgHum = effectiveLogs.reduce((sum, item) => sum + (Number(item.humidity) || 50), 0) / totalLogs;
 
+          // คำนวณ Room Environment Score
           let roomScore = 100;
           if (avgTemp > 25) roomScore -= (avgTemp - 25) * 5;
           if (avgTemp < 23) roomScore -= (23 - avgTemp) * 5;
@@ -62,24 +65,20 @@ export default function SensitivityPage() {
           if (avgSound > 1000) roomScore -= 15;
           roomScore = Math.max(0, Math.min(100, Math.round(roomScore)));
 
+          // คำนวณ Combined Sleep Score จากค่า Garmin ล่าสุดที่ดึงมาได้จริง
           const combinedScore = Math.round((garmin.garminSleepScore + roomScore) / 2);
 
-          const prevAccumulatedDays = summaryData?.totalAccumulatedDays || 0;
-          const updatedAccumulatedDays = hasExactTimestampMatch 
-            ? prevAccumulatedDays + 1 
-            : Math.max(1, prevAccumulatedDays);
-
+          // อัปเดตข้อมูลสรุปประจำวันลง Firebase
           const summaryRef = ref(database, 'personal_sensitivity/summary');
           set(summaryRef, {
-            evaluatedDate: garmin.calendarDate,
-            totalAccumulatedDays: updatedAccumulatedDays,
+            evaluatedDate: garmin.calendarDate, // วันที่จริงจาก Garmin
+            totalAccumulatedDays: summaryData?.totalAccumulatedDays || 1,
             dailyMetrics: {
               garminSleepScore: garmin.garminSleepScore,
               roomEnvironmentScore: roomScore,
               combinedSleepScore: combinedScore,
-              restlessMoments: garmin.restlessMomentsCount || 58,
+              restlessMoments: garmin.restlessMomentsCount || 0,
               todaySensitivity: 41.56,
-              avgSleepStress: garmin.avgSleepStress || 24,
               isExactMatch: hasExactTimestampMatch
             },
             cumulativeSummary: {
@@ -92,7 +91,7 @@ export default function SensitivityPage() {
             }
           });
 
-          // บันทึกลงตารางประวัติสะสม
+          // บันทึกเข้าตารางประวัติสะสมรายวันเฉพาะกรณีที่มีข้อมูลเวลาตรงกันจริง
           if (hasExactTimestampMatch) {
             const historyRef = ref(database, `personal_sensitivity/history/${garmin.calendarDate}`);
             set(historyRef, {
@@ -101,19 +100,19 @@ export default function SensitivityPage() {
               roomScore: roomScore,
               combinedScore: combinedScore,
               avgTemp: Number(avgTemp.toFixed(1)),
-              restlessCount: garmin.restlessMomentsCount || 58
+              restlessCount: garmin.restlessMomentsCount || 0
             });
           }
         }, { onlyOnce: true });
       } catch (e) {
-        console.error('Auto Sync Matching Error:', e);
+        console.error('Dynamic Auto Sync Matching Error:', e);
       }
     };
 
     processAutoSync();
   }, [summaryData?.totalAccumulatedDays]);
 
-  // ดึงข้อมูลแสดงผล
+  // 2. ดึงข้อมูลขึ้นแสดงผลบน UI
   useEffect(() => {
     if (!database) return;
 
@@ -277,19 +276,17 @@ export default function SensitivityPage() {
           <Link href="/" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
             ← ย้อนกลับหน้าหลัก
           </Link>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <Link href="/sensitivity-profile" style={{
-  fontSize: '12px',
-  color: '#f8fafc',
-  backgroundColor: '#6366f1',
-  padding: '6px 14px',
-  borderRadius: '8px',
-  textDecoration: 'none',
-  fontWeight: '600'
-}}>
-  📊 ดูประวัติสะสม (Sensitivity Profile)
-</Link>
-          </div>
+          <Link href="/sensitivity-profile" style={{
+            fontSize: '12px',
+            color: '#f8fafc',
+            backgroundColor: '#3b82f6',
+            padding: '6px 14px',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            fontWeight: '600'
+          }}>
+            📜 ดูประวัติสะสม (Sensitivity Profile)
+          </Link>
         </div>
 
         <div>
@@ -297,11 +294,11 @@ export default function SensitivityPage() {
             🎯 ผลวิเคราะห์จุดอ่อนความไวการนอน (AI Sensitivity Profile)
           </h1>
           <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
-            {loading ? 'กำลังซิงค์ข้อมูลจาก Firebase...' : `คำนวณสะสมแล้ว ${accumulatedDays} วัน (อัปเดตล่าสุด: ${evaluatedDate})`}
+            {loading ? 'กำลังซิงค์ข้อมูลจาก Garmin และ Firebase...' : `คำนวณสะสมแล้ว ${accumulatedDays} วัน (อัปเดตล่าสุด: ${evaluatedDate})`}
           </p>
         </div>
 
-        {/* 1. แสดงผลปัจจัยหลักจาก Timestamp Event Correlation */}
+        {/* 1. ปัจจัยหลักที่กระตุ้นการดิ้นตื่น */}
         <section className="main-card">
           <span style={{ fontSize: '11px', color: '#facc15', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             ⚠️ ปัจจัยหลักที่กระตุ้นให้เกิดการดิ้น/ตื่น (MINUTE-BY-MINUTE ANALYSIS)
@@ -310,11 +307,11 @@ export default function SensitivityPage() {
             {formatSensorName(eventData?.primarySensorTrigger)}
           </h2>
           <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: 1.6 }}>
-            จากการจับคู่เวลาที่ร่างกายดิ้น ({eventData?.totalRestlessEvents || 58} ครั้ง) เข้ากับเซ็นเซอร์ห้องพบว่า สภาพแวดล้อมประเภทนี้พุ่งสูงตรงกับช่วงที่คุณกำลังหลับตื้นมากที่สุด
+            จากการจับคู่เวลาที่ร่างกายดิ้น ({daily?.restlessMoments || 0} ครั้ง) เข้ากับเซ็นเซอร์ห้องพบว่า สภาพแวดล้อมประเภทนี้พุ่งสูงตรงกับช่วงที่คุณกำลังหลับตื้นมากที่สุด
           </p>
         </section>
 
-        {/* 2. รายละเอียดจำนวนครั้งที่ถูกกระตุ้นแยกตามเซ็นเซอร์ */}
+        {/* 2. รายละเอียดแยกตามเซ็นเซอร์ */}
         <section style={{
           backgroundColor: '#0f172a',
           padding: '16px',
@@ -338,7 +335,7 @@ export default function SensitivityPage() {
           </div>
         </section>
 
-        {/* 3. การ์ดแสดง Overall Sensitivity Score และ Combined Score (ค่าจากหน้าเดิม) */}
+        {/* 3. Overall Sensitivity Score และ Combined Score */}
         <div className="metrics-grid">
           <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Overall Sensitivity Score</span>
@@ -351,10 +348,10 @@ export default function SensitivityPage() {
           <div style={{ backgroundColor: '#0f172a', padding: '16px', borderRadius: '16px', border: '1px solid #1e293b' }}>
             <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: '600' }}>Combined Sleep Score</span>
             <div style={{ fontSize: '28px', fontWeight: '800', color: '#38bdf8', margin: '4px 0' }}>
-              {daily?.combinedSleepScore ?? 64} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
+              {daily?.combinedSleepScore ?? '--'} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </div>
             <span style={{ fontSize: '10px', color: '#94a3b8' }}>
-              (Garmin: {daily?.garminSleepScore ?? 78} | Room Env: {daily?.roomEnvironmentScore ?? 49})
+              (Garmin: {daily?.garminSleepScore ?? '--'} | Room Env: {daily?.roomEnvironmentScore ?? '--'})
             </span>
           </div>
         </div>
