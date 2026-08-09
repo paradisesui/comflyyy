@@ -18,7 +18,6 @@ export default function SensorsPage() {
       const rawLogs = snapshot.val();
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // คำนวณกรองจาก Log วันปัจจุบันจริงๆ
       const todayLogs = Object.values(rawLogs).filter((log: any) => {
         let t = Number(log.timestamp) || 0;
         if (t < 1000000000000) t = t * 1000;
@@ -28,7 +27,6 @@ export default function SensorsPage() {
 
       const total = todayLogs.length;
 
-      // ป้องกันการหารด้วย 0 ถ้ายังไม่มี Log ของวันนี้
       if (total === 0) {
         setDailyAvgs(null);
         return;
@@ -47,35 +45,112 @@ export default function SensorsPage() {
     return () => unsubscribe();
   }, []);
 
+  const sensors = [
+    { title: 'ก๊าซ CO2', value: dailyAvgs?.co2, unit: 'ppm', icon: '🫁', color: '#38bdf8', normal: 'ต่ำกว่า 1000 ppm' },
+    { title: 'อุณหภูมิห้อง', value: dailyAvgs?.temp, unit: '°C', icon: '🌡️', color: '#f43f5e', normal: '23.0 - 25.0 °C' },
+    { title: 'ความชื้นสัมพัทธ์', value: dailyAvgs?.hum, unit: '%', icon: '💧', color: '#a855f7', normal: '50 - 60 %' },
+    { title: 'ฝุ่น PM2.5', value: dailyAvgs?.pm25, unit: 'µg/m³', icon: '🌫️', color: '#eab308', normal: 'ต่ำกว่า 37.5 µg/m³' },
+    { title: 'เสียงรบกวน', value: dailyAvgs?.sound, unit: 'dB', icon: '🔊', color: '#34d399', normal: 'ต่ำกว่า 40 dB' },
+    { title: 'แสงสว่าง', value: dailyAvgs?.light, unit: 'Lux', icon: '💡', color: '#f97316', normal: '0 Lux (มืดสนิท)' },
+  ];
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f8fafc', padding: '16px 12px' }}>
-      <main style={{ maxWidth: '920px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <Link href="/" style={{ color: '#38bdf8', textDecoration: 'none', fontSize: '13px' }}>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#030712',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.22) 0%, transparent 70%)',
+      color: '#f8fafc',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      padding: '24px 16px 48px 16px',
+      display: 'flex',
+      justifyContent: 'center'
+    }}>
+      <style jsx>{`
+        .container {
+          width: 100%;
+          max-width: 1100px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .btn-back {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #38bdf8;
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 600;
+          padding: 8px 16px;
+          border-radius: 9999px;
+          background: rgba(56, 189, 248, 0.1);
+          border: 1px solid rgba(56, 189, 248, 0.25);
+          width: fit-content;
+        }
+
+        .grid-sensors {
+          display: grid;
+          grid-template-columns: repeat(1, 1fr);
+          gap: 16px;
+        }
+
+        .sensor-card {
+          background: rgba(15, 23, 42, 0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        @media (min-width: 640px) {
+          .grid-sensors {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
+        @media (min-width: 1024px) {
+          .grid-sensors {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+      `}</style>
+
+      <main className="container">
+        <Link href="/" className="btn-back">
           ← ย้อนกลับหน้าหลัก
         </Link>
-        <h1 style={{ fontSize: '20px', fontWeight: '800', margin: '0' }}>
-          🛏️ คุณภาพห้องนอนคืนนี้ (Daily Average Sensors)
-        </h1>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-          <div style={{ background: 'rgba(15,23,42,0.6)', padding: '14px', borderRadius: '12px' }}>
-            🫁 CO2: <strong>{dailyAvgs?.co2 ? `${dailyAvgs.co2} ppm` : '--'}</strong>
-          </div>
-          <div style={{ background: 'rgba(15,23,42,0.6)', padding: '14px', borderRadius: '12px' }}>
-            🌡️ อุณหภูมิ: <strong>{dailyAvgs?.temp ? `${dailyAvgs.temp} °C` : '--'}</strong>
-          </div>
-          <div style={{ background: 'rgba(15,23,42,0.6)', padding: '14px', borderRadius: '12px' }}>
-            💧 ความชื้น: <strong>{dailyAvgs?.hum ? `${dailyAvgs.hum} %` : '--'}</strong>
-          </div>
-          <div style={{ background: 'rgba(15,23,42,0.6)', padding: '14px', borderRadius: '12px' }}>
-            🌫️ PM2.5: <strong>{dailyAvgs?.pm25 ? `${dailyAvgs.pm25} µg/m³` : '--'}</strong>
-          </div>
-          <div style={{ background: 'rgba(15,23,42,0.6)', padding: '14px', borderRadius: '12px' }}>
-            🔊 เสียง: <strong>{dailyAvgs?.sound ? `${dailyAvgs.sound} dB` : '--'}</strong>
-          </div>
-          <div style={{ background: 'rgba(15,23,42,0.6)', padding: '14px', borderRadius: '12px' }}>
-            💡 แสง: <strong>{dailyAvgs?.light ? `${dailyAvgs.light} Lux` : '--'}</strong>
-          </div>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 6px 0', color: '#f8fafc' }}>
+            🛏️ คุณภาพห้องนอนคืนนี้ (Daily Average Sensors)
+          </h1>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+            ค่าเฉลี่ยตรวจวัดจริงจากเซ็นเซอร์ ESP32 ตลอดทั้งคืน
+          </p>
+        </div>
+
+        <div className="grid-sensors">
+          {sensors.map((s, idx) => (
+            <div key={idx} className="sensor-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>{s.title}</span>
+                <span style={{ fontSize: '24px' }}>{s.icon}</span>
+              </div>
+              <div style={{ fontSize: '32px', fontWeight: '900', color: s.color, margin: '4px 0' }}>
+                {s.value ? `${s.value} ` : '-- '}
+                <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>{s.unit}</span>
+              </div>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                เกณฑ์มาตรฐาน: {s.normal}
+              </span>
+            </div>
+          ))}
         </div>
       </main>
     </div>
