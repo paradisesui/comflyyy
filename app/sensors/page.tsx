@@ -45,7 +45,6 @@ export default function SensorsPage() {
     return () => unsubscribe();
   }, []);
 
-  // ฟังก์ชันคำนวณประเมินเกณฑ์ความปลอดภัยแบบ Dynamic Real-time
   const getSensorStatus = (type: string, val: number | null) => {
     if (val === null || val === undefined) return { label: 'กำลังรอข้อมูล...', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)' };
 
@@ -113,8 +112,7 @@ export default function SensorsPage() {
           gap: 24px;
         }
 
-        /* ปุ่มกลับหน้าหลักสไตล์ Glassmorphic Glow ปุ่มโดดเด่น */
-        .btn-pill-back {
+        .btn-back-glow {
           display: inline-flex;
           align-items: center;
           gap: 10px;
@@ -122,33 +120,36 @@ export default function SensorsPage() {
           text-decoration: none;
           font-size: 13px;
           font-weight: 800;
-          padding: 10px 24px;
+          padding: 8px 20px 8px 12px;
           border-radius: 9999px;
-          background: linear-gradient(135deg, rgba(2, 132, 199, 0.6) 0%, rgba(37, 99, 235, 0.8) 100%);
-          border: 1.5px solid rgba(56, 189, 248, 0.7);
-          box-shadow: 0 0 20px rgba(56, 189, 248, 0.35), 0 8px 20px rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          background: linear-gradient(135deg, rgba(2, 132, 199, 0.5) 0%, rgba(37, 99, 235, 0.7) 100%);
+          border: 1.5px solid rgba(56, 189, 248, 0.6);
+          box-shadow: 0 0 16px rgba(56, 189, 248, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           width: fit-content;
+          white-space: nowrap;
         }
 
-        .btn-pill-back:hover {
-          transform: translateY(-2px) scale(1.03);
+        .btn-back-glow:hover {
+          transform: translateY(-2px) scale(1.02);
           border-color: #38bdf8;
-          box-shadow: 0 0 30px rgba(56, 189, 248, 0.6), 0 12px 28px rgba(0, 0, 0, 0.5);
-          background: linear-gradient(135deg, rgba(56, 189, 248, 0.8) 0%, rgba(37, 99, 235, 0.95) 100%);
+          box-shadow: 0 0 24px rgba(56, 189, 248, 0.55), 0 8px 20px rgba(0, 0, 0, 0.4);
+          background: linear-gradient(135deg, rgba(56, 189, 248, 0.7) 0%, rgba(37, 99, 235, 0.9) 100%);
         }
 
-        .arrow-circle {
-          width: 22px;
-          height: 22px;
+        .arrow-badge {
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.3);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 12px;
+          font-size: 14px;
+          line-height: 1;
         }
 
         .grid-sensors {
@@ -184,10 +185,10 @@ export default function SensorsPage() {
       `}</style>
 
       <main className="container">
-        {/* Navigation Header */}
+        {/* Header Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" className="btn-pill-back">
-            <span className="arrow-circle">←</span>
+          <Link href="/" className="btn-back-glow">
+            <div className="arrow-badge">←</div>
             <span>กลับหน้าหลัก</span>
           </Link>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', letterSpacing: '0.8px' }}>
@@ -221,7 +222,6 @@ export default function SensorsPage() {
                   <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>{s.unit}</span>
                 </div>
 
-                {/* Badge บอกระดับเกณฑ์ของค่าเซ็นเซอร์ */}
                 <div style={{
                   padding: '8px 12px',
                   borderRadius: '10px',

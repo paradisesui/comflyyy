@@ -201,6 +201,47 @@ export default function AccountPage() {
           transform: translateX(-2px);
         }
 
+
+        .btn-back-glow {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          color: #ffffff;
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 800;
+          padding: 8px 20px 8px 12px;
+          border-radius: 9999px;
+          background: linear-gradient(135deg, rgba(2, 132, 199, 0.5) 0%, rgba(37, 99, 235, 0.7) 100%);
+          border: 1.5px solid rgba(56, 189, 248, 0.6);
+          box-shadow: 0 0 16px rgba(56, 189, 248, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          width: fit-content;
+          white-space: nowrap;
+        }
+
+        .btn-back-glow:hover {
+          transform: translateY(-2px) scale(1.02);
+          border-color: #38bdf8;
+          box-shadow: 0 0 24px rgba(56, 189, 248, 0.55), 0 8px 20px rgba(0, 0, 0, 0.4);
+          background: linear-gradient(135deg, rgba(56, 189, 248, 0.7) 0%, rgba(37, 99, 235, 0.9) 100%);
+        }
+
+        .arrow-badge {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          line-height: 1;
+        }
+
         .glass-card {
           background: rgba(15, 23, 42, 0.65);
           backdrop-filter: blur(16px);
@@ -272,8 +313,8 @@ export default function AccountPage() {
       <main className="account-container">
         {/* Navigation Header */}
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" className="btn-pill-back">
-            <span className="arrow-circle">←</span>
+          <Link href="/" className="btn-back-glow">
+            <div className="arrow-badge">←</div>
             <span>กลับหน้าหลัก</span>
           </Link>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', letterSpacing: '0.5px' }}>

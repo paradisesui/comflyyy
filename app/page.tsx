@@ -110,7 +110,6 @@ export default function HomePage() {
   const daily = summaryData?.dailyMetrics;
   const aiInsight = summaryData?.aiInsight;
 
-  // โครงสร้างปุ่มแบบ Inline Pill ที่ป้องกันโดน CSS ตัวอื่นดักทับ
   const navButtons = [
     { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', bg: 'linear-gradient(135deg, rgba(14, 116, 144, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%)', border: 'rgba(56, 189, 248, 0.6)', glow: '0 8px 24px rgba(56, 189, 248, 0.3)' },
     { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', bg: 'linear-gradient(135deg, rgba(88, 28, 135, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%)', border: 'rgba(168, 85, 247, 0.6)', glow: '0 8px 24px rgba(168, 85, 247, 0.3)' },
@@ -202,7 +201,7 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 4 True Pill Capsule Buttons (ใช้ Inline Style การันตีความโค้งมน 100%) */}
+        {/* 4 Pill Buttons */}
         <nav className="pill-grid">
           {navButtons.map((btn, idx) => (
             <Link key={idx} href={btn.href} style={{
@@ -210,7 +209,7 @@ export default function HomePage() {
               alignItems: 'center',
               gap: '14px',
               padding: '16px 24px',
-              borderRadius: '9999px', // บังคับรูปทรงแคปซูลโค้งมน
+              borderRadius: '9999px',
               background: btn.bg,
               border: `1.5px solid ${btn.border}`,
               boxShadow: btn.glow,

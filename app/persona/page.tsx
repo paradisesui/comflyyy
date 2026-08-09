@@ -57,21 +57,44 @@ export default function PersonaPage() {
           gap: 20px;
         }
 
-        .btn-pill-back {
+        .btn-back-glow {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          color: #f8fafc;
+          gap: 10px;
+          color: #ffffff;
           text-decoration: none;
           font-size: 13px;
-          font-weight: 700;
-          padding: 8px 20px;
+          font-weight: 800;
+          padding: 8px 20px 8px 12px;
           border-radius: 9999px;
-          background: rgba(15, 23, 42, 0.85);
-          border: 1px solid rgba(56, 189, 248, 0.4);
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-          transition: all 0.25s ease;
+          background: linear-gradient(135deg, rgba(2, 132, 199, 0.5) 0%, rgba(37, 99, 235, 0.7) 100%);
+          border: 1.5px solid rgba(56, 189, 248, 0.6);
+          box-shadow: 0 0 16px rgba(56, 189, 248, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           width: fit-content;
+          white-space: nowrap;
+        }
+
+        .btn-back-glow:hover {
+          transform: translateY(-2px) scale(1.02);
+          border-color: #38bdf8;
+          box-shadow: 0 0 24px rgba(56, 189, 248, 0.55), 0 8px 20px rgba(0, 0, 0, 0.4);
+          background: linear-gradient(135deg, rgba(56, 189, 248, 0.7) 0%, rgba(37, 99, 235, 0.9) 100%);
+        }
+
+        .arrow-badge {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          line-height: 1;
         }
 
         .glass-card {
@@ -97,10 +120,10 @@ export default function PersonaPage() {
       `}</style>
 
       <main className="container">
-        <Link href="/" className="btn-pill-back">
-            <span className="arrow-circle">←</span>
-            <span>กลับหน้าหลัก</span>
-          </Link>
+        <Link href="/" className="btn-back-glow">
+          <div className="arrow-badge">←</div>
+          <span>กลับหน้าหลัก</span>
+        </Link>
 
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>
@@ -121,7 +144,6 @@ export default function PersonaPage() {
               <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.8px' }}>
                 OVERALL SLEEP DURATION
               </span>
-              {/* เว้นวรรคตัวเลขให้สวยงามอ่านง่าย */}
               <h2 style={{ fontSize: '32px', fontWeight: '900', margin: '4px 0', color: '#f8fafc' }}>
                 7 <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>ชั่วโมง</span> 45 <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>นาที</span>
               </h2>
@@ -151,7 +173,6 @@ export default function PersonaPage() {
           </span>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
-            {/* Deep */}
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                 <span style={{ color: '#38bdf8', fontWeight: '700' }}>🌊 หลับสนิท (Deep)</span>
@@ -164,7 +185,6 @@ export default function PersonaPage() {
               <span style={{ fontSize: '11px', color: '#34d399', marginTop: '6px', display: 'block' }}>🟢 อยู่ในเกณฑ์ดี (15-25%)</span>
             </div>
 
-            {/* REM */}
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                 <span style={{ color: '#a855f7', fontWeight: '700' }}>🧠 หลับฝัน (REM)</span>
@@ -177,7 +197,6 @@ export default function PersonaPage() {
               <span style={{ fontSize: '11px', color: '#34d399', marginTop: '6px', display: 'block' }}>🟢 ฟื้นฟูความจำเยี่ยม (&gt;20%)</span>
             </div>
 
-            {/* Light */}
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                 <span style={{ color: '#facc15', fontWeight: '700' }}>💤 หลับตื้น (Light)</span>

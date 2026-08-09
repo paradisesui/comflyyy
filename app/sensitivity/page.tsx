@@ -28,7 +28,6 @@ export default function SensitivityPage() {
   }, []);
 
   const daily = summaryData?.dailyMetrics;
-  const aiInsight = summaryData?.aiInsight;
   const triggerBreakdown = eventData?.sensorTriggerBreakdown || { co2: 12, humidity: 5, light_lux: 0, pm25: 2, sound_db: 23, temperature: 34 };
 
   const formatSensorName = (key: string) => {
@@ -40,15 +39,6 @@ export default function SensitivityPage() {
       case 'co2': return 'ก๊าซ CO2';
       case 'pm25': return 'ฝุ่น PM2.5';
       default: return key;
-    }
-  };
-
-  const getSensorMaxLimit = (key: string) => {
-    switch (key) {
-      case 'temperature': case 'temp': return 40;
-      case 'sound_db': case 'sound': return 35;
-      case 'co2': return 25;
-      default: return 20;
     }
   };
 
@@ -72,26 +62,44 @@ export default function SensitivityPage() {
           gap: 20px;
         }
 
-        .btn-pill-back {
+        .btn-back-glow {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          color: #f8fafc;
+          gap: 10px;
+          color: #ffffff;
           text-decoration: none;
           font-size: 13px;
-          font-weight: 700;
-          padding: 8px 20px;
+          font-weight: 800;
+          padding: 8px 20px 8px 12px;
           border-radius: 9999px;
-          background: rgba(15, 23, 42, 0.85);
-          border: 1px solid rgba(56, 189, 248, 0.4);
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-          transition: all 0.25s ease;
+          background: linear-gradient(135deg, rgba(2, 132, 199, 0.5) 0%, rgba(37, 99, 235, 0.7) 100%);
+          border: 1.5px solid rgba(56, 189, 248, 0.6);
+          box-shadow: 0 0 16px rgba(56, 189, 248, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          width: fit-content;
+          white-space: nowrap;
         }
 
-        .btn-pill-back:hover {
-          background: rgba(56, 189, 248, 0.2);
+        .btn-back-glow:hover {
+          transform: translateY(-2px) scale(1.02);
           border-color: #38bdf8;
-          transform: translateY(-1px);
+          box-shadow: 0 0 24px rgba(56, 189, 248, 0.55), 0 8px 20px rgba(0, 0, 0, 0.4);
+          background: linear-gradient(135deg, rgba(56, 189, 248, 0.7) 0%, rgba(37, 99, 235, 0.9) 100%);
+        }
+
+        .arrow-badge {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          line-height: 1;
         }
 
         .glass-card {
@@ -110,16 +118,7 @@ export default function SensitivityPage() {
         .breakdown-grid {
           display: grid;
           grid-template-columns: repeat(1, 1fr);
-          gap: 14px;
-        }
-
-        .progress-bg {
-          width: 100%;
-          height: 6px;
-          background: rgba(255, 255, 255, 0.08);
-          border-radius: 3px;
-          overflow: hidden;
-          margin-top: 8px;
+          gap: 12px;
         }
 
         @media (min-width: 640px) {
@@ -132,9 +131,12 @@ export default function SensitivityPage() {
       <main className="container">
         {/* Navigation Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" className="btn-pill-back">
-            <span className="arrow-circle">←</span>
+          <Link href="/" className="btn-back-glow">
+            <div className="arrow-badge">←</div>
             <span>กลับหน้าหลัก</span>
+          </Link>
+          <Link href="/sensitivity-profile" className="btn-back-glow" style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.6) 0%, rgba(99, 102, 241, 0.8) 100%)' }}>
+            📜 ดูประวัติสะสม
           </Link>
         </div>
 
@@ -147,7 +149,7 @@ export default function SensitivityPage() {
           </p>
         </div>
 
-        {/* Primary Sensitivity Trigger Analysis */}
+        {/* AI Trigger Analysis */}
         <section className="glass-card" style={{
           borderColor: 'rgba(234, 179, 8, 0.45)',
           background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(120, 53, 15, 0.2) 100%)'
@@ -160,50 +162,31 @@ export default function SensitivityPage() {
           </h2>
         </section>
 
-        {/* Minute-by-Minute Correlation Breakdown */}
+        {/* Correlation Breakdown Grid */}
         <section className="glass-card">
           <span style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '800' }}>
-            📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Minute-by-Minute Sensor Correlation)
+            📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
           </span>
           <div className="breakdown-grid">
-            {Object.entries(triggerBreakdown).map(([key, count]: any) => {
-              const maxVal = getSensorMaxLimit(key);
-              const pct = Math.min(100, Math.round((count / maxVal) * 100));
-
-              return (
-                <div key={key} style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                  padding: '16px',
-                  borderRadius: '18px',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between'
-                }}>
-                  <div>
-                    <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>{formatSensorName(key)}</span>
-                    {count > 0 ? (
-                      <strong style={{ fontSize: '22px', color: '#38bdf8' }}>
-                        {count} <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง</span>
-                      </strong>
-                    ) : (
-                      <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>🟢 สภาพแวดล้อมปกติ</span>
-                    )}
-                  </div>
-
-                  {/* AI Correlation Progress Bar */}
-                  {count > 0 && (
-                    <div className="progress-bg">
-                      <div style={{ width: `${pct}%`, height: '100%', backgroundColor: count > 20 ? '#f43f5e' : '#38bdf8' }} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {Object.entries(triggerBreakdown).map(([key, count]: any) => (
+              <div key={key} style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                padding: '16px',
+                borderRadius: '18px',
+                border: '1px solid rgba(255, 255, 255, 0.05)'
+              }}>
+                <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>{formatSensorName(key)}</span>
+                {count > 0 ? (
+                  <strong style={{ fontSize: '22px', color: '#38bdf8' }}>{count} <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง</span></strong>
+                ) : (
+                  <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>🟢 สภาพแวดล้อมปกติ</span>
+                )}
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* Overall Sensitivity & Combined Score */}
+        {/* Scores */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div className="glass-card">
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Overall Sensitivity Score</span>
