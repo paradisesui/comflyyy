@@ -8,7 +8,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { sensorAverages, restlessCount } = body;
 
-    // ใช้ Gemini 1.5 Flash เพื่อความรวดเร็ว
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
@@ -47,7 +46,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'success', data: parsedData });
   } catch (error) {
     console.error('Gemini API Error:', error);
-    // Fallback Weights หาก Gemini ยิงไม่สำเร็จ
     return NextResponse.json({
       status: 'fallback',
       data: {
