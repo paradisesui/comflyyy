@@ -51,25 +51,25 @@ export async function GET(request: Request) {
 }
 
 // 2. ฟังก์ชันดึงข้อมูลจาก Garmin Connect Session
+// ในไฟล์ app/api/garmin/route.ts
 async function fetchGarminDataFromSession(dateStr: string): Promise<GarminSleepData | null> {
   try {
-    // =========================================================================
-    // TODO: เชื่อมต่อกับ Logic การดึงข้อมูล Garmin Client / Python Script เดิมของคุณ
-    // ตัวอย่างการแมปข้อมูลกลับออกไป:
-    /*
-    const rawData = await garminClient.getSleepData(dateStr);
+    // 1. เรียกใช้งาน Logic หรือ Python Script ที่คุณใช้อยู่เดิมเพื่อดึง Garmin ของวันที่ dateStr
+    // ตัวอย่างการยิง internal API หรือเรียกใช้ฟังก์ชันดึงข้อมูลของคุณ:
+    const res = await fetch(`http://localhost:3000/api/your-garmin-script?date=${dateStr}`);
+    const rawData = await res.json();
+
+    if (!rawData || !rawData.sleepScore) return null;
+
+    // 2. Return ข้อมูลจริงออกมา (ไม่ใช่ return null)
     return {
       calendarDate: dateStr,
-      garminSleepScore: rawData.sleepScore,
-      sleepStartTimestamp: new Date(rawData.startTimestampGMT).getTime(),
-      sleepEndTimestamp: new Date(rawData.endTimestampGMT).getTime(),
-      restlessMomentsCount: rawData.restlessMomentsCount || 0,
+      garminSleepScore: rawData.sleepScore,                  // เช่น 87
+      sleepStartTimestamp: new Date(rawData.startTime).getTime(), // เช่น Timestamp ของ 02:45 AM
+      sleepEndTimestamp: new Date(rawData.endTime).getTime(),     // เช่น Timestamp ของ 10:30 AM
+      restlessMomentsCount: rawData.restlessCount || 0,        // เช่น 39
       avgSleepStress: rawData.avgSleepStress || 0
     };
-    */
-    // =========================================================================
-
-    return null; // หรือคืนค่า Object ตามโครงสร้าง GarminSleepData
   } catch (e) {
     console.error('Fetch Garmin Session Error:', e);
     return null;
