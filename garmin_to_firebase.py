@@ -1,88 +1,60 @@
 import os
 import requests
-from datetime import date
+from garminconnect import Garmin
 
-DATABASE_URL = "https://room-envi-test-default-rtdb.asia-southeast1.firebasedatabase.app"
-today_str = date.today().isoformat()
+# 1. ข้อมูลสำหรับเข้าสู่ระบบ Garmin
+EMAIL = "ju.cbr2@gmail.com"    # <-- ใส่อีเมล Garmin
+PASSWORD = "KkJunR-0865196974."          # <-- ใส่รหัสผ่าน Garmin
 
-def parse_cookies_file(filepath):
-    cookies = {}
-    if not os.path.exists(filepath):
-        print(f"❌ ไม่พบไฟล์ {filepath}")
-        return cookies
-    
-    with open(filepath, "r", encoding="utf-8") as f:
-        cookie_str = f.read().strip()
-        
-    for item in cookie_str.split(";"):
-        if "=" in item:
-            key, val = item.strip().split("=", 1)
-            cookies[key] = val.strip()
-    return cookies
+# 2. URL Firebase Realtime Database ของคุณ
+FIREBASE_URL = "https://room-envi-test-default-rtdb.asia-southeast1.firebasedatabase.app"
 
-def main():
-    cookies = parse_cookies_file("garmin_cookies.txt")
-    if not cookies:
-        print("❌ ไม่พบข้อมูล Cookie ในไฟล์ garmin_cookies.txt")
-        return
-
-    jwt_token = cookies.get("JWT_WEB", "")
-    
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "NK": "NT",
-        "Authorization": f"Bearer {jwt_token}" if jwt_token else "",
-    }
-
-    garmin_url = f"https://connect.garmin.com/gc-api/wellness-service/wellness/dailySleepData/{today_str}"
+def sync_garmin_to_firebase():
+    print(" กำลังเชื่อมต่อ Garmin Connect ผ่าน Token Session...")
     
     try:
-        print("กำลังดึงข้อมูล Garmin จาก Session Cookie ...")
-        res = requests.get(garmin_url, headers=headers, cookies=cookies)
-        
-        if res.status_code == 200:
-            sleep_data = res.json()
-            daily_summary = sleep_data.get("dailySleepDTO", {})
+        # เข้าสู่ระบบและสร้าง Token อัตโนมัติ
+        client = Garmin(EMAIL, PASSWORD)
+        client.login()
+        print(" ล็อกอิน Garmin สำเร็จเรียบร้อย!")
 
-            firebase_payload = {
-                "sleepScore": daily_summary.get("sleepScores", {}).get("overall", {}).get("value", 85),
-                "deepSleepSeconds": daily_summary.get("deepSleepSeconds", 0),
-                "lightSleepSeconds": daily_summary.get("lightSleepSeconds", 0),
-                "remSleepSeconds": daily_summary.get("remSleepSeconds", 0),
-                "awakeSeconds": daily_summary.get("awakeSleepSeconds", 0),
-                "averageSpO2": daily_summary.get("averageSpO2Value", 0),
-                "updatedAt": today_str
-            }
+        # วันที่ต้องการดึง (หรือเพิ่มวันอื่นที่ต้องการ เช่น วันที่ 11, 14, 15)
+        target_dates = ["2026-08-11", "2026-08-14", "2026-08-15", "2026-08-16"]
 
-            target_url = f"{DATABASE_URL}/garmin_sleep/{today_str}.json"
-            fb_res = requests.put(target_url, json=firebase_payload)
+        for date_str in target_dates:
+            try:
+                sleep_data = client.get_sleep_data(date_str)
+                dto = sleep_data.get('dailySleepDTO', {}) if sleep_data else {}
+                
+                # ตรวจสอบว่ามีคะแนนการนอนจริง
+                overall_score = dto.get('sleepScores', {}).get('overall', {}).get('value')
+                if overall_score:
+                    payload = {
+                        "calendarDate": date_str,
+                        "garminSleepScore": overall_score,
+                        "durationInSeconds": dto.get('sleepTimeSeconds', 0),
+                        "deepSleepDurationInSeconds": dto.get('deepSleepSeconds', 0),
+                        "remSleepDurationInSeconds": dto.get('remSleepSeconds', 0),
+                        "lightSleepDurationInSeconds": dto.get('lightSleepSeconds', 0),
+                        "sleepStartTimestamp": dto.get('sleepStartTimestampGMT', 0),
+                        "sleepEndTimestamp": dto.get('sleepEndTimestampGMT', 0),
+                        "restlessMomentsCount": dto.get('restlessMomentsCount', len(sleep_data.get('restlessMoments', []))),
+                        "avgSleepStress": dto.get('avgSleepStress', 0)
+                    }
 
-            if fb_res.status_code == 200:
-                print("\n🎉 ยิงข้อมูล Garmin บัญชีจริงขึ้น Firebase สำเร็จเรียบร้อย!")
-                print("ข้อมูลที่ส่งเข้า Firebase:", firebase_payload)
-            else:
-                print(f"❌ ยิง Firebase ไม่สำเร็จ Code: {fb_res.status_code}")
-
-        else:
-            print(f"❌ ดึงข้อมูล Garmin ไม่สำเร็จ Code: {res.status_code}")
-            print("💡 หากติด 401/403/429 สคริปต์จะใช้ Fallback Payload ยิงเข้า Firebase ให้เพื่อให้งานเสร็จสมบูรณ์")
-            
-            # Fallback ป้องกันงานสะดุดเพื่อให้ระบบ Persona นำไปโชว์บนหน้าเว็บได้
-            fallback_payload = {
-                "sleepScore": 82,
-                "deepSleepSeconds": 5400,
-                "lightSleepSeconds": 14400,
-                "remSleepSeconds": 5400,
-                "awakeSeconds": 1800,
-                "averageSpO2": 98,
-                "updatedAt": today_str
-            }
-            target_url = f"{DATABASE_URL}/garmin_sleep/{today_str}.json"
-            requests.put(target_url, json=fallback_payload)
-            print("✅ ยิงข้อมูลโครงสร้าง Garmin ขึ้น Firebase สำเร็จ (พร้อมต่อโหมด Persona)")
+                    # ส่งข้อมูลเข้า Node garmin_sleep บน Firebase
+                    res = requests.put(f"{FIREBASE_URL}/garmin_sleep/{date_str}.json", json=payload)
+                    if res.status_code == 200:
+                        print(f" บันทึกข้อมูลวันที่ {date_str} ลง Firebase สำเร็จ! (Sleep Score: {overall_score})")
+                    else:
+                        print(f" บันทึกวันที่ {date_str} ไม่สำเร็จ: {res.text}")
+                else:
+                    print(f" ข้ามวันที่ {date_str} (ไม่มีข้อมูลการใส่นาฬิกานอน)")
+            except Exception as day_err:
+                print(f" ไม่สามารถดึงข้อมูลวันที่ {date_str} ได้: {day_err}")
 
     except Exception as e:
-        print(f"❌ เกิดข้อผิดพลาด: {e}")
+        print(f" เกิดข้อผิดพลาดในการเชื่อมต่อ Garmin: {e}")
 
 if __name__ == "__main__":
-    main()
+    sync_garmin_to_firebase()
