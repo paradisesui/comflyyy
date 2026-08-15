@@ -2,46 +2,57 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { database } from '@/app/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
 export default function PersonaPage() {
   const [garminData, setGarminData] = useState<any>(null);
+  const [latestDate, setLatestDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLatestGarmin = async () => {
-      try {
-        const res = await fetch('/api/garmin?latest=true');
-        const json = await res.json();
-        if (json?.data) {
-          setGarminData(json.data);
-        }
-      } catch (err) {
-        console.error('Error fetching Garmin:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!database) {
+      setLoading(false);
+      return;
+    }
 
-    fetchLatestGarmin();
+    const garminRef = ref(database, 'garmin_sleep');
+    const unsubscribe = onValue(garminRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        const dates = Object.keys(val).sort(
+          (a, b) => new Date(b).getTime() - new Date(a).getTime()
+        );
+
+        if (dates.length > 0) {
+          const newest = dates[0];
+          setLatestDate(newest);
+          setGarminData(val[newest]);
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const score = garminData?.garminSleepScore || '--';
-  const dateStr = garminData?.calendarDate || 'ล่าสุด';
-  const restlessCount = garminData?.restlessMomentsCount || 0;
-  const sleepStress = garminData?.avgSleepStress || 0;
+  const score = garminData?.garminSleepScore ?? '--';
+  const dateStr = latestDate || garminData?.calendarDate || '--';
+  const restlessCount = garminData?.restlessMomentsCount ?? 0;
+  const sleepStress = garminData?.avgSleepStress ?? 0;
 
-  // คำนวณระยะเวลานอนจริงตามวินาทีที่ Garmin ส่งมา
-  const deepSleepSecs = Number(garminData?.deepSleepDurationInSeconds) || 4920; 
-  const remSleepSecs = Number(garminData?.remSleepDurationInSeconds) || 7500;   
-  const lightSleepSecs = Number(garminData?.lightSleepDurationInSeconds) || 15480; 
-  const totalSleepSecs = Number(garminData?.durationInSeconds) || (deepSleepSecs + remSleepSecs + lightSleepSecs);
+  // คำนวณระยะเวลานอนจริงตามวินาทีที่ Garmin บันทึกไว้จริงแบบ Dynamic
+  const deepSleepSecs = Number(garminData?.deepSleepDurationInSeconds || 0);
+  const remSleepSecs = Number(garminData?.remSleepDurationInSeconds || 0);
+  const lightSleepSecs = Number(garminData?.lightSleepDurationInSeconds || 0);
+  const totalSleepSecs = Number(garminData?.durationInSeconds || (deepSleepSecs + remSleepSecs + lightSleepSecs));
 
   const totalHours = Math.floor(totalSleepSecs / 3600);
   const totalMinutes = Math.floor((totalSleepSecs % 3600) / 60);
 
-  const deepPct = totalSleepSecs > 0 ? Math.round((deepSleepSecs / totalSleepSecs) * 100) : 0;  
-  const remPct = totalSleepSecs > 0 ? Math.round((remSleepSecs / totalSleepSecs) * 100) : 0;    
-  const lightPct = totalSleepSecs > 0 ? Math.round((lightSleepSecs / totalSleepSecs) * 100) : 0; 
+  const deepPct = totalSleepSecs > 0 ? Math.round((deepSleepSecs / totalSleepSecs) * 100) : 0;
+  const remPct = totalSleepSecs > 0 ? Math.round((remSleepSecs / totalSleepSecs) * 100) : 0;
+  const lightPct = totalSleepSecs > 0 ? Math.round((lightSleepSecs / totalSleepSecs) * 100) : 0;
 
   const deepHrs = Math.floor(deepSleepSecs / 3600);
   const deepMins = Math.floor((deepSleepSecs % 3600) / 60);
@@ -49,6 +60,17 @@ export default function PersonaPage() {
   const remMins = Math.floor((remSleepSecs % 3600) / 60);
   const lightHrs = Math.floor(lightSleepSecs / 3600);
   const lightMins = Math.floor((lightSleepSecs % 3600) / 60);
+
+  // ประเมินสถานะการนอนตามคะแนนจริง
+  const getScoreAssessment = (s: number | string) => {
+    const num = Number(s);
+    if (isNaN(num)) return { label: 'กำลังรอข้อมูล...', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.3)' };
+    if (num >= 80) return { label: '🟢 การนอนฟื้นตัวดีเยี่ยม', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)', border: 'rgba(52, 211, 153, 0.3)' };
+    if (num >= 65) return { label: '🟡 คุณภาพการนอนอยู่ในเกณฑ์ปกติ', color: '#facc15', bg: 'rgba(250, 204, 21, 0.12)', border: 'rgba(250, 204, 21, 0.3)' };
+    return { label: '🔴 การนอนหลับต่ำกว่าเกณฑ์', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.12)', border: 'rgba(244, 63, 94, 0.3)' };
+  };
+
+  const assessment = getScoreAssessment(score);
 
   return (
     <div style={{
@@ -163,19 +185,21 @@ export default function PersonaPage() {
             </div>
             <span style={{
               fontSize: '12px',
-              color: '#34d399',
-              backgroundColor: 'rgba(52, 211, 153, 0.12)',
+              color: assessment.color,
+              backgroundColor: assessment.bg,
               padding: '6px 16px',
               borderRadius: '9999px',
-              border: '1px solid rgba(52, 211, 153, 0.3)',
+              border: `1px solid ${assessment.border}`,
               fontWeight: '700'
             }}>
-              🟢 การนอนฟื้นตัวดีเยี่ยม
+              {assessment.label}
             </span>
           </div>
 
           <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: 1.6 }}>
-            การนอนหลับของคุณมีคุณภาพดี ร่างกายได้รับการเติมพลังอย่างเต็มที่ สมองผ่อนคลายและมีความเครียดสะสมขณะหลับต่ำ (Stress Score: {sleepStress})
+            {totalSleepSecs > 0
+              ? `ระดับความเครียดเฉลี่ยขณะนอนหลับอยู่ที่ ${sleepStress} / 100 และมีช่วงเวลาขยับตัว ${restlessCount} ครั้งตลอดคืน`
+              : 'กำลังรอการซิงค์ข้อมูลระยะเวลาการนอนจากระบบ'}
           </p>
         </section>
 
@@ -185,7 +209,7 @@ export default function PersonaPage() {
             📊 สัดส่วนระยะการนอนหลับเทียบเกณฑ์มาตรฐาน (AASM Standards)
           </span>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                 <span style={{ color: '#38bdf8', fontWeight: '700' }}>🌊 หลับสนิท (Deep)</span>
@@ -193,9 +217,11 @@ export default function PersonaPage() {
               </div>
               <div style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px' }}>{deepPct}%</div>
               <div className="progress-bar-bg">
-                <div style={{ width: `${deepPct * 2}%`, height: '100%', backgroundColor: '#38bdf8' }}></div>
+                <div style={{ width: `${Math.min(deepPct * 2, 100)}%`, height: '100%', backgroundColor: '#38bdf8' }}></div>
               </div>
-              <span style={{ fontSize: '11px', color: '#34d399', marginTop: '6px', display: 'block' }}>🟢 อยู่ในเกณฑ์ดี (15-25%)</span>
+              <span style={{ fontSize: '11px', color: deepPct >= 15 ? '#34d399' : '#facc15', marginTop: '6px', display: 'block' }}>
+                {deepPct >= 15 ? '🟢 อยู่ในเกณฑ์ดี (15-25%)' : '🟡 ต่ำกว่าเกณฑ์มาตรฐาน'}
+              </span>
             </div>
 
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -205,9 +231,11 @@ export default function PersonaPage() {
               </div>
               <div style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px' }}>{remPct}%</div>
               <div className="progress-bar-bg">
-                <div style={{ width: `${remPct * 2}%`, height: '100%', backgroundColor: '#a855f7' }}></div>
+                <div style={{ width: `${Math.min(remPct * 2, 100)}%`, height: '100%', backgroundColor: '#a855f7' }}></div>
               </div>
-              <span style={{ fontSize: '11px', color: '#34d399', marginTop: '6px', display: 'block' }}>🟢 ฟื้นฟูความจำเยี่ยม (&gt;20%)</span>
+              <span style={{ fontSize: '11px', color: remPct >= 20 ? '#34d399' : '#facc15', marginTop: '6px', display: 'block' }}>
+                {remPct >= 20 ? '🟢 ฟื้นฟูความจำเยี่ยม (>20%)' : '🟡 ต่ำกว่าเกณฑ์มาตรฐาน'}
+              </span>
             </div>
 
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -217,9 +245,11 @@ export default function PersonaPage() {
               </div>
               <div style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px' }}>{lightPct}%</div>
               <div className="progress-bar-bg">
-                <div style={{ width: `${lightPct}%`, height: '100%', backgroundColor: '#facc15' }}></div>
+                <div style={{ width: `${Math.min(lightPct, 100)}%`, height: '100%', backgroundColor: '#facc15' }}></div>
               </div>
-              <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>อยู่ในเกณฑ์ปกติ (50-60%)</span>
+              <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>
+                เกณฑ์มาตรฐาน (50-60%)
+              </span>
             </div>
           </div>
         </section>
@@ -231,7 +261,9 @@ export default function PersonaPage() {
             <strong style={{ fontSize: '28px', color: '#34d399', margin: '4px 0', fontWeight: '900' }}>
               {sleepStress} <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '400' }}>/ 100</span>
             </strong>
-            <span style={{ fontSize: '11px', color: '#34d399' }}>🟢 ร่างกายผ่อนคลายระดับดีเยี่ยม</span>
+            <span style={{ fontSize: '11px', color: sleepStress <= 25 ? '#34d399' : '#facc15' }}>
+              {sleepStress <= 25 ? '🟢 ร่างกายผ่อนคลายระดับดีเยี่ยม' : '🟡 มีความเครียดสะสมปานกลาง'}
+            </span>
           </div>
 
           <div className="glass-card">

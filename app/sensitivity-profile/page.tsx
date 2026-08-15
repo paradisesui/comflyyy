@@ -7,19 +7,64 @@ import { ref, onValue } from 'firebase/database';
 
 export default function SensitivityProfilePage() {
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+  const [averages, setAverages] = useState({ garmin: 0, room: 0, combined: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!database) return;
+    if (!database) {
+      setLoading(false);
+      return;
+    }
 
     const historyRef = ref(database, 'personal_sensitivity/history');
     const unsubHistory = onValue(historyRef, (snapshot) => {
       if (snapshot && snapshot.exists()) {
         const data = snapshot.val();
-        const list = Object.values(data)
-          .filter((item: any) => item && item.date)
-          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        // กรองข้อมูลเฉพาะแถวที่มีวันที่ และตัดแถวซ้ำซ้อน
+        const rawList = Object.keys(data).map((key) => ({
+          date: data[key]?.date || key,
+          ...data[key]
+        }));
+
+        // กรองเอาเฉพาะแถวที่มีคะแนนจริง และกำจัดวันซ้ำ (เลือกอันที่มี roomScore มากที่สุด)
+        const uniqueMap = new Map<string, any>();
+        rawList.forEach((item) => {
+          if (!item.date) return;
+          if (!uniqueMap.has(item.date) || (item.roomScore && !uniqueMap.get(item.date)?.roomScore)) {
+            uniqueMap.set(item.date, item);
+          }
+        });
+
+        const list = Array.from(uniqueMap.values())
+          .filter((item) => item.garminScore != null || item.roomScore != null)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
         setHistoryLogs(list);
+
+        // คำนวณค่าเฉลี่ยสะสมแบบ Dynamic ตามข้อมูลที่มีจริง
+        if (list.length > 0) {
+          const garminItems = list.filter((i) => i.garminScore != null);
+          const roomItems = list.filter((i) => i.roomScore != null);
+
+          const avgG = garminItems.length > 0 
+            ? Math.round(garminItems.reduce((sum, item) => sum + Number(item.garminScore), 0) / garminItems.length) 
+            : 0;
+
+          const avgR = roomItems.length > 0 
+            ? Math.round(roomItems.reduce((sum, item) => sum + Number(item.roomScore), 0) / roomItems.length) 
+            : avgG;
+
+          const avgC = Math.round(
+            list.reduce((sum, item) => {
+              const g = item.garminScore || avgG;
+              const r = item.roomScore || avgR;
+              return sum + (item.combinedScore || Math.round(g * 0.5 + r * 0.5));
+            }, 0) / list.length
+          );
+
+          setAverages({ garmin: avgG, room: avgR, combined: avgC });
+        }
       } else {
         setHistoryLogs([]);
       }
@@ -29,21 +74,16 @@ export default function SensitivityProfilePage() {
     return () => unsubHistory();
   }, []);
 
-  const totalDays = historyLogs.length;
-  const avgGarmin = totalDays > 0 ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.garminScore) || 0), 0) / totalDays) : 0;
-  const avgRoom = totalDays > 0 ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.roomScore) || 0), 0) / totalDays) : 0;
-  const avgCombined = totalDays > 0 ? Math.round(historyLogs.reduce((sum, item) => sum + (Number(item.combinedScore) || 0), 0) / totalDays) : 0;
-
-  const formatTriggerName = (triggerKey: string) => {
+  const formatTriggerName = (triggerKey?: string) => {
     if (!triggerKey) return '🟢 ปกติ';
     switch (triggerKey.toLowerCase()) {
       case 'co2': return '🫁 CO2 สูง';
       case 'temperature': case 'temp': return '🌡️ อุณหภูมิห้อง';
-      case 'sound_db': case 'sound': return '🔊 เสียงรบกวน';
+      case 'sound_db': case 'sound': case 'noise': return '🔊 เสียงรบกวน';
       case 'humidity': case 'hum': return '💧 ความชื้นสัมพัทธ์';
       case 'pm25': return '🌫️ ฝุ่น PM2.5';
       case 'light_lux': case 'light': return '💡 แสงสว่าง';
-      default: return triggerKey;
+      default: return `⚠️ ${triggerKey}`;
     }
   };
 
@@ -153,7 +193,7 @@ export default function SensitivityProfilePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" className="btn-back-glow">
             <div className="arrow-badge">←</div>
-            <span> </span>
+            <span>กลับหน้าหลัก</span>
           </Link>
           <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', letterSpacing: '0.8px' }}>
             SENSITIVITY PROFILE HISTORY
@@ -166,30 +206,30 @@ export default function SensitivityProfilePage() {
             📜 ประวัติคุณภาพการนอนและสภาพแวดล้อมสะสม
           </h1>
           <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-            {loading ? 'กำลังดึงประวัติย้อนหลัง...' : `บันทึกข้อมูลย้อนหลังรวม ${totalDays} วัน`}
+            {loading ? 'กำลังดึงประวัติย้อนหลัง...' : `บันทึกข้อมูลย้อนหลังรวม ${historyLogs.length} วัน`}
           </p>
         </div>
 
         {/* สรุปค่าเฉลี่ยสะสม */}
         <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.35)' }}>
           <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', letterSpacing: '0.5px' }}>
-            📈 สรุปค่าเฉลี่ยสะสมจากประวัติจริง ({totalDays} วัน)
+            📈 สรุปค่าเฉลี่ยสะสมจากประวัติจริง ({historyLogs.length} วัน)
           </span>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: '600' }}>Garmin เฉลี่ย</span>
-              <strong style={{ fontSize: '28px', color: '#38bdf8', fontWeight: '900' }}>{avgGarmin}</strong>
+              <strong style={{ fontSize: '28px', color: '#38bdf8', fontWeight: '900' }}>{averages.garmin || '--'}</strong>
             </div>
 
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: '600' }}>Room Env เฉลี่ย</span>
-              <strong style={{ fontSize: '28px', color: '#f43f5e', fontWeight: '900' }}>{avgRoom}</strong>
+              <strong style={{ fontSize: '28px', color: '#f43f5e', fontWeight: '900' }}>{averages.room || '--'}</strong>
             </div>
 
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '18px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', fontWeight: '600' }}>Combined เฉลี่ย</span>
-              <strong style={{ fontSize: '28px', color: '#34d399', fontWeight: '900' }}>{avgCombined}</strong>
+              <strong style={{ fontSize: '28px', color: '#34d399', fontWeight: '900' }}>{averages.combined || '--'}</strong>
             </div>
           </div>
         </section>
@@ -210,18 +250,31 @@ export default function SensitivityProfilePage() {
               </thead>
               <tbody>
                 {historyLogs.length > 0 ? (
-                  historyLogs.map((log, index) => (
-                    <tr key={index}>
-                      <td style={{ fontWeight: '700', color: '#38bdf8' }}>{log.date}</td>
-                      <td style={{ fontWeight: '600' }}>{log.garminScore}</td>
-                      <td style={{ color: log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>{log.roomScore}</td>
-                      <td style={{ fontWeight: '800', color: '#ffffff' }}>{log.combinedScore}</td>
-                      <td style={{ fontWeight: '600', color: '#fef08a' }}>
-                        {formatTriggerName(log.primaryTrigger || log.primarySensorTrigger || 'co2')}
-                      </td>
-                      <td style={{ fontWeight: '600' }}>{log.restlessCount ?? '--'} ครั้ง</td>
-                    </tr>
-                  ))
+                  historyLogs.map((log, index) => {
+                    const restlessDisplay = log.restlessCount ?? log.restlessMomentsCount ?? '--';
+                    const combinedDisplay = log.combinedScore ?? (
+                      log.garminScore != null && log.roomScore != null
+                        ? Math.round(log.garminScore * 0.5 + log.roomScore * 0.5)
+                        : (log.garminScore ?? '--')
+                    );
+
+                    return (
+                      <tr key={index}>
+                        <td style={{ fontWeight: '700', color: '#38bdf8' }}>{log.date}</td>
+                        <td style={{ fontWeight: '600' }}>{log.garminScore ?? '--'}</td>
+                        <td style={{ color: log.roomScore && log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>
+                          {log.roomScore ?? '--'}
+                        </td>
+                        <td style={{ fontWeight: '800', color: '#ffffff' }}>{combinedDisplay}</td>
+                        <td style={{ fontWeight: '600', color: '#fef08a' }}>
+                          {formatTriggerName(log.primaryTrigger || log.primarySensorTrigger)}
+                        </td>
+                        <td style={{ fontWeight: '600' }}>
+                          {restlessDisplay !== '--' ? `${restlessDisplay} ครั้ง` : '--'}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={6} style={{ textAlign: 'center', color: '#64748b', padding: '28px' }}>
