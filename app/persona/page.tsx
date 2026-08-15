@@ -20,14 +20,23 @@ export default function PersonaPage() {
     const unsubscribe = onValue(garminRef, (snapshot) => {
       if (snapshot.exists()) {
         const val = snapshot.val();
+        
+        // 1. เรียงลำดับวันที่จากใหม่สุดไปเก่าสุด
         const dates = Object.keys(val).sort(
           (a, b) => new Date(b).getTime() - new Date(a).getTime()
         );
 
-        if (dates.length > 0) {
-          const newest = dates[0];
-          setLatestDate(newest);
-          setGarminData(val[newest]);
+        // 2. กรองหาวันล่าสุดที่มีข้อมูลการนอนจริง (ไม่เป็น 0 หรือว่างเปล่า)
+        const validDate = dates.find(
+          (d) => (val[d]?.durationInSeconds && val[d]?.durationInSeconds > 0) || val[d]?.garminSleepScore
+        );
+
+        if (validDate) {
+          setLatestDate(validDate);
+          setGarminData(val[validDate]);
+        } else if (dates.length > 0) {
+          setLatestDate(dates[0]);
+          setGarminData(val[dates[0]]);
         }
       }
       setLoading(false);
@@ -41,7 +50,7 @@ export default function PersonaPage() {
   const restlessCount = garminData?.restlessMomentsCount ?? 0;
   const sleepStress = garminData?.avgSleepStress ?? 0;
 
-  // คำนวณระยะเวลานอนจริงตามวินาทีที่ Garmin บันทึกไว้จริงแบบ Dynamic
+  // คำนวณระยะเวลานอนจริงตามวินาทีที่บันทึกไว้ใน Firebase
   const deepSleepSecs = Number(garminData?.deepSleepDurationInSeconds || 0);
   const remSleepSecs = Number(garminData?.remSleepDurationInSeconds || 0);
   const lightSleepSecs = Number(garminData?.lightSleepDurationInSeconds || 0);
@@ -61,7 +70,6 @@ export default function PersonaPage() {
   const lightHrs = Math.floor(lightSleepSecs / 3600);
   const lightMins = Math.floor((lightSleepSecs % 3600) / 60);
 
-  // ประเมินสถานะการนอนตามคะแนนจริง
   const getScoreAssessment = (s: number | string) => {
     const num = Number(s);
     if (isNaN(num)) return { label: 'กำลังรอข้อมูล...', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)', border: 'rgba(148, 163, 184, 0.3)' };
@@ -169,7 +177,7 @@ export default function PersonaPage() {
           </p>
         </div>
 
-        {/* Overview Architecture */}
+        {/* Overview Duration Card */}
         <section className="glass-card" style={{
           background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(14, 116, 144, 0.25) 100%)',
           borderColor: 'rgba(56, 189, 248, 0.4)'
