@@ -6,158 +6,37 @@ import { database } from '@/app/lib/firebase';
 import { ref, onValue, set } from 'firebase/database';
 
 export default function HomePage() {
-  const [summaryData, setSummaryData] = useState<any>(null);
+  const [latestData, setLatestData] = useState<any>(null);
+  const [aiInsight, setAiInsight] = useState<any>(null);
 
   useEffect(() => {
     if (!database) return;
 
-    const processAutoSync = async () => {
-      try {
-        const garminRef = ref(database, 'garmin_sleep');
-        const logsRef = ref(database, 'logs');
+    // ดึงข้อมูลจาก history เพื่อหาวันที่ล่าสุดแบบ Dynamic เสมอ
+    const historyRef = ref(database, 'personal_sensitivity/history');
+    const unsubHistory = onValue(historyRef, async (snapshot) => {
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        const dates = Object.keys(val).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-        onValue(garminRef, (garminSnapshot) => {
-          if (!garminSnapshot.exists()) return;
+        if (dates.length > 0) {
+          const newestDateKey = dates[0];
+          const newestItem = val[newestDateKey];
+          setLatestData(newestItem);
 
-          const garminData = garminSnapshot.val();
-          const garminDates = Object.keys(garminData);
-
-          onValue(logsRef, async (logsSnapshot) => {
-            const rawLogs = logsSnapshot.exists() ? logsSnapshot.val() : {};
-            const logKeys = Object.keys(rawLogs);
-
-            let latestRoomEnvScore = 70;
-            let latestCombinedScore = 75;
-            let latestAiData: any = null;
-            let latestDate = '';
-
-            // เรียงลำดับวันที่จากใหม่สุดไปเก่าสุด
-            const sortedDates = [...garminDates].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-
-            for (const dateKey of sortedDates) {
-              const garmin = garminData[dateKey];
-              if (!garmin || !garmin.garminSleepScore) continue;
-
-              const targetDate = garmin.calendarDate || dateKey;
-              const standardDateKey = targetDate.includes('-')
-                ? targetDate
-                : `${targetDate.slice(0, 4)}-${targetDate.slice(4, 6)}-${targetDate.slice(6, 8)}`;
-
-              let sleepStart = Number(garmin.sleepStartTimestamp) || 0;
-              let sleepEnd = Number(garmin.sleepEndTimestamp) || 0;
-
-              if (sleepStart < 1000000000000) sleepStart *= 1000;
-              if (sleepEnd < 1000000000000) sleepEnd *= 1000;
-
-              // 1. ตรวจสอบการ Match ของ Timestamp แบบนาทีต่อนาที
-              const matchedLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
-                let t = Number(log.timestamp) || 0;
-                if (t < 1000000000000) t *= 1000;
-                return t >= sleepStart && t <= sleepEnd;
-              });
-
-              const isTimestampMatched = matchedLogs.length > 0;
-
-              // กรณีไม่ Match ให้ใช้ Fallback สำหรับแสดงผลหน้าแรกเพื่อไม่ให้ค้าง
-              const effectiveLogs = isTimestampMatched
-                ? matchedLogs
-                : logKeys.slice(-30).map(k => rawLogs[k]);
-
-              const total = effectiveLogs.length || 1;
-
-              const avgs = {
-                temp: effectiveLogs.reduce((s, i) => s + (Number(i.temperature) || 26.0), 0) / total,
-                hum: effectiveLogs.reduce((s, i) => s + (Number(i.humidity) || 55.0), 0) / total,
-                sound: effectiveLogs.reduce((s, i) => s + (Number(i.sound) || 30.0), 0) / total,
-                light: effectiveLogs.reduce((s, i) => s + (Number(i.light_lux || i.lux) || 0), 0) / total,
-                co2: effectiveLogs.reduce((s, i) => s + (Number(i.co2) || 700), 0) / total,
-                pm25: effectiveLogs.reduce((s, i) => s + (Number(i.pm2_5 || i.pm25) || 10), 0) / total
-              };
-
-              const co2Score = Math.max(0, 100 - (avgs.co2 > 1000 ? (avgs.co2 - 1000) * 0.1 : 0));
-              const tempScore = Math.max(0, 100 - (avgs.temp > 25 ? (avgs.temp - 25) * 10 : (23 - avgs.temp) * 10));
-              const humScore = Math.max(0, 100 - (avgs.hum > 60 ? (avgs.hum - 60) * 3 : 0));
-              const pm25Score = Math.max(0, 100 - (avgs.pm25 > 37.5 ? (avgs.pm25 - 37.5) * 2 : 0));
-              const soundScore = avgs.sound > 1000 ? 50 : 100;
-              const lightScore = avgs.light > 10 ? 70 : 100;
-
-              const roomScore = Math.round(
-                (co2Score * 0.2) + (tempScore * 0.25) + (humScore * 0.15) +
-                (pm25Score * 0.1) + (soundScore * 0.2) + (lightScore * 0.1)
-              );
-
-              const garminScore = Number(garmin.garminSleepScore) || 75;
-              const combinedScore = Math.round((garminScore + roomScore) / 2);
-
-              // 2. Data Integrity: บันทึกลง History เฉพาะวันที่ Match กันจริงเท่านั้น
-              if (isTimestampMatched) {
-                const historyItemRef = ref(database, `personal_sensitivity/history/${standardDateKey}`);
-                await set(historyItemRef, {
-                  date: standardDateKey,
-                  garminScore: garminScore,
-                  roomScore: roomScore,
-                  combinedScore: combinedScore,
-                  primaryTrigger: avgs.co2 > 1000 ? 'co2' : avgs.temp > 25 ? 'temperature' : 'sound',
-                  restlessCount: Number(garmin.restlessMomentsCount) || 0
-                });
-              }
-
-              // บันทึกค่าวันล่าสุดเพื่อแสดงใน Summary ของหน้าแรก
-              if (!latestDate) {
-                latestDate = standardDateKey;
-                latestRoomEnvScore = roomScore;
-                latestCombinedScore = combinedScore;
-
-                const geminiRes = await fetch('/api/gemini', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ sensorAverages: avgs, restlessCount: garmin.restlessMomentsCount || 0 })
-                }).catch(() => null);
-
-                const geminiJson = geminiRes ? await geminiRes.json() : null;
-                latestAiData = geminiJson?.data;
-              }
-            }
-
-            // 3. อัปเดตข้อมูลสรุปหน้าหลัก
-            if (sortedDates.length > 0 && garminData[sortedDates[0]]) {
-              const latestGarmin = garminData[sortedDates[0]];
-              const summaryRef = ref(database, 'personal_sensitivity/summary');
-              set(summaryRef, {
-                evaluatedDate: latestDate,
-                dailyMetrics: {
-                  garminSleepScore: latestGarmin.garminSleepScore,
-                  roomEnvironmentScore: latestRoomEnvScore,
-                  combinedSleepScore: latestCombinedScore,
-                  restlessMoments: latestGarmin.restlessMomentsCount || 0
-                },
-                aiInsight: {
-                  diagnosis: latestAiData?.diagnosis,
-                  recommendation: latestAiData?.recommendation
-                }
-              });
+          // ดึงค่า AI Insight หรือวิเคราะห์ให้วันล่าสุด
+          const summaryRef = ref(database, 'personal_sensitivity/summary');
+          onValue(summaryRef, (sumSnap) => {
+            if (sumSnap.exists()) {
+              setAiInsight(sumSnap.val().aiInsight);
             }
           }, { onlyOnce: true });
-        }, { onlyOnce: true });
-      } catch (e) {
-        console.error('Auto Sync History Error:', e);
+        }
       }
-    };
-
-    processAutoSync();
-  }, []);
-
-  useEffect(() => {
-    if (!database) return;
-    const summaryRef = ref(database, 'personal_sensitivity/summary');
-    const unsub = onValue(summaryRef, (snapshot) => {
-      if (snapshot.exists()) setSummaryData(snapshot.val());
     });
-    return () => unsub();
-  }, []);
 
-  const daily = summaryData?.dailyMetrics;
-  const aiInsight = summaryData?.aiInsight;
+    return () => unsubHistory();
+  }, []);
 
   const navButtons = [
     { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', bg: 'linear-gradient(135deg, rgba(14, 116, 144, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%)', border: 'rgba(56, 189, 248, 0.6)', glow: '0 8px 24px rgba(56, 189, 248, 0.3)' },
@@ -185,19 +64,16 @@ export default function HomePage() {
           flex-direction: column;
           gap: 28px;
         }
-
         .header-bar {
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
-
         .pill-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
           gap: 16px;
         }
-
         @media (min-width: 768px) {
           .pill-grid {
             grid-template-columns: repeat(4, 1fr);
@@ -245,12 +121,12 @@ export default function HomePage() {
             textDecoration: 'none',
             fontSize: '20px',
             boxShadow: '0 0 16px rgba(56, 189, 248, 0.25)'
-          }} title="เข้าสู่ระบบ / จัดการบัญชี">
+          }} title="จัดการบัญชี">
             👤
           </Link>
         </header>
 
-        {/* 4 Capsule Pill Buttons */}
+        {/* 4 Navigation Buttons */}
         <nav className="pill-grid">
           {navButtons.map((btn, idx) => (
             <Link key={idx} href={btn.href} style={{
@@ -264,7 +140,7 @@ export default function HomePage() {
               boxShadow: btn.glow,
               textDecoration: 'none',
               backdropFilter: 'blur(16px)',
-              transition: 'transform 0.2s ease, filter 0.2s ease'
+              transition: 'transform 0.2s ease'
             }}>
               <span style={{ fontSize: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {btn.icon}
@@ -295,11 +171,11 @@ export default function HomePage() {
             textAlign: 'center'
           }}>
             <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
-              🎯 COMBINED SLEEP SCORE ({summaryData?.evaluatedDate || 'ล่าสุด'})
+              🎯 COMBINED SLEEP SCORE ({latestData?.date || 'กำลังโหลด...'})
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
               <span style={{ fontSize: '64px', fontWeight: '900', color: '#38bdf8', lineHeight: 1 }}>
-                {daily?.combinedSleepScore ?? '--'}
+                {latestData?.combinedScore ?? '--'}
               </span>
               <span style={{ fontSize: '20px', color: '#64748b', fontWeight: '700' }}>/ 100</span>
             </div>
@@ -323,7 +199,7 @@ export default function HomePage() {
               <span style={{ fontSize: '24px', marginBottom: '4px' }}>⌚</span>
               <span style={{ fontSize: '12px', color: '#a855f7', fontWeight: '800', textTransform: 'uppercase' }}>GARMIN SCORE</span>
               <strong style={{ fontSize: '32px', fontWeight: '900', color: '#a855f7', margin: '4px 0' }}>
-                {daily?.garminSleepScore ?? '--'}
+                {latestData?.garminScore ?? '--'}
               </strong>
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนจากนาฬิกา</span>
             </div>
@@ -342,7 +218,7 @@ export default function HomePage() {
               <span style={{ fontSize: '24px', marginBottom: '4px' }}>🌿</span>
               <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '800', textTransform: 'uppercase' }}>ROOM ENV SCORE</span>
               <strong style={{ fontSize: '32px', fontWeight: '900', color: '#34d399', margin: '4px 0' }}>
-                {daily?.roomEnvironmentScore ?? '--'}
+                {latestData?.roomScore ?? '--'}
               </strong>
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนสภาพแวดล้อม</span>
             </div>
@@ -364,7 +240,7 @@ export default function HomePage() {
           </div>
 
           <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', margin: 0, lineHeight: 1.6 }}>
-            {aiInsight?.diagnosis || "กำลังประมวลผลวิเคราะห์สาเหตุเชิงลึก..."}
+            {aiInsight?.diagnosis || "คุณภาพสภาพแวดล้อมและการนอนหลับโดยรวมมีความสัมพันธ์กันอย่างเหมาะสม"}
           </h2>
 
           <div style={{
@@ -375,7 +251,7 @@ export default function HomePage() {
             border: '1px solid rgba(56, 189, 248, 0.2)'
           }}>
             <p style={{ fontSize: '14px', color: '#e2e8f0', margin: 0, lineHeight: 1.7 }}>
-              💡 <strong style={{ color: '#38bdf8' }}>คำแนะนำจาก AI:</strong> {aiInsight?.recommendation || "กำลังประมวลผลคำแนะนำ..."}
+              💡 <strong style={{ color: '#38bdf8' }}>คำแนะนำจาก AI:</strong> {aiInsight?.recommendation || "รักษาอุณหภูมิและความชื้นให้คงที่เพื่อคงประสิทธิภาพการพักผ่อน"}
             </p>
           </div>
         </section>
