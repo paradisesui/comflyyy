@@ -1,19 +1,31 @@
 import os
 import requests
+from datetime import datetime, timedelta
 from garminconnect import Garmin
 
 EMAIL = "ju.cbr2@gmail.com" # <-- ใส่อีเมล Garmin
 PASSWORD = "KkJunR-0865196974." # <-- ใส่รหัสผ่าน Garmin
 FIREBASE_URL = "https://room-envi-test-default-rtdb.asia-southeast1.firebasedatabase.app"
+# จำนวนวันที่ต้องการให้ดึงย้อนหลังอัตโนมัติ (เช่น 7 วันล่าสุด)
+DAYS_BACK = 7
+
+def get_dynamic_dates(days_count=7):
+    today = datetime.now()
+    # ดึงตั้งแต่วันปัจจุบันถอยหลังไป 7 วัน
+    dates = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(days_count)]
+    dates.reverse()
+    return dates
 
 def sync_garmin_to_firebase():
-    print(" กำลังเชื่อมต่อ Garmin Connect...")
+    print("🔄 กำลังเชื่อมต่อ Garmin Connect...")
     try:
+        # ใช้การ Login แบบเดิมที่เคยรันผ่าน 100%
         client = Garmin(EMAIL, PASSWORD)
         client.login()
-        print(" ล็อกอินสำเร็จ!")
+        print("✅ ล็อกอินสำเร็จ!")
 
-        target_dates = ["2026-08-09", "2026-08-11", "2026-08-12", "2026-08-14", "2026-08-15"]
+        target_dates = get_dynamic_dates(DAYS_BACK)
+        print(f"📅 รายการวันที่ตรวจสอบอัตโนมัติ: {target_dates}")
 
         for date_str in target_dates:
             try:
@@ -23,11 +35,10 @@ def sync_garmin_to_firebase():
                 
                 overall_score = sleep_scores.get('overall', {}).get('value')
                 
+                # มีข้อมูลการนอนจริง
                 if overall_score:
-                    # 1. ดึงจาก Root Keys ตรงๆ ตามที่ Garmin ส่งมา
+                    # ดึงจำนวนครั้งการดิ้น/ขยับตัวจาก Root Key ที่ค้นพบ
                     restless_count = sleep_data.get('restlessMomentsCount')
-                    
-                    # 2. ถ้าระดับ Root ไม่มีตัวเลข ให้นับความยาว Array ของ sleepRestlessMoments
                     if restless_count is None:
                         srm = sleep_data.get('sleepRestlessMoments')
                         if isinstance(srm, list):
@@ -48,10 +59,10 @@ def sync_garmin_to_firebase():
                         "avgSleepStress": dto.get('avgSleepStress', 0)
                     }
 
-                    # ส่งเข้า Node garmin_sleep
+                    # ส่งเข้า Firebase
                     requests.put(f"{FIREBASE_URL}/garmin_sleep/{date_str}.json", json=payload)
                     
-                    # อัปเดตลง Node personal_sensitivity/history
+                    # อัปเดตลง Node History
                     history_ref = f"{FIREBASE_URL}/personal_sensitivity/history/{date_str}.json"
                     existing_hist = requests.get(history_ref).json() or {}
                     existing_hist.update({
@@ -61,12 +72,14 @@ def sync_garmin_to_firebase():
                     })
                     requests.put(history_ref, json=existing_hist)
 
-                    print(f" วันที่ {date_str} -> Sleep Score: {overall_score} | ขยับตัว/ดิ้นจริง: {restless_count} ครั้ง")
+                    print(f"✅ วันที่ {date_str} -> Score: {overall_score} | ขยับตัว: {restless_count} ครั้ง")
+                else:
+                    print(f"ℹ️ ข้ามวันที่ {date_str} (ยังไม่มีข้อมูลการนอน)")
             except Exception as e:
-                print(f" ข้ามวันที่ {date_str}: {e}")
+                print(f"⚠️ ข้ามวันที่ {date_str}: {e}")
 
     except Exception as e:
-        print(f" เชื่อมต่อ Garmin ไม่สำเร็จ: {e}")
+        print(f"❌ เชื่อมต่อ Garmin ไม่สำเร็จ: {e}")
 
 if __name__ == "__main__":
     sync_garmin_to_firebase()
