@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-    // 1. เข้าสู่ระบบ Garmin Connect
+    // 1. ล็อกอินเข้า Garmin Connect
     const GCClient = new GarminConnect({
       username: email,
       password: password
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     await GCClient.login();
 
-    // 2. ดึงข้อมูลการนอนย้อนหลัง 7 วันจริงจากวันนี้
+    // 2. ดึงข้อมูลการนอนย้อนหลัง 7 วันจริง
     const sleepLogs: any[] = [];
     const today = new Date();
 
@@ -34,10 +34,10 @@ export async function GET(request: Request) {
       const dateStr = targetDate.toISOString().split('T')[0]; // "YYYY-MM-DD"
 
       try {
-        const sleepData = await GCClient.getSleepData(targetDate);
-        const dto = sleepData?.dailySleepDTO;
+        const sleepData: any = await GCClient.getSleepData(targetDate);
+        const dto: any = sleepData?.dailySleepDTO;
 
-        // บันทึกเฉพาะวันที่มีการใส่นาฬิกานอนจริงและมีคะแนน
+        // บันทึกเฉพาะวันที่มีข้อมูลการนอนจริง
         if (dto && dto.sleepScores?.overall?.value) {
           sleepLogs.push({
             calendarDate: dateStr,
@@ -58,16 +58,21 @@ export async function GET(request: Request) {
     }
 
     if (sleepLogs.length === 0) {
-      return NextResponse.json({ success: false, message: 'ไม่พบข้อมูลการนอนหลับในบัญชี Garmin' }, { status: 404 });
+      return NextResponse.json({ 
+        success: false, 
+        message: 'ไม่พบข้อมูลการนอนหลับในบัญชี Garmin' 
+      }, { status: 404 });
     }
 
-    // เรียงจากวันที่ใหม่สุดไปเก่าสุด
+    // เรียงลำดับจากวันที่ใหม่สุดไปเก่าสุด
     sleepLogs.sort((a, b) => new Date(b.calendarDate).getTime() - new Date(a.calendarDate).getTime());
 
+    // ถ้าขอแค่วันล่าสุด
     if (isLatest) {
       return NextResponse.json({ success: true, data: sleepLogs[0] });
     }
 
+    // ส่งคืนข้อมูลครบทุกวันที่มีจริง
     return NextResponse.json({ success: true, data: sleepLogs });
   } catch (error: any) {
     console.error('Garmin Auth/Fetch Error:', error);
