@@ -13,114 +13,134 @@ export default function HomePage() {
 
     const processAutoSync = async () => {
       try {
-        // 1. ดึงประวัติการนอนครบทุกวันจาก API
-        const garminRes = await fetch('/api/garmin').catch(() => null);
-        const garminJson = garminRes ? await garminRes.json() : null;
-        const garminList: any[] = Array.isArray(garminJson?.data) 
-          ? garminJson.data 
-          : garminJson?.data ? [garminJson.data] : [];
-
-        if (garminList.length === 0) return;
-
+        const garminRef = ref(database, 'garmin_sleep');
         const logsRef = ref(database, 'logs');
-        onValue(logsRef, async (snapshot) => {
-          if (!snapshot.exists()) return;
 
-          const rawLogs = snapshot.val();
-          const logKeys = Object.keys(rawLogs);
+        onValue(garminRef, (garminSnapshot) => {
+          if (!garminSnapshot.exists()) return;
 
-          let latestRoomEnvScore = 70;
-          let latestAiData: any = null;
+          const garminData = garminSnapshot.val();
+          const garminDates = Object.keys(garminData);
 
-          // 2. วนลูปประมวลผลข้อมูล "ครบทุกวันที่มีอยู่จริง"
-          for (const garmin of garminList) {
-            if (!garmin.garminSleepScore || !garmin.calendarDate) continue;
+          onValue(logsRef, async (logsSnapshot) => {
+            const rawLogs = logsSnapshot.exists() ? logsSnapshot.val() : {};
+            const logKeys = Object.keys(rawLogs);
 
-            const sleepStart = Number(garmin.sleepStartTimestamp);
-            const sleepEnd = Number(garmin.sleepEndTimestamp);
-            const targetDate = garmin.calendarDate;
-            const dateKey = targetDate.replace(/[^0-9]/g, '');
+            let latestRoomEnvScore = 70;
+            let latestCombinedScore = 75;
+            let latestAiData: any = null;
+            let latestDate = '';
 
-            // จับคู่เวลาแบบ Minute-by-Minute ตามช่วงเวลานอนของแต่ละวัน
-            const matchedSleepLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
-              let t = Number(log.timestamp) || 0;
-              if (t < 1000000000000) t = t * 1000;
-              return t >= sleepStart && t <= sleepEnd;
-            });
+            // เรียงลำดับวันที่จากใหม่สุดไปเก่าสุด
+            const sortedDates = [...garminDates].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-            const effectiveLogs = matchedSleepLogs.length > 0 ? matchedSleepLogs : logKeys.slice(-30).map(k => rawLogs[k]);
-            const totalLogs = effectiveLogs.length || 1;
+            for (const dateKey of sortedDates) {
+              const garmin = garminData[dateKey];
+              if (!garmin || !garmin.garminSleepScore) continue;
 
-            const avgs = {
-              temp: effectiveLogs.reduce((s, i) => s + (Number(i.temperature) || 26.5), 0) / totalLogs,
-              hum: effectiveLogs.reduce((s, i) => s + (Number(i.humidity) || 52), 0) / totalLogs,
-              sound: effectiveLogs.reduce((s, i) => s + (Number(i.sound) || 28), 0) / totalLogs,
-              light: effectiveLogs.reduce((s, i) => s + (Number(i.light_lux) || 0), 0) / totalLogs,
-              co2: effectiveLogs.reduce((s, i) => s + (Number(i.co2) || 650), 0) / totalLogs,
-              pm25: effectiveLogs.reduce((s, i) => s + (Number(i.pm25) || 8), 0) / totalLogs
-            };
+              const targetDate = garmin.calendarDate || dateKey;
+              const standardDateKey = targetDate.includes('-')
+                ? targetDate
+                : `${targetDate.slice(0, 4)}-${targetDate.slice(4, 6)}-${targetDate.slice(6, 8)}`;
 
-            const co2Score = Math.max(0, 100 - (avgs.co2 > 1000 ? (avgs.co2 - 1000) * 0.1 : 0));
-            const tempScore = Math.max(0, 100 - (avgs.temp > 25 ? (avgs.temp - 25) * 10 : (23 - avgs.temp) * 10));
-            const humScore = Math.max(0, 100 - (avgs.hum > 60 ? (avgs.hum - 60) * 3 : 0));
-            const pm25Score = Math.max(0, 100 - (avgs.pm25 > 37.5 ? (avgs.pm25 - 37.5) * 2 : 0));
-            const soundScore = avgs.sound > 1000 ? 50 : 100;
-            const lightScore = avgs.light > 10 ? 70 : 100;
+              let sleepStart = Number(garmin.sleepStartTimestamp) || 0;
+              let sleepEnd = Number(garmin.sleepEndTimestamp) || 0;
 
-            const roomEnviScore = Math.round(
-              (co2Score * 0.2) + (tempScore * 0.25) + (humScore * 0.15) +
-              (pm25Score * 0.1) + (soundScore * 0.2) + (lightScore * 0.1)
-            );
+              if (sleepStart < 1000000000000) sleepStart *= 1000;
+              if (sleepEnd < 1000000000000) sleepEnd *= 1000;
 
-            const combinedSleepScore = Math.round((garmin.garminSleepScore + roomEnviScore) / 2);
+              // 1. ตรวจสอบการ Match ของ Timestamp แบบนาทีต่อนาที
+              const matchedLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
+                let t = Number(log.timestamp) || 0;
+                if (t < 1000000000000) t *= 1000;
+                return t >= sleepStart && t <= sleepEnd;
+              });
 
-            // บันทึกลง history ของวันนั้นๆ อัตโนมัติ
-            const historyItemRef = ref(database, `personal_sensitivity/history/${dateKey}`);
-            await set(historyItemRef, {
-              date: targetDate,
-              garminScore: garmin.garminSleepScore,
-              roomScore: roomEnviScore,
-              combinedScore: combinedSleepScore,
-              primaryTrigger: avgs.co2 > 1000 ? 'co2' : avgs.temp > 25 ? 'temperature' : 'sound',
-              restlessCount: garmin.restlessMomentsCount || 0
-            });
+              const isTimestampMatched = matchedLogs.length > 0;
 
-            // เก็บค่าของวันล่าสุดไปใช้ในหน้าสรุป
-            if (targetDate === garminList[0].calendarDate) {
-              latestRoomEnvScore = roomEnviScore;
+              // กรณีไม่ Match ให้ใช้ Fallback สำหรับแสดงผลหน้าแรกเพื่อไม่ให้ค้าง
+              const effectiveLogs = isTimestampMatched
+                ? matchedLogs
+                : logKeys.slice(-30).map(k => rawLogs[k]);
 
-              const geminiRes = await fetch('/api/gemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sensorAverages: avgs, restlessCount: garmin.restlessMomentsCount || 0 })
-              }).catch(() => null);
+              const total = effectiveLogs.length || 1;
 
-              const geminiJson = geminiRes ? await geminiRes.json() : null;
-              latestAiData = geminiJson?.data;
-            }
-          }
+              const avgs = {
+                temp: effectiveLogs.reduce((s, i) => s + (Number(i.temperature) || 26.0), 0) / total,
+                hum: effectiveLogs.reduce((s, i) => s + (Number(i.humidity) || 55.0), 0) / total,
+                sound: effectiveLogs.reduce((s, i) => s + (Number(i.sound) || 30.0), 0) / total,
+                light: effectiveLogs.reduce((s, i) => s + (Number(i.light_lux || i.lux) || 0), 0) / total,
+                co2: effectiveLogs.reduce((s, i) => s + (Number(i.co2) || 700), 0) / total,
+                pm25: effectiveLogs.reduce((s, i) => s + (Number(i.pm2_5 || i.pm25) || 10), 0) / total
+              };
 
-          // 3. บันทึกข้อมูลของวันล่าสุดลงหน้าหลัก
-          const latestGarmin = garminList[0];
-          if (latestGarmin) {
-            const summaryRef = ref(database, 'personal_sensitivity/summary');
-            set(summaryRef, {
-              evaluatedDate: latestGarmin.calendarDate,
-              dailyMetrics: {
-                garminSleepScore: latestGarmin.garminSleepScore,
-                roomEnvironmentScore: latestRoomEnvScore,
-                combinedSleepScore: Math.round((latestGarmin.garminSleepScore + latestRoomEnvScore) / 2),
-                restlessMoments: latestGarmin.restlessMomentsCount || 0
-              },
-              aiInsight: {
-                diagnosis: latestAiData?.diagnosis,
-                recommendation: latestAiData?.recommendation
+              const co2Score = Math.max(0, 100 - (avgs.co2 > 1000 ? (avgs.co2 - 1000) * 0.1 : 0));
+              const tempScore = Math.max(0, 100 - (avgs.temp > 25 ? (avgs.temp - 25) * 10 : (23 - avgs.temp) * 10));
+              const humScore = Math.max(0, 100 - (avgs.hum > 60 ? (avgs.hum - 60) * 3 : 0));
+              const pm25Score = Math.max(0, 100 - (avgs.pm25 > 37.5 ? (avgs.pm25 - 37.5) * 2 : 0));
+              const soundScore = avgs.sound > 1000 ? 50 : 100;
+              const lightScore = avgs.light > 10 ? 70 : 100;
+
+              const roomScore = Math.round(
+                (co2Score * 0.2) + (tempScore * 0.25) + (humScore * 0.15) +
+                (pm25Score * 0.1) + (soundScore * 0.2) + (lightScore * 0.1)
+              );
+
+              const garminScore = Number(garmin.garminSleepScore) || 75;
+              const combinedScore = Math.round((garminScore + roomScore) / 2);
+
+              // 2. Data Integrity: บันทึกลง History เฉพาะวันที่ Match กันจริงเท่านั้น
+              if (isTimestampMatched) {
+                const historyItemRef = ref(database, `personal_sensitivity/history/${standardDateKey}`);
+                await set(historyItemRef, {
+                  date: standardDateKey,
+                  garminScore: garminScore,
+                  roomScore: roomScore,
+                  combinedScore: combinedScore,
+                  primaryTrigger: avgs.co2 > 1000 ? 'co2' : avgs.temp > 25 ? 'temperature' : 'sound',
+                  restlessCount: Number(garmin.restlessMomentsCount) || 0
+                });
               }
-            });
-          }
+
+              // บันทึกค่าวันล่าสุดเพื่อแสดงใน Summary ของหน้าแรก
+              if (!latestDate) {
+                latestDate = standardDateKey;
+                latestRoomEnvScore = roomScore;
+                latestCombinedScore = combinedScore;
+
+                const geminiRes = await fetch('/api/gemini', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ sensorAverages: avgs, restlessCount: garmin.restlessMomentsCount || 0 })
+                }).catch(() => null);
+
+                const geminiJson = geminiRes ? await geminiRes.json() : null;
+                latestAiData = geminiJson?.data;
+              }
+            }
+
+            // 3. อัปเดตข้อมูลสรุปหน้าหลัก
+            if (sortedDates.length > 0 && garminData[sortedDates[0]]) {
+              const latestGarmin = garminData[sortedDates[0]];
+              const summaryRef = ref(database, 'personal_sensitivity/summary');
+              set(summaryRef, {
+                evaluatedDate: latestDate,
+                dailyMetrics: {
+                  garminSleepScore: latestGarmin.garminSleepScore,
+                  roomEnvironmentScore: latestRoomEnvScore,
+                  combinedSleepScore: latestCombinedScore,
+                  restlessMoments: latestGarmin.restlessMomentsCount || 0
+                },
+                aiInsight: {
+                  diagnosis: latestAiData?.diagnosis,
+                  recommendation: latestAiData?.recommendation
+                }
+              });
+            }
+          }, { onlyOnce: true });
         }, { onlyOnce: true });
       } catch (e) {
-        console.error('Process Error:', e);
+        console.error('Auto Sync History Error:', e);
       }
     };
 
@@ -230,7 +250,7 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 4 Interactive Capsule Pill Buttons */}
+        {/* 4 Capsule Pill Buttons */}
         <nav className="pill-grid">
           {navButtons.map((btn, idx) => (
             <Link key={idx} href={btn.href} style={{
@@ -329,7 +349,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* AI Diagnosis */}
+        {/* Gemini AI Diagnosis */}
         <section style={{
           background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(14, 116, 144, 0.25) 100%)',
           border: '1px solid rgba(56, 189, 248, 0.4)',
