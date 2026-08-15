@@ -13,6 +13,7 @@ export default function HomePage() {
 
     const processAutoSync = async () => {
       try {
+        // ดึงข้อมูล Garmin ล่าสุดจริงจาก API
         const garminRes = await fetch('/api/garmin?latest=true').catch(() => null);
         const garminJson = garminRes ? await garminRes.json() : null;
         const garmin = garminJson?.data;
@@ -21,6 +22,7 @@ export default function HomePage() {
 
         const sleepStart = Number(garmin.sleepStartTimestamp);
         const sleepEnd = Number(garmin.sleepEndTimestamp);
+        const targetDate = garmin.calendarDate; // ใช้วันที่จริงที่ได้จาก Garmin
 
         const logsRef = ref(database, 'logs');
         onValue(logsRef, async (snapshot) => {
@@ -29,6 +31,7 @@ export default function HomePage() {
           const rawLogs = snapshot.val();
           const logKeys = Object.keys(rawLogs);
 
+          // Matching ข้อมูลเซ็นเซอร์ตามช่วงเวลานอนจริงของวันล่าสุด
           const matchedSleepLogs = logKeys.map(k => rawLogs[k]).filter((log: any) => {
             let t = Number(log.timestamp) || 0;
             if (t < 1000000000000) t = t * 1000;
@@ -57,6 +60,7 @@ export default function HomePage() {
           const aiData = geminiJson?.data;
           const weights = aiData?.weights || { co2: 0.2, temp: 0.25, hum: 0.15, pm25: 0.1, sound: 0.2, light: 0.1 };
 
+          // คำนวณ Sub-score ตามเกณฑ์
           const co2Score = Math.max(0, 100 - (avgs.co2 > 1000 ? (avgs.co2 - 1000) * 0.1 : 0));
           const tempScore = Math.max(0, 100 - (avgs.temp > 25 ? (avgs.temp - 25) * 10 : (23 - avgs.temp) * 10));
           const humScore = Math.max(0, 100 - (avgs.hum > 60 ? (avgs.hum - 60) * 3 : 0));
@@ -75,9 +79,10 @@ export default function HomePage() {
 
           const combinedSleepScore = Math.round((garmin.garminSleepScore + roomEnviScore) / 2);
 
+          // 1. บันทึก Summary ล่าสุด
           const summaryRef = ref(database, 'personal_sensitivity/summary');
           set(summaryRef, {
-            evaluatedDate: garmin.calendarDate,
+            evaluatedDate: targetDate,
             dailyMetrics: {
               garminSleepScore: garmin.garminSleepScore,
               roomEnvironmentScore: roomEnviScore,
@@ -90,6 +95,20 @@ export default function HomePage() {
               recommendation: aiData?.recommendation
             }
           });
+
+          // 2. บันทึกประวัติสะสมลง History อัตโนมัติตามวันที่จริง
+          if (targetDate) {
+            const dateKey = targetDate.replace(/[^0-9]/g, '');
+            const historyItemRef = ref(database, `personal_sensitivity/history/${dateKey}`);
+            set(historyItemRef, {
+              date: targetDate,
+              garminScore: garmin.garminSleepScore,
+              roomScore: roomEnviScore,
+              combinedScore: combinedSleepScore,
+              primaryTrigger: aiData?.primaryTrigger || (avgs.co2 > 1000 ? 'co2' : avgs.temp > 25 ? 'temperature' : 'sound'),
+              restlessCount: garmin.restlessMomentsCount || 0
+            });
+          }
         }, { onlyOnce: true });
       } catch (e) {
         console.error('Process Error:', e);
@@ -102,9 +121,10 @@ export default function HomePage() {
   useEffect(() => {
     if (!database) return;
     const summaryRef = ref(database, 'personal_sensitivity/summary');
-    onValue(summaryRef, (snapshot) => {
+    const unsub = onValue(summaryRef, (snapshot) => {
       if (snapshot.exists()) setSummaryData(snapshot.val());
     });
+    return () => unsub();
   }, []);
 
   const daily = summaryData?.dailyMetrics;
@@ -201,7 +221,7 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 4 Pill Buttons */}
+        {/* 4 Interactive Pill Buttons */}
         <nav className="pill-grid">
           {navButtons.map((btn, idx) => (
             <Link key={idx} href={btn.href} style={{
@@ -233,11 +253,7 @@ export default function HomePage() {
         </nav>
 
         {/* Hero Combined Sleep Score */}
-        <section style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: '20px'
-        }}>
+        <section style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
           <div style={{
             background: 'radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%)',
             border: '2px solid rgba(56, 189, 248, 0.4)',
@@ -250,7 +266,7 @@ export default function HomePage() {
             textAlign: 'center'
           }}>
             <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>
-              🎯 COMBINED SLEEP SCORE
+              🎯 COMBINED SLEEP SCORE ({summaryData?.evaluatedDate || 'ล่าสุด'})
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
               <span style={{ fontSize: '64px', fontWeight: '900', color: '#38bdf8', lineHeight: 1 }}>
@@ -304,7 +320,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* AI Diagnosis Banner */}
+        {/* AI Diagnosis */}
         <section style={{
           background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(14, 116, 144, 0.25) 100%)',
           border: '1px solid rgba(56, 189, 248, 0.4)',

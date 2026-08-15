@@ -12,7 +12,9 @@ export default function PersonaPage() {
       try {
         const res = await fetch('/api/garmin?latest=true');
         const json = await res.json();
-        if (json?.data) setGarminData(json.data);
+        if (json?.data) {
+          setGarminData(json.data);
+        }
       } catch (err) {
         console.error('Error fetching Garmin:', err);
       } finally {
@@ -23,19 +25,30 @@ export default function PersonaPage() {
     fetchLatestGarmin();
   }, []);
 
-  const score = garminData?.garminSleepScore || 87;
-  const dateStr = garminData?.calendarDate || '2026-08-09';
-  const restlessCount = garminData?.restlessMomentsCount || 39;
-  const sleepStress = garminData?.avgSleepStress || 8;
+  const score = garminData?.garminSleepScore || '--';
+  const dateStr = garminData?.calendarDate || 'ล่าสุด';
+  const restlessCount = garminData?.restlessMomentsCount || 0;
+  const sleepStress = garminData?.avgSleepStress || 0;
 
-  const deepSleepMins = 82;   
-  const remSleepMins = 125;   
-  const lightSleepMins = 258; 
-  const totalSleepMins = deepSleepMins + remSleepMins + lightSleepMins; 
+  // คำนวณระยะเวลานอนจริงตามวินาทีที่ Garmin ส่งมา
+  const deepSleepSecs = Number(garminData?.deepSleepDurationInSeconds) || 4920; 
+  const remSleepSecs = Number(garminData?.remSleepDurationInSeconds) || 7500;   
+  const lightSleepSecs = Number(garminData?.lightSleepDurationInSeconds) || 15480; 
+  const totalSleepSecs = Number(garminData?.durationInSeconds) || (deepSleepSecs + remSleepSecs + lightSleepSecs);
 
-  const deepPct = Math.round((deepSleepMins / totalSleepMins) * 100);  
-  const remPct = Math.round((remSleepMins / totalSleepMins) * 100);    
-  const lightPct = Math.round((lightSleepMins / totalSleepMins) * 100); 
+  const totalHours = Math.floor(totalSleepSecs / 3600);
+  const totalMinutes = Math.floor((totalSleepSecs % 3600) / 60);
+
+  const deepPct = totalSleepSecs > 0 ? Math.round((deepSleepSecs / totalSleepSecs) * 100) : 0;  
+  const remPct = totalSleepSecs > 0 ? Math.round((remSleepSecs / totalSleepSecs) * 100) : 0;    
+  const lightPct = totalSleepSecs > 0 ? Math.round((lightSleepSecs / totalSleepSecs) * 100) : 0; 
+
+  const deepHrs = Math.floor(deepSleepSecs / 3600);
+  const deepMins = Math.floor((deepSleepSecs % 3600) / 60);
+  const remHrs = Math.floor(remSleepSecs / 3600);
+  const remMins = Math.floor((remSleepSecs % 3600) / 60);
+  const lightHrs = Math.floor(lightSleepSecs / 3600);
+  const lightMins = Math.floor((lightSleepSecs % 3600) / 60);
 
   return (
     <div style={{
@@ -44,7 +57,7 @@ export default function PersonaPage() {
       backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.22) 0%, transparent 70%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '32px 16px 48px 16px',
+      padding: '48px 16px 48px 16px',
       display: 'flex',
       justifyContent: 'center'
     }}>
@@ -122,7 +135,7 @@ export default function PersonaPage() {
       <main className="container">
         <Link href="/" className="btn-back-glow">
           <div className="arrow-badge">←</div>
-          <span> </span>
+          <span>กลับหน้าหลัก</span>
         </Link>
 
         <div>
@@ -145,7 +158,7 @@ export default function PersonaPage() {
                 OVERALL SLEEP DURATION
               </span>
               <h2 style={{ fontSize: '32px', fontWeight: '900', margin: '4px 0', color: '#f8fafc' }}>
-                7 <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>ชั่วโมง</span> 45 <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>นาที</span>
+                {totalHours} <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>ชั่วโมง</span> {totalMinutes} <span style={{ fontSize: '18px', color: '#94a3b8', fontWeight: '600' }}>นาที</span>
               </h2>
             </div>
             <span style={{
@@ -162,7 +175,7 @@ export default function PersonaPage() {
           </div>
 
           <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, lineHeight: 1.6 }}>
-            การนอนหลับของคุณมีคุณภาพดีมาก ร่างกายได้รับการเติมพลังอย่างเต็มที่ สมองผ่อนคลายและมีความเครียดสะสมขณะหลับต่ำมาก (Stress Score: {sleepStress})
+            การนอนหลับของคุณมีคุณภาพดี ร่างกายได้รับการเติมพลังอย่างเต็มที่ สมองผ่อนคลายและมีความเครียดสะสมขณะหลับต่ำ (Stress Score: {sleepStress})
           </p>
         </section>
 
@@ -176,7 +189,7 @@ export default function PersonaPage() {
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                 <span style={{ color: '#38bdf8', fontWeight: '700' }}>🌊 หลับสนิท (Deep)</span>
-                <span style={{ color: '#94a3b8' }}>1 ชั่วโมง 22 นาที</span>
+                <span style={{ color: '#94a3b8' }}>{deepHrs}h {deepMins}m</span>
               </div>
               <div style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px' }}>{deepPct}%</div>
               <div className="progress-bar-bg">
@@ -188,7 +201,7 @@ export default function PersonaPage() {
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                 <span style={{ color: '#a855f7', fontWeight: '700' }}>🧠 หลับฝัน (REM)</span>
-                <span style={{ color: '#94a3b8' }}>2 ชั่วโมง 05 นาที</span>
+                <span style={{ color: '#94a3b8' }}>{remHrs}h {remMins}m</span>
               </div>
               <div style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px' }}>{remPct}%</div>
               <div className="progress-bar-bg">
@@ -200,7 +213,7 @@ export default function PersonaPage() {
             <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', padding: '16px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                 <span style={{ color: '#facc15', fontWeight: '700' }}>💤 หลับตื้น (Light)</span>
-                <span style={{ color: '#94a3b8' }}>4 ชั่วโมง 18 นาที</span>
+                <span style={{ color: '#94a3b8' }}>{lightHrs}h {lightMins}m</span>
               </div>
               <div style={{ fontSize: '24px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px' }}>{lightPct}%</div>
               <div className="progress-bar-bg">
