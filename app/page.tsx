@@ -16,7 +16,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!database) return;
 
-    // 1. ดึงข้อมูลจาก history เพื่อหาวันที่ล่าสุดแบบ Dynamic
+    // 1. ดึงข้อมูลประวัติเพื่อหาวันล่าสุดแบบ Dynamic
     const historyRef = ref(database, 'personal_sensitivity/history');
     const unsubHistory = onValue(historyRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -60,7 +60,7 @@ export default function HomePage() {
     return () => unsubHistory();
   }, []);
 
-  // ฟังก์ชันเรียก Gemini วิเคราะห์สดใหม่
+  // ฟังก์ชันกดวิเคราะห์ใหม่กับ Gemini
   const handleAnalyzeWithAI = async () => {
     if (!latestData?.date) return;
     setLoadingAi(true);
@@ -132,7 +132,7 @@ export default function HomePage() {
           max-width: 1100px;
           display: flex;
           flex-direction: column;
-          gap: 28px;
+          gap: 24px;
         }
         .header-bar {
           display: flex;
@@ -228,12 +228,12 @@ export default function HomePage() {
         </nav>
 
         {/* Hero Combined Sleep Score */}
-        <section style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+        <section style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
           <div style={{
             background: 'radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%)',
             border: '2px solid rgba(56, 189, 248, 0.4)',
             borderRadius: '28px',
-            padding: '32px',
+            padding: '28px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -244,12 +244,12 @@ export default function HomePage() {
               🎯 COMBINED SLEEP SCORE ({latestData?.date || 'กำลังโหลด...'})
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-              <span style={{ fontSize: '64px', fontWeight: '900', color: '#38bdf8', lineHeight: 1 }}>
+              <span style={{ fontSize: '60px', fontWeight: '900', color: '#38bdf8', lineHeight: 1 }}>
                 {latestData?.combinedScore ?? '--'}
               </span>
               <span style={{ fontSize: '20px', color: '#64748b', fontWeight: '700' }}>/ 100</span>
             </div>
-            <span style={{ fontSize: '13px', color: '#34d399', fontWeight: '700', marginTop: '12px', backgroundColor: 'rgba(52, 211, 153, 0.12)', padding: '6px 16px', borderRadius: '9999px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
+            <span style={{ fontSize: '13px', color: '#34d399', fontWeight: '700', marginTop: '10px', backgroundColor: 'rgba(52, 211, 153, 0.12)', padding: '6px 16px', borderRadius: '9999px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
               🟢 คุณภาพการนอนหลับโดยรวมอยู่ในเกณฑ์ดี
             </span>
           </div>
@@ -259,7 +259,7 @@ export default function HomePage() {
               background: 'rgba(15, 23, 42, 0.6)',
               border: '1px solid rgba(168, 85, 247, 0.35)',
               borderRadius: '24px',
-              padding: '20px',
+              padding: '18px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -268,7 +268,7 @@ export default function HomePage() {
             }}>
               <span style={{ fontSize: '24px', marginBottom: '4px' }}>⌚</span>
               <span style={{ fontSize: '12px', color: '#a855f7', fontWeight: '800', textTransform: 'uppercase' }}>GARMIN SCORE</span>
-              <strong style={{ fontSize: '32px', fontWeight: '900', color: '#a855f7', margin: '4px 0' }}>
+              <strong style={{ fontSize: '30px', fontWeight: '900', color: '#a855f7', margin: '4px 0' }}>
                 {latestData?.garminScore ?? '--'}
               </strong>
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนจากนาฬิกา</span>
@@ -278,7 +278,7 @@ export default function HomePage() {
               background: 'rgba(15, 23, 42, 0.6)',
               border: '1px solid rgba(52, 211, 153, 0.35)',
               borderRadius: '24px',
-              padding: '20px',
+              padding: '18px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -287,7 +287,7 @@ export default function HomePage() {
             }}>
               <span style={{ fontSize: '24px', marginBottom: '4px' }}>🌿</span>
               <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '800', textTransform: 'uppercase' }}>ROOM ENV SCORE</span>
-              <strong style={{ fontSize: '32px', fontWeight: '900', color: '#34d399', margin: '4px 0' }}>
+              <strong style={{ fontSize: '30px', fontWeight: '900', color: '#34d399', margin: '4px 0' }}>
                 {latestData?.roomScore ?? '--'}
               </strong>
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนสภาพแวดล้อม</span>
@@ -295,18 +295,23 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Gemini AI Diagnosis */}
+        {/* Gemini AI Diagnosis Card */}
         <section style={{
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(14, 116, 144, 0.25) 100%)',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(14, 116, 144, 0.25) 100%)',
           border: '1px solid rgba(56, 189, 248, 0.4)',
           borderRadius: '28px',
-          padding: '28px'
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          {/* Header Bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '24px' }}>🤖</span>
               <span style={{ fontSize: '13px', color: '#38bdf8', fontWeight: '900', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
-                ผลวิเคราะห์สาเหตุและคำแนะนำจาก AI (GEMINI DIAGNOSIS)
+                ผลวิเคราะห์และคำแนะนำจาก AI (GEMINI COACH)
               </span>
             </div>
             <button
@@ -316,30 +321,58 @@ export default function HomePage() {
                 backgroundColor: 'rgba(56, 189, 248, 0.2)',
                 border: '1px solid #38bdf8',
                 color: '#38bdf8',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '11px',
+                padding: '6px 16px',
+                borderRadius: '9999px',
+                fontSize: '12px',
                 fontWeight: '700',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
               }}
             >
               {loadingAi ? 'กำลังวิเคราะห์...' : '🔄 วิเคราะห์ใหม่'}
             </button>
           </div>
 
-          <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', margin: '0 0 14px 0', lineHeight: 1.7 }}>
-            {aiInsight?.diagnosis || "คุณภาพสภาพแวดล้อมและการนอนหลับโดยรวมมีความสัมพันธ์กันอย่างเหมาะสม"}
-          </h2>
-
+          {/* 1. กล่องสาเหตุที่เข้าใจง่าย */}
           <div style={{
-            padding: '16px',
-            borderRadius: '16px',
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            border: '1px solid rgba(56, 189, 248, 0.2)'
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            border: '1px solid rgba(244, 63, 94, 0.3)',
+            borderRadius: '18px',
+            padding: '18px'
           }}>
-            <p style={{ fontSize: '14px', color: '#e2e8f0', margin: 0, lineHeight: 1.7 }}>
-              💡 <strong style={{ color: '#38bdf8' }}>คำแนะนำจาก AI:</strong> {aiInsight?.recommendation || "รักษาอุณหภูมิและความชื้นให้คงที่เพื่อคงประสิทธิภาพการพักผ่อน"}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '16px' }}>🚨</span>
+              <strong style={{ fontSize: '13px', color: '#f43f5e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                เมื่อคืนเกิดอะไรขึ้น? (สาเหตุที่ทำให้หลับไม่สนิท)
+              </strong>
+            </div>
+            <p style={{ fontSize: '14px', color: '#f8fafc', margin: 0, lineHeight: 1.7, fontWeight: '500' }}>
+              {aiInsight?.diagnosis || "ระบบกำลังเชื่อมโยงปัจจัยสภาพแวดล้อมเพื่อสรุปสาเหตุ..."}
             </p>
+          </div>
+
+          {/* 2. กล่องวิธีแก้ที่นำไปทำตามได้ทันที */}
+          <div style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            border: '1px solid rgba(234, 179, 8, 0.3)',
+            borderRadius: '18px',
+            padding: '18px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '16px' }}>💡</span>
+              <strong style={{ fontSize: '13px', color: '#facc15', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                วิธีปรับห้องนอนคืนนี้ (ทำตามได้ทันที)
+              </strong>
+            </div>
+            
+            <div style={{
+              fontSize: '14px',
+              color: '#fef08a',
+              lineHeight: 1.8,
+              whiteSpace: 'pre-line'
+            }}>
+              {aiInsight?.recommendation || "1. รักษาการถ่ายเทอากาศในห้องนอน\n2. ตั้งอุณหภูมิแอร์ที่ 24-25°C"}
+            </div>
           </div>
         </section>
       </main>
