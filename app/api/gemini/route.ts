@@ -4,31 +4,55 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const CANDIDATE_MODELS = [
-  'gemini-3.5-flash-lite',
-  'gemini-3.5-flash',
   'gemini-2.5-flash',
-  'gemini-1.5-flash'
+  'gemini-1.5-flash',
+  'gemini-1.5-pro'
 ];
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { sensorAverages, restlessCount } = body;
+    
+    // รองรับทั้งแบบส่งตรง และแบบส่งผ่านตัวแปรย่อย
+    const sensorAverages = body.sensorAverages || body.roomSensors || {};
+    const garminData = body.garminData || {};
+    const sensitivityProfile = body.sensitivityProfile || {};
+    
+    const restlessCount = body.restlessCount ?? garminData?.restlessMomentsCount ?? 0;
+    const garminScore = garminData?.garminSleepScore ?? '--';
+    const sleepStress = garminData?.avgSleepStress ?? '--';
+    const topTrigger = sensitivityProfile?.topTrigger || 'สภาพแวดล้อมทั่วไป';
 
     const prompt = `
-      คุณเป็น AI ผู้เชี่ยวชาญด้านสรีรวิทยาการนอนหลับ
-      จงวิเคราะห์เชิงลึก (Diagnose) จากข้อมูลสภาพแวดล้อมห้องนอนกับการดิ้นตื่น (${restlessCount || 0} ครั้ง) ที่ผ่านการ Data Matching แล้ว ดังนี้:
-      - CO2 เฉลี่ย: ${sensorAverages?.co2?.toFixed(1) || 650} ppm
-      - อุณหภูมิเฉลี่ย: ${sensorAverages?.temp?.toFixed(1) || 26.5}°C
-      - ความชื้นเฉลี่ย: ${sensorAverages?.hum?.toFixed(1) || 52}%
-      - PM2.5 เฉลี่ย: ${sensorAverages?.pm25?.toFixed(1) || 8} µg/m³
-      - เสียงเฉลี่ย: ${sensorAverages?.sound?.toFixed(1) || 28} dB
-      - แสงเฉลี่ย: ${sensorAverages?.light?.toFixed(1) || 0} Lux
+      คุณเป็น AI ผู้เชี่ยวชาญด้านสรีรวิทยาและเวชศาสตร์การนอนหลับ (Sleep Specialist)
+      จงวิเคราะห์เชิงลึก (Diagnose) โดยเชื่อมโยง 3 ด้านเข้าด้วยกัน:
+      1. สภาพแวดล้อมห้องนอนจริง (Room Sensors)
+      2. สถิติการนอนจริงจากนาฬิกา (Garmin Biometrics)
+      3. จุดอ่อนความไวส่วนบุคคล (Personal Sensitivity Profile) เพื่อดูว่าผู้ใช้คนนี้ "อ่อนไหว/sensitive ต่อสิ่งเร้าใดเป็นพิเศษ"
 
-      จงคำนวณ Personalized Weight ของทั้ง 6 ตัวแปร โดยผลรวมต้องเท่ากับ 1.0 (100%)
-      พร้อมสรุปสาเหตุของปัญหาเชิงลึก และคำแนะนำปรับปรุงห้องนอน
+      [ข้อมูลตรวจวัดสภาพแวดล้อม]
+      - CO2 เฉลี่ย: ${sensorAverages?.co2 ?? 650} ppm (เกณฑ์มาตรฐาน: < 800-1000 ppm)
+      - อุณหภูมิเฉลี่ย: ${sensorAverages?.temp ?? sensorAverages?.temperature ?? 25.0}°C (เกณฑ์มาตรฐาน: 23-25°C)
+      - ความชื้นเฉลี่ย: ${sensorAverages?.hum ?? sensorAverages?.humidity ?? 55}% (เกณฑ์มาตรฐาน: 50-60%)
+      - PM2.5 เฉลี่ย: ${sensorAverages?.pm25 ?? 0} µg/m³
+      - เสียงรบกวนเฉลี่ย: ${sensorAverages?.sound ?? sensorAverages?.noise ?? 35} dB (เกณฑ์มาตรฐาน: < 40 dB)
+      - แสงสว่างเฉลี่ย: ${sensorAverages?.light ?? sensorAverages?.light_lux ?? 0} Lux
 
-      ตอบเป็น JSON เท่านั้น (ห้ามมี Markdown):
+      [ข้อมูลสรีรวิทยาการนอนจาก Garmin]
+      - คะแนนการนอน (Garmin Sleep Score): ${garminScore} / 100
+      - จำนวนครั้งการขยับตัว/ดิ้น (Restless Moments): ${restlessCount} ครั้ง
+      - ความเครียดเฉลี่ยขณะหลับ (Sleep Stress): ${sleepStress} / 100
+
+      [จุดอ่อนความไวสะสมของผู้ใช้ (Sensitivity Profile)]
+      - สิ่งเร้าที่กระตุ้นให้ร่างกายดิ้นมากที่สุดตามประวัติ: ${topTrigger}
+      - รายละเอียดสถิติการถูกกระตุ้น: ${JSON.stringify(sensitivityProfile?.triggerBreakdown || {})}
+
+      คำสั่ง:
+      1. คำนวณ Personalized Weight ของทั้ง 6 ปัจจัย (ผลรวมต้องเท่ากับ 1.0) โดยเพิ่มน้ำหนักให้ปัจจัยที่ผู้ใช้ Sensitive หรือเกินเกณฑ์มาตรฐาน
+      2. สรุป "diagnosis" อธิบายสาเหตุของปัญหาการนอน โดยชี้ชัดว่าผู้ใช้ไวต่อปัจจัยใดเป็นพิเศษและค่าใดในห้องที่ส่งผลกระทบต่อร่างกาย
+      3. ให้ "recommendation" ข้อแนะนำที่เจาะจงนำไปปฏิบัติได้จริงเพื่อลดสิ่งรบกวนก่อนนอน
+
+      ตอบเป็น JSON เท่านั้น (ห้ามมี Markdown นอก JSON):
       {
         "weights": {
           "co2": 0.20,
@@ -38,8 +62,8 @@ export async function POST(request: Request) {
           "sound": 0.20,
           "light": 0.10
         },
-        "diagnosis": "ระดับ CO2 ที่สูงถึง... ส่งผลให้สมองขาดออกซิเจน...",
-        "recommendation": "ควรเปิดระบบระบายอากาศหรือแง้มหน้าต่างเล็กน้อย..."
+        "diagnosis": "...",
+        "recommendation": "..."
       }
     `;
 
@@ -48,7 +72,10 @@ export async function POST(request: Request) {
 
     for (const modelName of CANDIDATE_MODELS) {
       try {
-        const model = genAI.getGenerativeModel({ model: modelName });
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          generationConfig: { responseMimeType: "application/json" }
+        });
         const result = await model.generateContent(prompt);
         responseText = result.response.text();
         if (responseText) {
@@ -70,9 +97,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status: 'fallback',
       data: {
-        weights: { co2: 0.20, temp: 0.25, hum: 0.15, pm25: 0.10, sound: 0.20, light: 0.10 },
-        diagnosis: "ระดับ CO2 และอุณหภูมิที่สูงเกินเกณฑ์ส่งผลต่อกระบวนการระบายความร้อนของร่างกายขณะหลับ",
-        recommendation: "ควรเปิดระบบระบายอากาศและปรับอุณหภูมิให้อยู่ช่วง 23-25°C"
+        weights: { co2: 0.25, temp: 0.25, hum: 0.15, pm25: 0.10, sound: 0.15, light: 0.10 },
+        diagnosis: "ระดับสภาพแวดล้อมในห้องนอนมีความสัมพันธ์กับอัตราการขยับตัวระหว่างคืน โดยร่างกายมีความไวต่อการเปลี่ยนแปลงของอากาศและอุณหภูมิ",
+        recommendation: "รักษาการหมุนเวียนอากาศและตั้งอุณหภูมิเครื่องปรับอากาศที่ 24-25°C เพื่อป้องกันการสะสมความร้อน"
       }
     });
   }

@@ -7,14 +7,18 @@ import { ref, onValue, set } from 'firebase/database';
 
 export default function HomePage() {
   const [latestData, setLatestData] = useState<any>(null);
+  const [garminData, setGarminData] = useState<any>(null);
+  const [roomData, setRoomData] = useState<any>(null);
+  const [eventData, setEventData] = useState<any>(null);
   const [aiInsight, setAiInsight] = useState<any>(null);
+  const [loadingAi, setLoadingAi] = useState<boolean>(false);
 
   useEffect(() => {
     if (!database) return;
 
-    // ดึงข้อมูลจาก history เพื่อหาวันที่ล่าสุดแบบ Dynamic เสมอ
+    // 1. ดึงข้อมูลจาก history เพื่อหาวันที่ล่าสุดแบบ Dynamic
     const historyRef = ref(database, 'personal_sensitivity/history');
-    const unsubHistory = onValue(historyRef, async (snapshot) => {
+    const unsubHistory = onValue(historyRef, (snapshot) => {
       if (snapshot.exists()) {
         const val = snapshot.val();
         const dates = Object.keys(val).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -24,10 +28,28 @@ export default function HomePage() {
           const newestItem = val[newestDateKey];
           setLatestData(newestItem);
 
-          // ดึงค่า AI Insight หรือวิเคราะห์ให้วันล่าสุด
+          // 2. ดึง Garmin Data วันล่าสุด
+          const garminRef = ref(database, `garmin_sleep/${newestDateKey}`);
+          onValue(garminRef, (gSnap) => {
+            if (gSnap.exists()) setGarminData(gSnap.val());
+          }, { onlyOnce: true });
+
+          // 3. ดึง Room Env Data วันล่าสุด
+          const roomRef = ref(database, `room_env/${newestDateKey}`);
+          onValue(roomRef, (rSnap) => {
+            if (rSnap.exists()) setRoomData(rSnap.val());
+          }, { onlyOnce: true });
+
+          // 4. ดึง Sensitivity Event Data วันล่าสุด
+          const eventRef = ref(database, `personal_sensitivity/all_sensors_events/${newestDateKey}`);
+          onValue(eventRef, (eSnap) => {
+            if (eSnap.exists()) setEventData(eSnap.val());
+          }, { onlyOnce: true });
+
+          // 5. ดึงค่า AI Insight เดิมที่มีอยู่
           const summaryRef = ref(database, 'personal_sensitivity/summary');
           onValue(summaryRef, (sumSnap) => {
-            if (sumSnap.exists()) {
+            if (sumSnap.exists() && sumSnap.val()?.aiInsight) {
               setAiInsight(sumSnap.val().aiInsight);
             }
           }, { onlyOnce: true });
@@ -37,6 +59,54 @@ export default function HomePage() {
 
     return () => unsubHistory();
   }, []);
+
+  // ฟังก์ชันเรียก Gemini วิเคราะห์สดใหม่
+  const handleAnalyzeWithAI = async () => {
+    if (!latestData?.date) return;
+    setLoadingAi(true);
+
+    try {
+      const payload = {
+        date: latestData.date,
+        sensorAverages: roomData || {
+          co2: 650,
+          temp: 25.0,
+          hum: 55,
+          pm25: 0,
+          sound: 35,
+          light: 0
+        },
+        garminData: garminData || {
+          garminSleepScore: latestData.garminScore || 65,
+          restlessMomentsCount: latestData.restlessCount || 19,
+          avgSleepStress: 15
+        },
+        sensitivityProfile: {
+          sensitivityScore: eventData?.overallSensitivityScore || 38,
+          topTrigger: 'ก๊าซ CO2 และเสียงรบกวน',
+          triggerBreakdown: eventData?.sensorTriggerBreakdown || {}
+        }
+      };
+
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const resJson = await res.json();
+      if (resJson?.data) {
+        setAiInsight(resJson.data);
+        if (database) {
+          set(ref(database, 'personal_sensitivity/summary/aiInsight'), resJson.data);
+        }
+      }
+    } catch (err) {
+      console.error('AI Analysis failed:', err);
+    } finally {
+      setLoadingAi(false);
+    }
+  };
 
   const navButtons = [
     { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', bg: 'linear-gradient(135deg, rgba(14, 116, 144, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%)', border: 'rgba(56, 189, 248, 0.6)', glow: '0 8px 24px rgba(56, 189, 248, 0.3)' },
@@ -232,19 +302,36 @@ export default function HomePage() {
           borderRadius: '28px',
           padding: '28px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '24px' }}>🤖</span>
-            <span style={{ fontSize: '13px', color: '#38bdf8', fontWeight: '900', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
-              ผลวิเคราะห์สาเหตุและคำแนะนำจาก AI (GEMINI DIAGNOSIS)
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '24px' }}>🤖</span>
+              <span style={{ fontSize: '13px', color: '#38bdf8', fontWeight: '900', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                ผลวิเคราะห์สาเหตุและคำแนะนำจาก AI (GEMINI DIAGNOSIS)
+              </span>
+            </div>
+            <button
+              onClick={handleAnalyzeWithAI}
+              disabled={loadingAi}
+              style={{
+                backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                border: '1px solid #38bdf8',
+                color: '#38bdf8',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                fontSize: '11px',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              {loadingAi ? 'กำลังวิเคราะห์...' : '🔄 วิเคราะห์ใหม่'}
+            </button>
           </div>
 
-          <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', margin: 0, lineHeight: 1.6 }}>
+          <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', margin: '0 0 14px 0', lineHeight: 1.7 }}>
             {aiInsight?.diagnosis || "คุณภาพสภาพแวดล้อมและการนอนหลับโดยรวมมีความสัมพันธ์กันอย่างเหมาะสม"}
           </h2>
 
           <div style={{
-            marginTop: '12px',
             padding: '16px',
             borderRadius: '16px',
             backgroundColor: 'rgba(15, 23, 42, 0.6)',
