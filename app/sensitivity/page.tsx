@@ -3,18 +3,16 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 
 export default function SensitivityPage() {
-  const [viewMode, setViewMode] = useState<'latest' | 'lifetime'>('latest'); // 'latest' = วันล่าสุด, 'lifetime' = สะสมทั้งหมด
+  const [viewMode, setViewMode] = useState<'latest' | 'lifetime'>('latest');
   const [latestDate, setLatestDate] = useState<string>('');
   const [allEvents, setAllEvents] = useState<{ [key: string]: any }>({});
   const [totalCumulativeStats, setTotalCumulativeStats] = useState<any>(null);
-  const [lifetimeAiInsight, setLifetimeAiInsight] = useState<any>(null);
   const [summaryData, setSummaryData] = useState<any>(null);
   const [totalDays, setTotalDays] = useState<number>(0);
   const [loading, setLoading] = useState(true);
-  const [loadingAi, setLoadingAi] = useState(false);
 
   useEffect(() => {
     if (!database) {
@@ -40,9 +38,9 @@ export default function SensitivityPage() {
         // คำนวณยอดสะสมทุกวัน (Cumulative Trigger Totals)
         const cumulativeBreakdown: { [key: string]: number } = {
           sound_db: 0,
+          temperature: 0,
           co2: 0,
           humidity: 0,
-          temperature: 0,
           pm25: 0,
           light_lux: 0
         };
@@ -82,12 +80,6 @@ export default function SensitivityPage() {
       if (snap.exists()) setSummaryData(snap.val());
     });
 
-    // 3. ดึง AI Lifetime Summary
-    const lifetimeRef = ref(database, 'personal_sensitivity/lifetime_summary');
-    onValue(lifetimeRef, (snap) => {
-      if (snap.exists()) setLifetimeAiInsight(snap.val());
-    });
-
     return () => unsubEvents();
   }, []);
 
@@ -110,42 +102,6 @@ export default function SensitivityPage() {
       case 'co2': return 'ก๊าซ CO2';
       case 'pm25': return 'ฝุ่น PM2.5';
       default: return key;
-    }
-  };
-
-  // เรียก AI วิเคราะห์ภาพรวมสะสม
-  const handleAnalyzeLifetime = async () => {
-    if (!totalCumulativeStats) return;
-    setLoadingAi(true);
-
-    try {
-      const payload = {
-        totalDays,
-        totalRestlessAllDays: totalCumulativeStats.totalRestlessAllDays,
-        cumulativeBreakdown: totalCumulativeStats.cumulativeBreakdown,
-        sensitivityProfile: {
-          topTrigger: formatSensorName(totalCumulativeStats.topTrigger),
-          triggerBreakdown: totalCumulativeStats.cumulativeBreakdown
-        }
-      };
-
-      const res = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const json = await res.json();
-      if (json?.data) {
-        setLifetimeAiInsight(json.data);
-        if (database) {
-          set(ref(database, 'personal_sensitivity/lifetime_summary'), json.data);
-        }
-      }
-    } catch (err) {
-      console.error('Lifetime AI Analysis failed:', err);
-    } finally {
-      setLoadingAi(false);
     }
   };
 
@@ -222,13 +178,12 @@ export default function SensitivityPage() {
       `}</style>
 
       <main className="container">
-        {/* Navigation & Header */}
+        {/* Navigation & Tab Switcher */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" className="btn-back-glow">
             <span>← กลับหน้าหลัก</span>
           </Link>
           
-          {/* Tab Switcher */}
           <div style={{ display: 'flex', gap: '8px', backgroundColor: 'rgba(15, 23, 42, 0.8)', padding: '4px', borderRadius: '9999px', border: '1px solid rgba(255,255,255,0.1)' }}>
             <button
               onClick={() => setViewMode('latest')}
@@ -391,48 +346,6 @@ export default function SensitivityPage() {
                     </div>
                   );
                 })}
-              </div>
-            </section>
-
-            <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#38bdf8', fontWeight: '900', letterSpacing: '0.8px' }}>
-                  🤖 AI LIFETIME SLEEP COACH ANALYSIS (ภาพรวมระยะยาว)
-                </span>
-                <button
-                  onClick={handleAnalyzeLifetime}
-                  disabled={loadingAi}
-                  style={{
-                    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-                    border: '1px solid #38bdf8',
-                    color: '#38bdf8',
-                    padding: '6px 16px',
-                    borderRadius: '9999px',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {loadingAi ? 'กำลังวิเคราะห์...' : '🔄 วิเคราะห์ภาพรวมใหม่'}
-                </button>
-              </div>
-
-              <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: '18px', padding: '18px' }}>
-                <strong style={{ fontSize: '13px', color: '#f43f5e', display: 'block', marginBottom: '6px' }}>
-                  🚨 พฤติกรรมความไวของร่างกายระยะยาว (Lifetime Diagnosis):
-                </strong>
-                <p style={{ fontSize: '14px', color: '#f8fafc', margin: 0, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                  {lifetimeAiInsight?.diagnosis || "เมื่อดูสถิติย้อนหลังสะสม ร่างกายของคุณมีความอ่อนไหวต่อเสียงรบกวนและระดับก๊าซ CO2 สูงที่สุด โดยมักส่งผลให้เกิดการพลิกตัวและหลับไม่ลึกในคืนที่มีสิ่งเร้าทั้งสองอย่างนี้"}
-                </p>
-              </div>
-
-              <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: '18px', padding: '18px' }}>
-                <strong style={{ fontSize: '13px', color: '#facc15', display: 'block', marginBottom: '6px' }}>
-                  💡 แนวทางปรับสภาพแวดล้อมห้องนอนระยะยาว (Long-Term Recommendations):
-                </strong>
-                <p style={{ fontSize: '14px', color: '#fef08a', margin: 0, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                  {lifetimeAiInsight?.recommendation || "1. ติดตั้งแผ่นซับเสียงหรือใช้ม่านกันเสียงเพื่อควบคุมระดับเสียงให้ต่ำกว่า 35 dB\n2. จัดระบบระบายอากาศให้อากาศหมุนเวียนคงที่เพื่อคุม CO2 ไม่ให้เกิน 800 ppm ในระยะยาว"}
-                </p>
               </div>
             </section>
           </>
