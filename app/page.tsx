@@ -12,8 +12,6 @@ export default function HomePage() {
   const [eventData, setEventData] = useState<any>(null);
   const [aiInsight, setAiInsight] = useState<any>(null);
   const [loadingAi, setLoadingAi] = useState<boolean>(false);
-  const [syncingGarmin, setSyncingGarmin] = useState<boolean>(false);
-  const [syncMessage, setSyncMessage] = useState<string>('');
 
   useEffect(() => {
     if (!database) return;
@@ -56,29 +54,6 @@ export default function HomePage() {
 
     return () => unsubHistory();
   }, []);
-
-  // ฟังก์ชันกดปุ่ม Sync Garmin เข้า Firebase ทันที
-  const handleSyncGarmin = async () => {
-    setSyncingGarmin(true);
-    setSyncMessage('');
-
-    try {
-      const res = await fetch('/api/garmin-sync', { method: 'POST' });
-      const json = await res.json();
-
-      if (json.success) {
-        setSyncMessage('✅ อัปเดตข้อมูล Garmin สำเร็จ!');
-        setTimeout(() => setSyncMessage(''), 4000);
-      } else {
-        setSyncMessage('❌ อัปเดตล้มเหลว กรุณาลองใหม่');
-      }
-    } catch (err) {
-      console.error('Sync request failed:', err);
-      setSyncMessage('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
-    } finally {
-      setSyncingGarmin(false);
-    }
-  };
 
   const handleAnalyzeWithAI = async () => {
     if (!latestData?.date) return;
@@ -167,7 +142,7 @@ export default function HomePage() {
       `}</style>
 
       <main className="app-container">
-        {/* Header with Garmin Sync Button */}
+        {/* Header Bar */}
         <header className="header-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
@@ -193,63 +168,22 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* ปุ่ม Sync Garmin */}
-            <button
-              onClick={handleSyncGarmin}
-              disabled={syncingGarmin}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 18px',
-                borderRadius: '9999px',
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(99, 102, 241, 0.5) 100%)',
-                border: '1.5px solid rgba(168, 85, 247, 0.6)',
-                color: '#ffffff',
-                fontSize: '12px',
-                fontWeight: '800',
-                cursor: syncingGarmin ? 'not-allowed' : 'pointer',
-                boxShadow: '0 0 14px rgba(168, 85, 247, 0.3)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <span>{syncingGarmin ? '⏳' : '⌚'}</span>
-              <span>{syncingGarmin ? 'กำลังดึง Garmin...' : 'Sync Garmin'}</span>
-            </button>
-
-            <Link href="/account" style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '50%',
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid rgba(56, 189, 248, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#f8fafc',
-              textDecoration: 'none',
-              fontSize: '18px'
-            }}>
-              👤
-            </Link>
-          </div>
-        </header>
-
-        {syncMessage && (
-          <div style={{
-            textAlign: 'center',
-            fontSize: '12px',
-            fontWeight: '700',
-            color: syncMessage.includes('✅') ? '#34d399' : '#f43f5e',
-            backgroundColor: 'rgba(15, 23, 42, 0.8)',
-            padding: '8px',
-            borderRadius: '12px',
-            border: '1px solid rgba(255,255,255,0.08)'
+          <Link href="/account" style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            background: 'rgba(15, 23, 42, 0.85)',
+            border: '1px solid rgba(56, 189, 248, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#f8fafc',
+            textDecoration: 'none',
+            fontSize: '18px'
           }}>
-            {syncMessage}
-          </div>
-        )}
+            👤
+          </Link>
+        </header>
 
         {/* 4 Navigation Buttons */}
         <nav className="pill-grid">
