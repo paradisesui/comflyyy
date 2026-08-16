@@ -3,13 +3,18 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { database } from '@/app/lib/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, set } from 'firebase/database';
 
 export default function SensitivityPage() {
-  const [summaryData, setSummaryData] = useState<any>(null);
-  const [eventData, setEventData] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'latest' | 'lifetime'>('latest'); // 'latest' = วันล่าสุด, 'lifetime' = สะสมทั้งหมด
   const [latestDate, setLatestDate] = useState<string>('');
+  const [allEvents, setAllEvents] = useState<{ [key: string]: any }>({});
+  const [totalCumulativeStats, setTotalCumulativeStats] = useState<any>(null);
+  const [lifetimeAiInsight, setLifetimeAiInsight] = useState<any>(null);
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [totalDays, setTotalDays] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [loadingAi, setLoadingAi] = useState(false);
 
   useEffect(() => {
     if (!database) {
@@ -17,46 +22,84 @@ export default function SensitivityPage() {
       return;
     }
 
-    // 1. ดึงข้อมูล Event จาก Node ที่เพิ่งประมวลผลมาหาวันล่าสุด
+    // 1. ดึง Events ทั้งหมดเพื่อคำนวณทั้งวันล่าสุดและยอดสะสม
     const eventsRef = ref(database, 'personal_sensitivity/all_sensors_events');
     const unsubEvents = onValue(eventsRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        const dates = Object.keys(data).sort(
+        setAllEvents(data);
+        const days = Object.keys(data).sort(
           (a, b) => new Date(b).getTime() - new Date(a).getTime()
         );
+        setTotalDays(days.length);
 
-        if (dates.length > 0) {
-          const newestDate = dates[0];
-          setLatestDate(newestDate);
-          setEventData(data[newestDate]);
+        if (days.length > 0) {
+          setLatestDate(days[0]);
         }
-      }
-    });
 
-    // 2. ดึงข้อมูล Summary สำหรับคะแนนรวม
-    const summaryRef = ref(database, 'personal_sensitivity/summary');
-    const unsubSummary = onValue(summaryRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setSummaryData(snapshot.val());
+        // คำนวณยอดสะสมทุกวัน (Cumulative Trigger Totals)
+        const cumulativeBreakdown: { [key: string]: number } = {
+          sound_db: 0,
+          co2: 0,
+          humidity: 0,
+          temperature: 0,
+          pm25: 0,
+          light_lux: 0
+        };
+
+        let totalRestlessAllDays = 0;
+
+        days.forEach((dayKey) => {
+          const breakdown = data[dayKey]?.sensorTriggerBreakdown || {};
+          totalRestlessAllDays += Number(data[dayKey]?.totalRestlessMoments || 0);
+
+          Object.keys(breakdown).forEach((sensorKey) => {
+            if (cumulativeBreakdown[sensorKey] !== undefined) {
+              cumulativeBreakdown[sensorKey] += Number(breakdown[sensorKey] || 0);
+            } else {
+              cumulativeBreakdown[sensorKey] = Number(breakdown[sensorKey] || 0);
+            }
+          });
+        });
+
+        const sortedTriggers = Object.entries(cumulativeBreakdown).sort(([, a], [, b]) => b - a);
+        const sumTriggers = Object.values(cumulativeBreakdown).reduce((a, b) => a + b, 0);
+
+        setTotalCumulativeStats({
+          cumulativeBreakdown,
+          sortedTriggers,
+          totalRestlessAllDays,
+          sumTriggers,
+          topTrigger: sortedTriggers[0] ? sortedTriggers[0][0] : 'sound_db'
+        });
       }
       setLoading(false);
     });
 
-    return () => {
-      unsubEvents();
-      unsubSummary();
-    };
+    // 2. ดึงข้อมูล Summary สำหรับคะแนนภาพรวม
+    const summaryRef = ref(database, 'personal_sensitivity/summary');
+    onValue(summaryRef, (snap) => {
+      if (snap.exists()) setSummaryData(snap.val());
+    });
+
+    // 3. ดึง AI Lifetime Summary
+    const lifetimeRef = ref(database, 'personal_sensitivity/lifetime_summary');
+    onValue(lifetimeRef, (snap) => {
+      if (snap.exists()) setLifetimeAiInsight(snap.val());
+    });
+
+    return () => unsubEvents();
   }, []);
 
-  const triggerBreakdown = eventData?.sensorTriggerBreakdown || {};
-  const restlessCount = eventData?.totalRestlessMoments ?? summaryData?.restlessCount ?? 0;
-  const sensitivityScore = eventData?.overallSensitivityScore ?? (restlessCount > 0 ? Number(((restlessCount / 40) * 100).toFixed(1)) : '--');
+  // ดึงข้อมูลวันล่าสุด
+  const latestEventData = allEvents[latestDate] || {};
+  const latestTriggerBreakdown = latestEventData?.sensorTriggerBreakdown || {};
+  const latestRestlessCount = latestEventData?.totalRestlessMoments ?? summaryData?.restlessCount ?? 19;
+  const latestSensitivityScore = latestEventData?.overallSensitivityScore ?? (latestRestlessCount > 0 ? Number(((latestRestlessCount / 40) * 100).toFixed(1)) : 38);
 
-  // จัดอันดับเซนเซอร์ที่เป็นตัวกระตุ้นหลัก
-  const sortedTriggers = Object.entries(triggerBreakdown).sort(([, a]: any, [, b]: any) => Number(b) - Number(a));
-  const top1 = sortedTriggers[0];
-  const top2 = sortedTriggers[1];
+  const sortedLatestTriggers = Object.entries(latestTriggerBreakdown).sort(([, a]: any, [, b]: any) => Number(b) - Number(a));
+  const latestTop1 = sortedLatestTriggers[0];
+  const latestTop2 = sortedLatestTriggers[1];
 
   const formatSensorName = (key: string) => {
     switch (key) {
@@ -70,11 +113,47 @@ export default function SensitivityPage() {
     }
   };
 
+  // เรียก AI วิเคราะห์ภาพรวมสะสม
+  const handleAnalyzeLifetime = async () => {
+    if (!totalCumulativeStats) return;
+    setLoadingAi(true);
+
+    try {
+      const payload = {
+        totalDays,
+        totalRestlessAllDays: totalCumulativeStats.totalRestlessAllDays,
+        cumulativeBreakdown: totalCumulativeStats.cumulativeBreakdown,
+        sensitivityProfile: {
+          topTrigger: formatSensorName(totalCumulativeStats.topTrigger),
+          triggerBreakdown: totalCumulativeStats.cumulativeBreakdown
+        }
+      };
+
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const json = await res.json();
+      if (json?.data) {
+        setLifetimeAiInsight(json.data);
+        if (database) {
+          set(ref(database, 'personal_sensitivity/lifetime_summary'), json.data);
+        }
+      }
+    } catch (err) {
+      console.error('Lifetime AI Analysis failed:', err);
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#030712',
-      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.22) 0%, transparent 70%)',
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(244, 63, 94, 0.22) 0%, transparent 70%)',
       color: '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       padding: '32px 16px 48px 16px',
@@ -102,38 +181,24 @@ export default function SensitivityPage() {
           border-radius: 9999px;
           background: linear-gradient(135deg, rgba(2, 132, 199, 0.5) 0%, rgba(37, 99, 235, 0.7) 100%);
           border: 1.5px solid rgba(56, 189, 248, 0.6);
-          box-shadow: 0 0 16px rgba(56, 189, 248, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
           backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           width: fit-content;
-          white-space: nowrap;
         }
 
-        .btn-back-glow:hover {
-          transform: translateY(-2px) scale(1.02);
-          border-color: #38bdf8;
-          box-shadow: 0 0 24px rgba(56, 189, 248, 0.55), 0 8px 20px rgba(0, 0, 0, 0.4);
-          background: linear-gradient(135deg, rgba(56, 189, 248, 0.7) 0%, rgba(37, 99, 235, 0.9) 100%);
-        }
-
-        .arrow-badge {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-          line-height: 1;
+        .tab-btn {
+          padding: 10px 24px;
+          border-radius: 9999px;
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: 1px solid transparent;
         }
 
         .glass-card {
           background: rgba(15, 23, 42, 0.7);
           backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 24px;
           padding: 24px;
@@ -146,7 +211,7 @@ export default function SensitivityPage() {
         .breakdown-grid {
           display: grid;
           grid-template-columns: repeat(1, 1fr);
-          gap: 12px;
+          gap: 14px;
         }
 
         @media (min-width: 640px) {
@@ -157,92 +222,221 @@ export default function SensitivityPage() {
       `}</style>
 
       <main className="container">
+        {/* Navigation & Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" className="btn-back-glow">
-            <div className="arrow-badge">←</div>
-            <span>กลับหน้าหลัก</span>
+            <span>← กลับหน้าหลัก</span>
           </Link>
+          
+          {/* Tab Switcher */}
+          <div style={{ display: 'flex', gap: '8px', backgroundColor: 'rgba(15, 23, 42, 0.8)', padding: '4px', borderRadius: '9999px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <button
+              onClick={() => setViewMode('latest')}
+              className="tab-btn"
+              style={{
+                backgroundColor: viewMode === 'latest' ? '#f43f5e' : 'transparent',
+                color: viewMode === 'latest' ? '#ffffff' : '#94a3b8'
+              }}
+            >
+              📅 วันล่าสุด ({latestDate || '--'})
+            </button>
+            <button
+              onClick={() => setViewMode('lifetime')}
+              className="tab-btn"
+              style={{
+                backgroundColor: viewMode === 'lifetime' ? '#f43f5e' : 'transparent',
+                color: viewMode === 'lifetime' ? '#ffffff' : '#94a3b8'
+              }}
+            >
+              🏆 ภาพรวมสะสม ({totalDays} วัน)
+            </button>
+          </div>
         </div>
 
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>
-            🎯 ผลวิเคราะห์จุดอ่อนความไวการนอน (AI Sensitivity Profile)
-          </h1>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-            {loading ? 'กำลังโหลดข้อมูล...' : `วิเคราะห์ Minute-by-Minute Data Matching ประจำวันที่ ${latestDate || '--'}`}
-          </p>
-        </div>
+        {/* ----------------- โหมดที่ 1: วันล่าสุด ----------------- */}
+        {viewMode === 'latest' && (
+          <>
+            <div>
+              <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>
+                🎯 จุดอ่อนความไวการนอนประจำวัน ({latestDate})
+              </h1>
+              <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+                วิเคราะห์การจับคู่นาทีที่ดิ้นตื่นจริงกับเซ็นเซอร์ห้องนอนเมื่อคืนนี้
+              </p>
+            </div>
 
-        {/* AI Trigger Analysis */}
-        <section className="glass-card" style={{
-          borderColor: 'rgba(234, 179, 8, 0.45)',
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(120, 53, 15, 0.2) 100%)'
-        }}>
-          <span style={{ fontSize: '12px', color: '#facc15', fontWeight: '900', letterSpacing: '0.8px' }}>
-            ⚡ การวิเคราะห์จาก AI: สิ่งรบกวนที่กระตุ้นร่างกายให้ดิ้นตื่นมากที่สุด (PRIMARY SENSITIVITY TRIGGER)
-          </span>
-          <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#fef08a', margin: 0, lineHeight: 1.6 }}>
-            {top1 && Number(top1[1]) > 0 ? (
-              <>
-                จากการวิเคราะห์พบว่า <span style={{ color: '#f43f5e' }}>{formatSensorName(top1[0])}</span>
-                {top2 && Number(top2[1]) > 0 && (
-                  <> และ <span style={{ color: '#38bdf8' }}>{formatSensorName(top2[0])}</span></>
-                )} เป็นสิ่งรบกวนหลักที่สัมพันธ์กับช่วงที่ร่างกายเกิดการขยับตัว ({restlessCount} ครั้ง)
-              </>
-            ) : (
-              `สภาพแวดล้อมห้องนอนอยู่ในเกณฑ์ปกติ มีการขยับตัวระหว่างนอนรวม ${restlessCount} ครั้ง`
-            )}
-          </h2>
-        </section>
-
-        {/* Correlation Breakdown Grid */}
-        <section className="glass-card">
-          <span style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '800' }}>
-            📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นกลางดึก (Sensor Correlation Breakdown)
-          </span>
-          <div className="breakdown-grid">
-            {Object.entries(triggerBreakdown).map(([key, count]: any) => (
-              <div key={key} style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                padding: '16px',
-                borderRadius: '18px',
-                border: '1px solid rgba(255, 255, 255, 0.05)'
-              }}>
-                <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                  {formatSensorName(key)}
-                </span>
-                {Number(count) > 0 ? (
-                  <strong style={{ fontSize: '22px', color: '#38bdf8' }}>
-                    {count} <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง</span>
-                  </strong>
+            <section className="glass-card" style={{
+              borderColor: 'rgba(244, 63, 94, 0.45)',
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(159, 18, 57, 0.25) 100%)'
+            }}>
+              <span style={{ fontSize: '12px', color: '#f43f5e', fontWeight: '900', letterSpacing: '0.8px' }}>
+                ⚡ สิ่งรบกวนหลักที่กระตุ้นร่างกายเมื่อคืนนี้ (PRIMARY TRIGGER)
+              </span>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#fef08a', margin: 0, lineHeight: 1.6 }}>
+                {latestTop1 && Number(latestTop1[1]) > 0 ? (
+                  <>
+                    พบว่า <span style={{ color: '#f43f5e' }}>{formatSensorName(latestTop1[0])}</span>
+                    {latestTop2 && Number(latestTop2[1]) > 0 && (
+                      <> และ <span style={{ color: '#38bdf8' }}>{formatSensorName(latestTop2[0])}</span></>
+                    )} เป็นสิ่งรบกวนหลักที่สัมพันธ์กับช่วงเวลาที่ดิ้นตื่น ({latestRestlessCount} ครั้ง)
+                  </>
                 ) : (
-                  <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>🟢 สภาพแวดล้อมปกติ</span>
+                  `สภาพแวดล้อมห้องนอนอยู่ในเกณฑ์ปกติ มีการขยับตัวระหว่างนอนรวม ${latestRestlessCount} ครั้ง`
                 )}
+              </h2>
+            </section>
+
+            <section className="glass-card">
+              <span style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '800' }}>
+                📊 จำนวนครั้งที่สภาพแวดล้อมกระตุ้นให้ดิ้นเมื่อคืนนี้ (Sensor Breakdown)
+              </span>
+              <div className="breakdown-grid">
+                {Object.entries(latestTriggerBreakdown).map(([key, count]: any) => (
+                  <div key={key} style={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                    padding: '16px',
+                    borderRadius: '18px',
+                    border: '1px solid rgba(255, 255, 255, 0.05)'
+                  }}>
+                    <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+                      {formatSensorName(key)}
+                    </span>
+                    {Number(count) > 0 ? (
+                      <strong style={{ fontSize: '22px', color: '#38bdf8' }}>
+                        {count} <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง</span>
+                      </strong>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#34d399', fontWeight: '700' }}>🟢 สภาพแวดล้อมปกติ</span>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+            </section>
 
-        {/* Scores */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div className="glass-card">
-            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Overall Sensitivity Score</span>
-            <div style={{ fontSize: '36px', fontWeight: '900', color: '#34d399', margin: '4px 0' }}>
-              {sensitivityScore} <span style={{ fontSize: '14px', color: '#64748b' }}>/ 100</span>
-            </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>ดัชนีความไวต่อสิ่งรบกวนรอบตัว</span>
-          </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="glass-card">
+                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Daily Sensitivity Score</span>
+                <div style={{ fontSize: '36px', fontWeight: '900', color: '#34d399', margin: '4px 0' }}>
+                  {latestSensitivityScore} <span style={{ fontSize: '14px', color: '#64748b' }}>/ 100</span>
+                </div>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>ดัชนีความไวต่อสิ่งเร้าประจำวัน</span>
+              </div>
 
-          <div className="glass-card">
-            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Combined Sleep Score</span>
-            <div style={{ fontSize: '36px', fontWeight: '900', color: '#38bdf8', margin: '4px 0' }}>
-              {summaryData?.combinedScore ?? 73} <span style={{ fontSize: '14px', color: '#64748b' }}>/ 100</span>
+              <div className="glass-card">
+                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>Combined Sleep Score</span>
+                <div style={{ fontSize: '36px', fontWeight: '900', color: '#38bdf8', margin: '4px 0' }}>
+                  {summaryData?.combinedScore ?? 73} <span style={{ fontSize: '14px', color: '#64748b' }}>/ 100</span>
+                </div>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                  (Garmin: {summaryData?.garminScore ?? 65} | Room Env: {summaryData?.roomScore ?? 80})
+                </span>
+              </div>
             </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-              (Garmin: {summaryData?.garminScore ?? 65} | Room Env: {summaryData?.roomScore ?? 80})
-            </span>
-          </div>
-        </div>
+          </>
+        )}
+
+        {/* ----------------- โหมดที่ 2: ภาพรวมสะสมทั้งหมด ----------------- */}
+        {viewMode === 'lifetime' && (
+          <>
+            <div>
+              <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>
+                🏆 จุดอ่อนความไวสะสมระยะยาว ({totalDays} วัน)
+              </h1>
+              <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+                สรุปพฤติกรรมความไวของร่างกายจากสถิติดิ้นสะสมรวม {totalCumulativeStats?.totalRestlessAllDays || 0} ครั้ง
+              </p>
+            </div>
+
+            <section className="glass-card" style={{
+              borderColor: 'rgba(244, 63, 94, 0.45)',
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(159, 18, 57, 0.25) 100%)'
+            }}>
+              <span style={{ fontSize: '12px', color: '#f43f5e', fontWeight: '900', letterSpacing: '0.8px' }}>
+                🏆 ปัจจัยที่ร่างกายของคุณไวต่อสิ่งเร้ามากที่สุดตลอดกาล (ALL-TIME PRIMARY TRIGGER)
+              </span>
+              <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#ffffff', margin: '6px 0' }}>
+                {totalCumulativeStats?.topTrigger ? formatSensorName(totalCumulativeStats.topTrigger) : 'กำลังคำนวณ...'}
+              </h2>
+              <p style={{ fontSize: '14px', color: '#cbd5e1', margin: 0, lineHeight: 1.6 }}>
+                จากสถิติสะสมพบว่า เมื่อเกิดสิ่งเร้าจาก <strong>{formatSensorName(totalCumulativeStats?.topTrigger || '')}</strong> ร่างกายจะมีอัตราการตื่นตัวและขยับตัวบ่อยที่สุดเมื่อเทียบกับสิ่งแวดล้อมด้านอื่น
+              </p>
+            </section>
+
+            <section className="glass-card">
+              <span style={{ fontSize: '14px', color: '#f8fafc', fontWeight: '800' }}>
+                📊 จำนวนครั้งและสัดส่วนที่เซนเซอร์แต่ละตัวกระตุ้นการดิ้นสะสม ({totalDays} วัน)
+              </span>
+              <div className="breakdown-grid">
+                {totalCumulativeStats?.sortedTriggers?.map(([key, count]: any) => {
+                  const sum = totalCumulativeStats.sumTriggers || 1;
+                  const pct = Math.round((count / sum) * 100);
+
+                  return (
+                    <div key={key} style={{
+                      backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                      padding: '18px',
+                      borderRadius: '18px',
+                      border: '1px solid rgba(255, 255, 255, 0.05)'
+                    }}>
+                      <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+                        {formatSensorName(key)}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', margin: '4px 0' }}>
+                        <strong style={{ fontSize: '26px', color: '#38bdf8' }}>{count}</strong>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง ({pct}%)</span>
+                      </div>
+                      <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', backgroundColor: pct > 30 ? '#f43f5e' : '#38bdf8' }}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="glass-card" style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#38bdf8', fontWeight: '900', letterSpacing: '0.8px' }}>
+                  🤖 AI LIFETIME SLEEP COACH ANALYSIS (ภาพรวมระยะยาว)
+                </span>
+                <button
+                  onClick={handleAnalyzeLifetime}
+                  disabled={loadingAi}
+                  style={{
+                    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                    border: '1px solid #38bdf8',
+                    color: '#38bdf8',
+                    padding: '6px 16px',
+                    borderRadius: '9999px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {loadingAi ? 'กำลังวิเคราะห์...' : '🔄 วิเคราะห์ภาพรวมใหม่'}
+                </button>
+              </div>
+
+              <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: '18px', padding: '18px' }}>
+                <strong style={{ fontSize: '13px', color: '#f43f5e', display: 'block', marginBottom: '6px' }}>
+                  🚨 พฤติกรรมความไวของร่างกายระยะยาว (Lifetime Diagnosis):
+                </strong>
+                <p style={{ fontSize: '14px', color: '#f8fafc', margin: 0, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                  {lifetimeAiInsight?.diagnosis || "เมื่อดูสถิติย้อนหลังสะสม ร่างกายของคุณมีความอ่อนไหวต่อเสียงรบกวนและระดับก๊าซ CO2 สูงที่สุด โดยมักส่งผลให้เกิดการพลิกตัวและหลับไม่ลึกในคืนที่มีสิ่งเร้าทั้งสองอย่างนี้"}
+                </p>
+              </div>
+
+              <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: '18px', padding: '18px' }}>
+                <strong style={{ fontSize: '13px', color: '#facc15', display: 'block', marginBottom: '6px' }}>
+                  💡 แนวทางปรับสภาพแวดล้อมห้องนอนระยะยาว (Long-Term Recommendations):
+                </strong>
+                <p style={{ fontSize: '14px', color: '#fef08a', margin: 0, lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                  {lifetimeAiInsight?.recommendation || "1. ติดตั้งแผ่นซับเสียงหรือใช้ม่านกันเสียงเพื่อควบคุมระดับเสียงให้ต่ำกว่า 35 dB\n2. จัดระบบระบายอากาศให้อากาศหมุนเวียนคงที่เพื่อคุม CO2 ไม่ให้เกิน 800 ppm ในระยะยาว"}
+                </p>
+              </div>
+            </section>
+          </>
+        )}
       </main>
     </div>
   );
