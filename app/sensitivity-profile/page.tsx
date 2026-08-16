@@ -81,8 +81,8 @@ export default function SensitivityProfilePage() {
     return () => unsubHistory();
   }, []);
 
-  // ฟังก์ชันคำนวณหาปัจจัยรบกวนหลักอันดับ 1 ของวันนั้นๆ จาก Breakdown จริง
-  const getPrimaryTrigger = (date: string, fallbackTrigger?: string) => {
+  // ฟังก์ชันวิเคราะห์จุดอ่อนความไวของผู้ใช้ในวันนั้นๆ
+  const getUserSensitivity = (date: string, fallbackTrigger?: string) => {
     const dayEvent = eventsMap[date];
     const breakdown = dayEvent?.sensorTriggerBreakdown;
 
@@ -92,28 +92,28 @@ export default function SensitivityProfilePage() {
 
       if (top && Number(top[1]) > 0) {
         switch (top[0]) {
-          case 'sound_db': case 'sound': case 'noise': return '🔊 เสียงรบกวน';
-          case 'co2': return '🫁 CO2 สูง';
-          case 'humidity': case 'hum': return '💧 ความชื้นสัมพัทธ์';
-          case 'temperature': case 'temp': return '🌡️ อุณหภูมิห้อง';
-          case 'pm25': return '🌫️ ฝุ่น PM2.5';
-          case 'light_lux': case 'light': return '💡 แสงสว่าง';
-          default: return `⚠️ ${top[0]}`;
+          case 'sound_db': case 'sound': case 'noise': return '🔊 ไวต่อเสียงรบกวน';
+          case 'co2': return '🫁 ไวต่อก๊าซ CO2';
+          case 'humidity': case 'hum': return '💧 ไวต่อความชื้น';
+          case 'temperature': case 'temp': return '🌡️ ไวต่ออุณหภูมิห้อง';
+          case 'pm25': return '🌫️ ไวต่อฝุ่น PM2.5';
+          case 'light_lux': case 'light': return '💡 ไวต่อแสงสว่าง';
+          default: return `⚠️ ไวต่อ${top[0]}`;
         }
       }
     }
 
     if (fallbackTrigger) {
       switch (fallbackTrigger.toLowerCase()) {
-        case 'sound_db': case 'sound': case 'noise': return '🔊 เสียงรบกวน';
-        case 'co2': return '🫁 CO2 สูง';
-        case 'humidity': case 'hum': return '💧 ความชื้น';
-        case 'temperature': case 'temp': return '🌡️ อุณหภูมิ';
-        default: return fallbackTrigger;
+        case 'sound_db': case 'sound': case 'noise': return '🔊 ไวต่อเสียงรบกวน';
+        case 'co2': return '🫁 ไวต่อก๊าซ CO2';
+        case 'humidity': case 'hum': return '💧 ไวต่อความชื้น';
+        case 'temperature': case 'temp': return '🌡️ ไวต่ออุณหภูมิห้อง';
+        default: return `⚠️ ไวต่อ${fallbackTrigger}`;
       }
     }
 
-    return '🟢 ปกติ';
+    return '🟢 ปกติ (ไม่พบสิ่งเร้า)';
   };
 
   return (
@@ -218,7 +218,7 @@ export default function SensitivityProfilePage() {
       `}</style>
 
       <main className="profile-container">
-        {/* Navigation Header */}
+        {/* Header Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" className="btn-back-glow">
             <div className="arrow-badge">←</div>
@@ -273,7 +273,7 @@ export default function SensitivityProfilePage() {
                   <th>Garmin</th>
                   <th>Room Env</th>
                   <th>Combined</th>
-                  <th>ปัจจัยรบกวนหลัก (Primary Trigger)</th>
+                  <th>จุดอ่อนความไวของผู้ใช้ (Daily Sensitivity)</th>
                   <th>อัตราการดิ้น</th>
                 </tr>
               </thead>
@@ -287,7 +287,7 @@ export default function SensitivityProfilePage() {
                         : (log.garminScore ?? '--')
                     );
 
-                    const triggerLabel = getPrimaryTrigger(log.date, log.primaryTrigger || log.primarySensorTrigger);
+                    const sensitivityLabel = getUserSensitivity(log.date, log.primaryTrigger || log.primarySensorTrigger);
 
                     return (
                       <tr key={index}>
@@ -297,8 +297,8 @@ export default function SensitivityProfilePage() {
                           {log.roomScore ?? '--'}
                         </td>
                         <td style={{ fontWeight: '800', color: '#ffffff' }}>{combinedDisplay}</td>
-                        <td style={{ fontWeight: '600', color: '#fef08a' }}>
-                          {triggerLabel}
+                        <td style={{ fontWeight: '700', color: '#fef08a' }}>
+                          {sensitivityLabel}
                         </td>
                         <td style={{ fontWeight: '600' }}>
                           {restlessDisplay !== '--' ? `${restlessDisplay} ครั้ง` : '--'}
