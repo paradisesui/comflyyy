@@ -1,0 +1,34 @@
+name: Auto Garmin Wake-up Sync
+
+on:
+  schedule:
+    # รันทุก 20 นาที ในช่วงเช้า 06:00 - 11:00 น. ตามเวลาไทย (UTC 23:00 - 04:00)
+    - cron: '*/20 23,0,1,2,3,4 * * *'
+    # รันทุก 2 ชั่วโมง นอกช่วงเช้า (เผื่อตื่นสาย)
+    - cron: '0 5,7,9,11,13,15 * * *'
+  workflow_dispatch: # ปุ่มกดสั่งรันเองจากหน้า GitHub ได้ตลอดเวลา
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install garminconnect requests python-dotenv
+
+      - name: Run Garmin Sync & Sensor Processor
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          FIREBASE_URL: ${{ secrets.FIREBASE_URL }}
+        run: |
+          python garmin_to_firebase.py
+          python process_all_sensors_dynamic.py
