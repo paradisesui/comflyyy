@@ -9,7 +9,6 @@ export default function SensitivityPage() {
   const [summaryData, setSummaryData] = useState<any>(null);
   const [eventData, setEventData] = useState<any>(null);
   const [latestDate, setLatestDate] = useState<string>('');
-  const [historyItem, setHistoryItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,52 +17,46 @@ export default function SensitivityPage() {
       return;
     }
 
-    // 1. ดึงข้อมูล Summary และหาวันล่าสุดที่แท้จริง
-    const summaryRef = ref(database, 'personal_sensitivity/summary');
-    onValue(summaryRef, (snapshot) => {
+    // 1. ดึงข้อมูล Event จาก Node ที่เพิ่งประมวลผลมาหาวันล่าสุด
+    const eventsRef = ref(database, 'personal_sensitivity/all_sensors_events');
+    const unsubEvents = onValue(eventsRef, (snapshot) => {
       if (snapshot.exists()) {
-        const val = snapshot.val();
-        setSummaryData(val);
-        const activeDate = val.date || '2026-08-15';
-        setLatestDate(activeDate);
+        const data = snapshot.val();
+        const dates = Object.keys(data).sort(
+          (a, b) => new Date(b).getTime() - new Date(a).getTime()
+        );
 
-        // 2. ดึง Event Data เฉพาะของวันล่าสุดที่ตรงกัน
-        const eventRef = ref(database, `personal_sensitivity/all_sensors_events/${activeDate}`);
-        onValue(eventRef, (eventSnap) => {
-          if (eventSnap.exists()) {
-            setEventData(eventSnap.val());
-          } else {
-            setEventData(null);
-          }
-        }, { onlyOnce: true });
+        if (dates.length > 0) {
+          const newestDate = dates[0];
+          setLatestDate(newestDate);
+          setEventData(data[newestDate]);
+        }
+      }
+    });
 
-        // 3. ดึง History Data ของวันล่าสุดเพื่ออ่านค่า restlessCount จริง
-        const histItemRef = ref(database, `personal_sensitivity/history/${activeDate}`);
-        onValue(histItemRef, (histSnap) => {
-          if (histSnap.exists()) {
-            setHistoryItem(histSnap.val());
-          }
-        }, { onlyOnce: true });
+    // 2. ดึงข้อมูล Summary สำหรับคะแนนรวม
+    const summaryRef = ref(database, 'personal_sensitivity/summary');
+    const unsubSummary = onValue(summaryRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSummaryData(snapshot.val());
       }
       setLoading(false);
     });
+
+    return () => {
+      unsubEvents();
+      unsubSummary();
+    };
   }, []);
 
-  // ดึงค่า restless จริงจาก history หรือ summary
-  const restlessCount = historyItem?.restlessCount ?? historyItem?.restlessMomentsCount ?? summaryData?.restlessCount ?? 19;
-  
-  // ปัจจัยรบกวนของวันล่าสุด
-  const triggerBreakdown = eventData?.sensorTriggerBreakdown || {
-    co2: restlessCount > 0 ? Math.round(restlessCount * 0.6) : 0,
-    temperature: 0,
-    sound_db: 0,
-    humidity: 0,
-    pm25: 0,
-    light_lux: 0
-  };
+  const triggerBreakdown = eventData?.sensorTriggerBreakdown || {};
+  const restlessCount = eventData?.totalRestlessMoments ?? summaryData?.restlessCount ?? 0;
+  const sensitivityScore = eventData?.overallSensitivityScore ?? (restlessCount > 0 ? Number(((restlessCount / 40) * 100).toFixed(1)) : '--');
 
-  // Sensitivity Score คำนวณจากอัตราการดิ้นจริง
-  const sensitivityScore = Number(((restlessCount / 50) * 100).toFixed(1));
+  // จัดอันดับเซนเซอร์ที่เป็นตัวกระตุ้นหลัก
+  const sortedTriggers = Object.entries(triggerBreakdown).sort(([, a]: any, [, b]: any) => Number(b) - Number(a));
+  const top1 = sortedTriggers[0];
+  const top2 = sortedTriggers[1];
 
   const formatSensorName = (key: string) => {
     switch (key) {
@@ -164,7 +157,6 @@ export default function SensitivityPage() {
       `}</style>
 
       <main className="container">
-        {/* Navigation Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/" className="btn-back-glow">
             <div className="arrow-badge">←</div>
@@ -177,7 +169,7 @@ export default function SensitivityPage() {
             🎯 ผลวิเคราะห์จุดอ่อนความไวการนอน (AI Sensitivity Profile)
           </h1>
           <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-            {loading ? 'กำลังประมวลผลข้อมูล...' : `วิเคราะห์ Minute-by-Minute Data Matching ประจำวันที่ ${latestDate}`}
+            {loading ? 'กำลังโหลดข้อมูล...' : `วิเคราะห์ Minute-by-Minute Data Matching ประจำวันที่ ${latestDate || '--'}`}
           </p>
         </div>
 
@@ -190,7 +182,16 @@ export default function SensitivityPage() {
             ⚡ การวิเคราะห์จาก AI: สิ่งรบกวนที่กระตุ้นร่างกายให้ดิ้นตื่นมากที่สุด (PRIMARY SENSITIVITY TRIGGER)
           </span>
           <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#fef08a', margin: 0, lineHeight: 1.6 }}>
-            จากการวิเคราะห์พบว่า <span style={{ color: '#f43f5e' }}>ก๊าซ CO2</span> เป็นสิ่งรบกวนหลักที่สัมพันธ์กับช่วงที่ร่างกายเกิดการขยับตัว ({restlessCount} ครั้ง)
+            {top1 && Number(top1[1]) > 0 ? (
+              <>
+                จากการวิเคราะห์พบว่า <span style={{ color: '#f43f5e' }}>{formatSensorName(top1[0])}</span>
+                {top2 && Number(top2[1]) > 0 && (
+                  <> และ <span style={{ color: '#38bdf8' }}>{formatSensorName(top2[0])}</span></>
+                )} เป็นสิ่งรบกวนหลักที่สัมพันธ์กับช่วงที่ร่างกายเกิดการขยับตัว ({restlessCount} ครั้ง)
+              </>
+            ) : (
+              `สภาพแวดล้อมห้องนอนอยู่ในเกณฑ์ปกติ มีการขยับตัวระหว่างนอนรวม ${restlessCount} ครั้ง`
+            )}
           </h2>
         </section>
 
@@ -210,7 +211,7 @@ export default function SensitivityPage() {
                 <span style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
                   {formatSensorName(key)}
                 </span>
-                {count > 0 ? (
+                {Number(count) > 0 ? (
                   <strong style={{ fontSize: '22px', color: '#38bdf8' }}>
                     {count} <span style={{ fontSize: '12px', color: '#64748b' }}>ครั้ง</span>
                   </strong>
@@ -229,7 +230,7 @@ export default function SensitivityPage() {
             <div style={{ fontSize: '36px', fontWeight: '900', color: '#34d399', margin: '4px 0' }}>
               {sensitivityScore} <span style={{ fontSize: '14px', color: '#64748b' }}>/ 100</span>
             </div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>ดัชนีความไวต่อสิ่งรบกวน</span>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>ดัชนีความไวต่อสิ่งรบกวนรอบตัว</span>
           </div>
 
           <div className="glass-card">
