@@ -81,24 +81,38 @@ export default function SensitivityProfilePage() {
     return () => unsubHistory();
   }, []);
 
-  // ฟังก์ชันวิเคราะห์จุดอ่อนความไวของผู้ใช้ในวันนั้นๆ
+  // ฟังก์ชันวิเคราะห์จุดอ่อนความไวของผู้ใช้ในวันนั้นๆ (รองรับหลายปัจจัยพร้อมกัน)
   const getUserSensitivity = (date: string, fallbackTrigger?: string) => {
     const dayEvent = eventsMap[date];
     const breakdown = dayEvent?.sensorTriggerBreakdown;
 
     if (breakdown && Object.keys(breakdown).length > 0) {
       const sorted = Object.entries(breakdown).sort(([, a]: any, [, b]: any) => Number(b) - Number(a));
-      const top = sorted[0];
+      const maxVal = Number(sorted[0]?.[1] || 0);
 
-      if (top && Number(top[1]) > 0) {
-        switch (top[0]) {
-          case 'sound_db': case 'sound': case 'noise': return '🔊 ไวต่อเสียงรบกวน';
-          case 'co2': return '🫁 ไวต่อก๊าซ CO2';
-          case 'humidity': case 'hum': return '💧 ไวต่อความชื้น';
-          case 'temperature': case 'temp': return '🌡️ ไวต่ออุณหภูมิห้อง';
-          case 'pm25': return '🌫️ ไวต่อฝุ่น PM2.5';
-          case 'light_lux': case 'light': return '💡 ไวต่อแสงสว่าง';
-          default: return `⚠️ ไวต่อ${top[0]}`;
+      if (maxVal > 0) {
+        const topTriggers = sorted.filter(([, val]: any) => Number(val) === maxVal);
+
+        const formatName = (key: string) => {
+          switch (key) {
+            case 'sound_db': case 'sound': case 'noise': return 'เสียงรบกวน';
+            case 'co2': return 'ก๊าซ CO2';
+            case 'humidity': case 'hum': return 'ความชื้น';
+            case 'temperature': case 'temp': return 'อุณหภูมิห้อง';
+            case 'pm25': return 'ฝุ่น PM2.5';
+            case 'light_lux': case 'light': return 'แสงสว่าง';
+            default: return key;
+          }
+        };
+
+        if (topTriggers.length === 1) {
+          const key = topTriggers[0][0];
+          const icon = key.includes('sound') ? '🔊' : key === 'co2' ? '🫁' : key.includes('hum') ? '💧' : '🌡️';
+          return `${icon} ไวต่อ${formatName(key)}`;
+        } else if (topTriggers.length === 2) {
+          return `⚠️ ไวต่อ${formatName(topTriggers[0][0])} และ ${formatName(topTriggers[1][0])}`;
+        } else {
+          return `⚠️ ไวต่อหลายปัจจัย (${topTriggers.map(([k]) => formatName(k)).join(', ')})`;
         }
       }
     }
