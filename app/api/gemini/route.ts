@@ -10,6 +10,9 @@ const CANDIDATE_MODELS = [
 ];
 
 export async function POST(request: Request) {
+  let restlessCount = 19;
+  let garminScore = 65;
+
   try {
     const body = await request.json();
 
@@ -17,41 +20,57 @@ export async function POST(request: Request) {
     const garminData = body.garminData || {};
     const sensitivityProfile = body.sensitivityProfile || {};
 
-    const restlessCount = body.restlessCount ?? garminData?.restlessMomentsCount ?? 19;
-    const garminScore = garminData?.garminSleepScore ?? 65;
+    restlessCount = body.restlessCount ?? garminData?.restlessMomentsCount ?? 19;
+    garminScore = garminData?.garminSleepScore ?? 65;
     const sleepStress = garminData?.avgSleepStress ?? 15;
+    const totalSecs = Number(garminData?.durationInSeconds || 19080);
+    const totalHrs = Math.floor(totalSecs / 3600);
+    const totalMins = Math.floor((totalSecs % 3600) / 60);
     const deepSleepMins = Math.floor(Number(garminData?.deepSleepDurationInSeconds || 0) / 60);
     const remSleepMins = Math.floor(Number(garminData?.remSleepDurationInSeconds || 0) / 60);
+    const lightSleepMins = Math.floor(Number(garminData?.lightSleepDurationInSeconds || 0) / 60);
+
+    const breakdown = sensitivityProfile?.triggerBreakdown || {
+      sound_db: 7,
+      humidity: 6,
+      co2: 4,
+      temperature: 2,
+      pm25: 0,
+      light_lux: 0
+    };
 
     const prompt = `
-      คุณเป็น AI ที่ปรึกษาด้านการนอนหลับ (Sleep Coach) ประจำแอป Comfy Sleep
-      หน้าที่ของคุณคือสรุปผลคุณภาพการนอนและสภาพแวดล้อมให้ผู้ใช้เข้าใจง่ายที่สุด "ใช้ภาษาพูดที่เป็นกันเอง หลีกเลี่ยงศัพท์แพทย์ยากๆ"
+      คุณเป็น AI ผู้เชี่ยวชาญด้านเวชศาสตร์การนอนหลับและการควบคุมสภาพแวดล้อมห้องนอน
+      หน้าที่ของคุณคือวิเคราะห์ "สาเหตุที่แท้จริงของการนอนหลับไม่สนิทอย่างละเอียดเจาะลึก" โดยต้องอ้างอิงตัวเลขจริงทั้งหมดที่มี
 
-      [ข้อมูลสภาพแวดล้อมห้องนอน]
-      - ก๊าซ CO2: ${sensorAverages?.co2 ?? 850} ppm (ปกติไม่ควรเกิน 800-1,000 ppm)
-      - อุณหภูมิ: ${sensorAverages?.temp ?? sensorAverages?.temperature ?? 25.4} °C (เกณฑ์สบาย: 23-25 °C)
-      - ความชื้น: ${sensorAverages?.hum ?? sensorAverages?.humidity ?? 58} % (เกณฑ์พอดี: 50-60 %)
-      - ระดับเสียงรบกวน: ${sensorAverages?.sound ?? sensorAverages?.noise ?? 38} dB (เงียบสงบ: ต่ำกว่า 40 dB)
+      [1. ข้อมูลสภาพแวดล้อมห้องนอนจริง (Room Sensors)]
+      - ก๊าซ CO2: ${sensorAverages?.co2 ?? 850} ppm (ปกติควร < 800 ppm)
+      - เสียงรบกวนเฉลี่ย: ${sensorAverages?.sound ?? sensorAverages?.noise ?? 38} dB (เงียบสงบ: < 40 dB)
+      - ความชื้นสัมพัทธ์: ${sensorAverages?.hum ?? sensorAverages?.humidity ?? 58} % (เกณฑ์: 50-60%)
+      - อุณหภูมิห้อง: ${sensorAverages?.temp ?? sensorAverages?.temperature ?? 25.4} °C (เกณฑ์: 23-25°C)
       - ฝุ่น PM2.5: ${sensorAverages?.pm25 ?? 0} µg/m³
       - แสงสว่าง: ${sensorAverages?.light ?? sensorAverages?.light_lux ?? 0} Lux
 
-      [ข้อมูลการนอนจาก Garmin]
-      - คะแนนการนอน: ${garminScore} / 100
-      - จำนวนครั้งที่ขยับตัว/ดิ้น: ${restlessCount} ครั้ง
-      - ความเครียดขณะหลับ: ${sleepStress} / 100
-      - หลับสนิท: ${deepSleepMins} นาที | หลับฝัน: ${remSleepMins} นาที
+      [2. ข้อมูลชีวมาตรจาก Garmin (Garmin Biometrics)]
+      - คะแนนคุณภาพการนอน: ${garminScore} / 100
+      - เวลานอนรวม: ${totalHrs} ชั่วโมง ${totalMins} นาที
+      - สเตจการนอน: หลับสนิท (Deep) ${deepSleepMins} นาที | หลับฝัน (REM) ${remSleepMins} นาที | หลับตื้น (Light) ${lightSleepMins} นาที
+      - ความเครียดเฉลี่ยขณะหลับ: ${sleepStress} / 100
+      - จำนวนครั้งที่ขยับตัว/ดิ้นรวม: ${restlessCount} ครั้ง
 
-      [จุดอ่อนความไวส่วนบุคคล]
-      - สิ่งเร้าที่กระตุ้นให้ดิ้น: ${JSON.stringify(sensitivityProfile?.triggerBreakdown || {})}
-      - ดัชนีความไวต่อสิ่งเร้า: ${sensitivityProfile?.sensitivityScore ?? 38} / 100
+      [3. การจับคู่อีเวนต์สิ่งเร้ากับช่วงเวลาที่ดิ้นจริง (Data Matching Breakdown)]
+      - ดิ้นเพราะเสียงรบกวน: ${breakdown.sound_db ?? 0} ครั้ง
+      - ดิ้นเพราะความชื้นไม่สบายตัว: ${breakdown.humidity ?? 0} ครั้ง
+      - ดิ้นเพราะ CO2 สะสม: ${breakdown.co2 ?? 0} ครั้ง
+      - ดิ้นเพราะอุณหภูมิห้อง: ${breakdown.temperature ?? 0} ครั้ง
 
       คำสั่ง:
-      1. "diagnosis": อธิบายสาเหตุแบบภาษาคนเข้าใจง่าย บอกตรงๆ ว่าเมื่อคืนมีค่าอะไรในห้องที่เกินเกณฑ์ และมันทำให้ร่างกายเรารู้สึกอึดอัด ร้อน หรือตื่นตัวจนต้องขยับตัวบ่อย (${restlessCount} ครั้ง) อย่างไร
-      2. "recommendation": แนะนำวิธีแก้ง่ายๆ ที่ทำได้ทันทีก่อนนอนคืนนี้ แบ่งเป็นข้อ 1, 2, 3 ชัดเจน (เช่น การแง้มประตู ปรับแอร์ หรือจัดการเสียง)
+      1. "diagnosis": อธิบายสาเหตุของปัญหาอย่างละเอียดเป็นข้อๆ ชัดเจน โดยระบุตัวเลขจริง (เช่น เสียงกระตุ้นกี่ครั้ง, CO2 กี่ ppm, หลับลึกเหลือกี่นาที) และอธิบายว่าส่งผลต่อร่างกายอย่างไร
+      2. "recommendation": ให้แนวทางแก้ไขที่ตรงจุด ระบุตัวเลขการตั้งค่าที่ทำตามได้ทันที
 
-      ตอบเป็น JSON เท่านั้น (ห้ามมี Markdown หรือข้อความนอก JSON):
+      ตอบกลับเป็น JSON เท่านั้น:
       {
-        "diagnosis": "...",
+        "diagnosis": "1. ...\\n2. ...\\n3. ...",
         "recommendation": "1. ...\\n2. ...\\n3. ..."
       }
     `;
@@ -86,8 +105,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status: 'fallback',
       data: {
-        diagnosis: `เมื่อคืนห้องนอนมีอากาศถ่ายเทน้อยและมีเสียงรบกวนเป็นพักๆ ทำให้ก๊าซ CO2 สะสม ร่างกายจึงรู้สึกอึดอัดและไวต่อเสียงรอบข้าง ส่งผลให้คุณเผลอพลิกตัวบ่อยถึง 19 ครั้ง และหลับได้ไม่ลึกเท่าที่ควร ทำให้ได้คะแนน 65 คะแนน`,
-        recommendation: `1. แง้มประตูห้องหรือเปิดพัดลมระบายอากาศทิ้งไว้ก่อนนอน 15-30 นาที เพื่อให้อากาศถ่ายเทสะดวก\n2. ตั้งอุณหภูมิแอร์ไว้ที่ 24-25°C กำลังพอดี ไม่เย็นหรืออบอ้าวเกินไป\n3. ปิดหรือย้ายสิ่งของที่อาจส่งเสียงดังหรือมีไฟกะพริบรบกวนตอนดึก`
+        diagnosis: `1. เสียงรบกวนไม่สม่ำเสมอ เป็นตัวกระตุ้นหลักทำให้ดิ้นตื่นถึง 7 ครั้ง จากทั้งหมด ${restlessCount} ครั้ง ส่งผลให้สมองตื่นตัวเป็นระยะ\n2. ความชื้นสัมพัทธ์และความร้อน ทำให้ร่างกายระบายความร้อนได้ยาก กระตุ้นการพลิกตัวอีก 6 ครั้ง\n3. ก๊าซ CO2 สะสมในห้อง ส่งผลให้อัตราการหายใจติดขัด กระตุ้นการดิ้น 4 ครั้ง และทำให้ช่วงหลับสนิท (Deep Sleep) ขาดความต่อเนื่องจนคะแนนลดลงเหลือ ${garminScore} คะแนน`,
+        recommendation: `1. ปิดหรือย้ายอุปกรณ์ที่ทำให้เกิดเสียงแหลมกลางดึก และแง้มประตูห้อง 1-2 นิ้วเพื่อให้อากาศถ่ายเทสะดวก\n2. ตั้งอุณหภูมิเครื่องปรับอากาศที่ 24-25°C เพื่อคุมระดับความชื้นและอุณหภูมิให้อยู่ในเกณฑ์สบาย\n3. เปิดพัดลมดูดอากาศทิ้งไว้ 15 นาทีก่อนเข้านอนเพื่อลดการสะสมของก๊าซ CO2 ให้ต่ำกว่า 800 ppm`
       }
     });
   }
