@@ -7,6 +7,7 @@ import { ref, onValue } from 'firebase/database';
 
 export default function SensitivityProfilePage() {
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+  const [eventsMap, setEventsMap] = useState<{ [key: string]: any }>({});
   const [averages, setAverages] = useState({ garmin: 0, room: 0, combined: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -16,18 +17,25 @@ export default function SensitivityProfilePage() {
       return;
     }
 
+    // 1. ดึง Events Breakdown ของทุกวัน
+    const eventsRef = ref(database, 'personal_sensitivity/all_sensors_events');
+    onValue(eventsRef, (eventSnap) => {
+      if (eventSnap.exists()) {
+        setEventsMap(eventSnap.val());
+      }
+    });
+
+    // 2. ดึง History Data
     const historyRef = ref(database, 'personal_sensitivity/history');
     const unsubHistory = onValue(historyRef, (snapshot) => {
       if (snapshot && snapshot.exists()) {
         const data = snapshot.val();
-        
-        // กรองข้อมูลเฉพาะแถวที่มีวันที่ และตัดแถวซ้ำซ้อน
+
         const rawList = Object.keys(data).map((key) => ({
           date: data[key]?.date || key,
           ...data[key]
         }));
 
-        // กรองเอาเฉพาะแถวที่มีคะแนนจริง และกำจัดวันซ้ำ (เลือกอันที่มี roomScore มากที่สุด)
         const uniqueMap = new Map<string, any>();
         rawList.forEach((item) => {
           if (!item.date) return;
@@ -42,17 +50,16 @@ export default function SensitivityProfilePage() {
 
         setHistoryLogs(list);
 
-        // คำนวณค่าเฉลี่ยสะสมแบบ Dynamic ตามข้อมูลที่มีจริง
         if (list.length > 0) {
           const garminItems = list.filter((i) => i.garminScore != null);
           const roomItems = list.filter((i) => i.roomScore != null);
 
-          const avgG = garminItems.length > 0 
-            ? Math.round(garminItems.reduce((sum, item) => sum + Number(item.garminScore), 0) / garminItems.length) 
+          const avgG = garminItems.length > 0
+            ? Math.round(garminItems.reduce((sum, item) => sum + Number(item.garminScore), 0) / garminItems.length)
             : 0;
 
-          const avgR = roomItems.length > 0 
-            ? Math.round(roomItems.reduce((sum, item) => sum + Number(item.roomScore), 0) / roomItems.length) 
+          const avgR = roomItems.length > 0
+            ? Math.round(roomItems.reduce((sum, item) => sum + Number(item.roomScore), 0) / roomItems.length)
             : avgG;
 
           const avgC = Math.round(
@@ -74,17 +81,39 @@ export default function SensitivityProfilePage() {
     return () => unsubHistory();
   }, []);
 
-  const formatTriggerName = (triggerKey?: string) => {
-    if (!triggerKey) return '🟢 ปกติ';
-    switch (triggerKey.toLowerCase()) {
-      case 'co2': return '🫁 CO2 สูง';
-      case 'temperature': case 'temp': return '🌡️ อุณหภูมิห้อง';
-      case 'sound_db': case 'sound': case 'noise': return '🔊 เสียงรบกวน';
-      case 'humidity': case 'hum': return '💧 ความชื้นสัมพัทธ์';
-      case 'pm25': return '🌫️ ฝุ่น PM2.5';
-      case 'light_lux': case 'light': return '💡 แสงสว่าง';
-      default: return `⚠️ ${triggerKey}`;
+  // ฟังก์ชันคำนวณหาปัจจัยรบกวนหลักอันดับ 1 ของวันนั้นๆ จาก Breakdown จริง
+  const getPrimaryTrigger = (date: string, fallbackTrigger?: string) => {
+    const dayEvent = eventsMap[date];
+    const breakdown = dayEvent?.sensorTriggerBreakdown;
+
+    if (breakdown && Object.keys(breakdown).length > 0) {
+      const sorted = Object.entries(breakdown).sort(([, a]: any, [, b]: any) => Number(b) - Number(a));
+      const top = sorted[0];
+
+      if (top && Number(top[1]) > 0) {
+        switch (top[0]) {
+          case 'sound_db': case 'sound': case 'noise': return '🔊 เสียงรบกวน';
+          case 'co2': return '🫁 CO2 สูง';
+          case 'humidity': case 'hum': return '💧 ความชื้นสัมพัทธ์';
+          case 'temperature': case 'temp': return '🌡️ อุณหภูมิห้อง';
+          case 'pm25': return '🌫️ ฝุ่น PM2.5';
+          case 'light_lux': case 'light': return '💡 แสงสว่าง';
+          default: return `⚠️ ${top[0]}`;
+        }
+      }
     }
+
+    if (fallbackTrigger) {
+      switch (fallbackTrigger.toLowerCase()) {
+        case 'sound_db': case 'sound': case 'noise': return '🔊 เสียงรบกวน';
+        case 'co2': return '🫁 CO2 สูง';
+        case 'humidity': case 'hum': return '💧 ความชื้น';
+        case 'temperature': case 'temp': return '🌡️ อุณหภูมิ';
+        default: return fallbackTrigger;
+      }
+    }
+
+    return '🟢 ปกติ';
   };
 
   return (
@@ -258,6 +287,8 @@ export default function SensitivityProfilePage() {
                         : (log.garminScore ?? '--')
                     );
 
+                    const triggerLabel = getPrimaryTrigger(log.date, log.primaryTrigger || log.primarySensorTrigger);
+
                     return (
                       <tr key={index}>
                         <td style={{ fontWeight: '700', color: '#38bdf8' }}>{log.date}</td>
@@ -267,7 +298,7 @@ export default function SensitivityProfilePage() {
                         </td>
                         <td style={{ fontWeight: '800', color: '#ffffff' }}>{combinedDisplay}</td>
                         <td style={{ fontWeight: '600', color: '#fef08a' }}>
-                          {formatTriggerName(log.primaryTrigger || log.primarySensorTrigger)}
+                          {triggerLabel}
                         </td>
                         <td style={{ fontWeight: '600' }}>
                           {restlessDisplay !== '--' ? `${restlessDisplay} ครั้ง` : '--'}
