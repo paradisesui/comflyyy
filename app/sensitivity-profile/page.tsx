@@ -8,8 +8,39 @@ import { ref, onValue } from 'firebase/database';
 export default function SensitivityProfilePage() {
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [eventsMap, setEventsMap] = useState<{ [key: string]: any }>({});
+  const [roomEnvMap, setRoomEnvMap] = useState<{ [key: string]: any }>({});
   const [averages, setAverages] = useState({ garmin: 0, room: 0, combined: 0 });
   const [loading, setLoading] = useState(true);
+
+  // ฟังก์ชันคำนวณ Room Score แบบ Dynamic จากค่าเซนเซอร์จริง
+  const calculateDynamicRoomScore = (data: any) => {
+    if (!data) return null;
+    let score = 100;
+
+    // 1. CO2
+    const co2 = Number(data.co2 || 0);
+    if (co2 > 1000) score -= Math.min(30, Math.round((co2 - 1000) / 30));
+
+    // 2. อุณหภูมิ (เป้าหมาย 23-25 °C)
+    const temp = Number(data.temperature || data.temp || 0);
+    if (temp > 0) {
+      if (temp < 23) score -= Math.min(20, Math.round((23 - temp) * 5));
+      else if (temp > 25) score -= Math.min(20, Math.round((temp - 25) * 5));
+    }
+
+    // 3. ความชื้น (เป้าหมาย 50-60%)
+    const hum = Number(data.humidity || data.hum || 0);
+    if (hum > 0) {
+      if (hum < 50) score -= Math.min(15, Math.round((50 - hum) * 1.5));
+      else if (hum > 60) score -= Math.min(15, Math.round((hum - 60) * 1.5));
+    }
+
+    // 4. เสียง
+    const sound = Number(data.sound || data.sound_db || 0);
+    if (sound > 60) score -= Math.min(20, 15);
+
+    return Math.max(20, Math.min(100, score));
+  };
 
   useEffect(() => {
     if (!database) {
@@ -17,7 +48,7 @@ export default function SensitivityProfilePage() {
       return;
     }
 
-    // 1. ดึง Events Breakdown ของทุกวัน
+    // 1. ดึง Events Breakdown
     const eventsRef = ref(database, 'personal_sensitivity/all_sensors_events');
     onValue(eventsRef, (eventSnap) => {
       if (eventSnap.exists()) {
@@ -25,7 +56,15 @@ export default function SensitivityProfilePage() {
       }
     });
 
-    // 2. ดึง History Data
+    // 2. ดึง Room Env ทุกวันเพื่อใช้เป็น Fallback
+    const roomRef = ref(database, 'room_env');
+    onValue(roomRef, (roomSnap) => {
+      if (roomSnap.exists()) {
+        setRoomEnvMap(roomSnap.val());
+      }
+    });
+
+    // 3. ดึง History Data
     const historyRef = ref(database, 'personal_sensitivity/history');
     const unsubHistory = onValue(historyRef, (snapshot) => {
       if (snapshot && snapshot.exists()) {
@@ -49,29 +88,6 @@ export default function SensitivityProfilePage() {
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         setHistoryLogs(list);
-
-        if (list.length > 0) {
-          const garminItems = list.filter((i) => i.garminScore != null);
-          const roomItems = list.filter((i) => i.roomScore != null);
-
-          const avgG = garminItems.length > 0
-            ? Math.round(garminItems.reduce((sum, item) => sum + Number(item.garminScore), 0) / garminItems.length)
-            : 0;
-
-          const avgR = roomItems.length > 0
-            ? Math.round(roomItems.reduce((sum, item) => sum + Number(item.roomScore), 0) / roomItems.length)
-            : avgG;
-
-          const avgC = Math.round(
-            list.reduce((sum, item) => {
-              const g = item.garminScore || avgG;
-              const r = item.roomScore || avgR;
-              return sum + (item.combinedScore || Math.round(g * 0.5 + r * 0.5));
-            }, 0) / list.length
-          );
-
-          setAverages({ garmin: avgG, room: avgR, combined: avgC });
-        }
       } else {
         setHistoryLogs([]);
       }
@@ -81,7 +97,48 @@ export default function SensitivityProfilePage() {
     return () => unsubHistory();
   }, []);
 
-  // ฟังก์ชันวิเคราะห์จุดอ่อนความไวของผู้ใช้ในวันนั้นๆ (รองรับหลายปัจจัยพร้อมกัน)
+  // คำนวณค่าเฉลี่ยใหม่เมื่อ historyLogs หรือ roomEnvMap เปลี่ยน
+  useEffect(() => {
+    if (historyLogs.length === 0) return;
+
+    let totalG = 0;
+    let countG = 0;
+    let totalR = 0;
+    let countR = 0;
+    let totalC = 0;
+
+    historyLogs.forEach((item) => {
+      const g = item.garminScore != null ? Number(item.garminScore) : null;
+      const r = item.roomScore != null
+        ? Number(item.roomScore)
+        : calculateDynamicRoomScore(roomEnvMap[item.date]);
+
+      if (g != null) {
+        totalG += g;
+        countG++;
+      }
+      if (r != null) {
+        totalR += r;
+        countR++;
+      }
+
+      const effectiveG = g ?? 0;
+      const effectiveR = r ?? effectiveG;
+      const comb = (g != null && r != null)
+        ? Math.round(g * 0.5 + r * 0.5)
+        : (item.combinedScore || effectiveG);
+
+      totalC += comb;
+    });
+
+    const avgG = countG > 0 ? Math.round(totalG / countG) : 0;
+    const avgR = countR > 0 ? Math.round(totalR / countR) : 0;
+    const avgC = Math.round(totalC / historyLogs.length);
+
+    setAverages({ garmin: avgG, room: avgR, combined: avgC });
+  }, [historyLogs, roomEnvMap]);
+
+  // ฟังก์ชันวิเคราะห์จุดอ่อนความไวของผู้ใช้
   const getUserSensitivity = (date: string, fallbackTrigger?: string) => {
     const dayEvent = eventsMap[date];
     const breakdown = dayEvent?.sensorTriggerBreakdown;
@@ -115,6 +172,15 @@ export default function SensitivityProfilePage() {
           return `⚠️ ไวต่อหลายปัจจัย (${topTriggers.map(([k]) => formatName(k)).join(', ')})`;
         }
       }
+    }
+
+    // Fallback ตรวจสอบจากค่า Room Env ของวันนั้นๆ
+    const room = roomEnvMap[date];
+    if (room) {
+      if (room.co2 > 1000) return '🫁 ไวต่อก๊าซ CO2';
+      if (room.humidity > 60) return '💧 ไวต่อความชื้น';
+      if (room.temperature < 23) return '🌡️ ไวต่ออุณหภูมิห้อง';
+      if (room.sound > 50) return '🔊 ไวต่อเสียงรบกวน';
     }
 
     if (fallbackTrigger) {
@@ -295,11 +361,15 @@ export default function SensitivityProfilePage() {
                 {historyLogs.length > 0 ? (
                   historyLogs.map((log, index) => {
                     const restlessDisplay = log.restlessCount ?? log.restlessMomentsCount ?? '--';
-                    const combinedDisplay = log.combinedScore ?? (
-                      log.garminScore != null && log.roomScore != null
-                        ? Math.round(log.garminScore * 0.5 + log.roomScore * 0.5)
-                        : (log.garminScore ?? '--')
-                    );
+                    
+                    // คำนวณ Room Score Dynamic
+                    const roomScoreVal = log.roomScore ?? calculateDynamicRoomScore(roomEnvMap[log.date]);
+                    
+                    // คำนวณ Combined Score Dynamic
+                    const garminScoreVal = log.garminScore != null ? Number(log.garminScore) : null;
+                    const combinedDisplay = (garminScoreVal != null && roomScoreVal != null)
+                      ? Math.round(garminScoreVal * 0.5 + Number(roomScoreVal) * 0.5)
+                      : (log.combinedScore ?? garminScoreVal ?? '--');
 
                     const sensitivityLabel = getUserSensitivity(log.date, log.primaryTrigger || log.primarySensorTrigger);
 
@@ -307,8 +377,8 @@ export default function SensitivityProfilePage() {
                       <tr key={index}>
                         <td style={{ fontWeight: '700', color: '#38bdf8' }}>{log.date}</td>
                         <td style={{ fontWeight: '600' }}>{log.garminScore ?? '--'}</td>
-                        <td style={{ color: log.roomScore && log.roomScore < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>
-                          {log.roomScore ?? '--'}
+                        <td style={{ color: roomScoreVal && roomScoreVal < 60 ? '#f43f5e' : '#34d399', fontWeight: '600' }}>
+                          {roomScoreVal ?? '--'}
                         </td>
                         <td style={{ fontWeight: '800', color: '#ffffff' }}>{combinedDisplay}</td>
                         <td style={{ fontWeight: '700', color: '#fef08a' }}>
