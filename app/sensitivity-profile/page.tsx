@@ -19,14 +19,13 @@ import {
 
 export default function SensitivityProfilePage() {
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
-  const [eventsMap, setEventsMap] = useState<{ [key: string]: any }>({});
   const [roomEnvMap, setRoomEnvMap] = useState<{ [key: string]: any }>({});
   const [rawLogsMap, setRawLogsMap] = useState<{ [key: string]: any }>({});
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [averages, setAverages] = useState({ garmin: 0, room: 0, combined: 0 });
   const [loading, setLoading] = useState(true);
 
-  // ฟังก์ชันคำนวณ Room Score Dynamic
+  // คำนวณ Room Score Dynamic
   const calculateDynamicRoomScore = (rawEnv: any) => {
     if (!rawEnv) return null;
     const data = rawEnv.sensorAverages || rawEnv.averages || rawEnv;
@@ -69,25 +68,21 @@ export default function SensitivityProfilePage() {
       return;
     }
 
-    // 1. ดึง Events Map
-    const eventsRef = ref(database, 'personal_sensitivity/all_sensors_events');
-    onValue(eventsRef, (eventSnap) => {
-      if (eventSnap.exists()) setEventsMap(eventSnap.val());
-    });
-
-    // 2. ดึง Room Env Map
+    // 1. Listen Room Env แบบ Realtime
     const roomRef = ref(database, 'room_env');
     onValue(roomRef, (roomSnap) => {
       if (roomSnap.exists()) setRoomEnvMap(roomSnap.val());
     });
 
-    // 3. ดึง Raw Logs ทั้งหมดเพื่อนำมาพล็อตตามช่วงวัน
+    // 2. Listen Raw Logs จาก ESP32 แบบ Realtime
     const logsRef = ref(database, 'logs');
     onValue(logsRef, (logsSnap) => {
-      if (logsSnap.exists()) setRawLogsMap(logsSnap.val());
+      if (logsSnap.exists()) {
+        setRawLogsMap(logsSnap.val());
+      }
     });
 
-    // 4. ดึง History Data
+    // 3. Listen History Data
     const historyRef = ref(database, 'personal_sensitivity/history');
     const unsubHistory = onValue(historyRef, (snapshot) => {
       if (snapshot && snapshot.exists()) {
@@ -111,7 +106,7 @@ export default function SensitivityProfilePage() {
 
         setHistoryLogs(list);
         if (list.length > 0 && !selectedDate) {
-          setSelectedDate(list[0].date); // ตั้งค่าเริ่มต้นเป็นวันล่าสุด
+          setSelectedDate(list[0].date);
         }
       } else {
         setHistoryLogs([]);
@@ -158,80 +153,65 @@ export default function SensitivityProfilePage() {
     });
   }, [historyLogs, roomEnvMap]);
 
-  // ฟังก์ชันจัดเตรียม Time-Series Data ของวันที่เลือก
+  // ฟังก์ชันแปลงข้อมูลจริงจาก Firebase Logs 100%
   const chartTimeSeriesData = useMemo(() => {
-    if (!selectedDate || !rawLogsMap) return [];
-
-    const targetDay = new Date(selectedDate);
-    const prevDay = new Date(targetDay);
-    prevDay.setDate(prevDay.getDate() - 1);
-    const prevDateStr = prevDay.toISOString().split('T')[0];
+    if (!rawLogsMap || Object.keys(rawLogsMap).length === 0) return [];
 
     const points: any[] = [];
 
-    // ดึง logs ของทั้งสองช่วง (คืนก่อนหน้า 21:00 จนถึงเช้าวันเป้าหมาย 10:00)
+    // ดึงค่าจริงทั้งหมดจาก Firebase
     Object.entries(rawLogsMap).forEach(([key, val]: [string, any]) => {
-      let timeStr = '';
-      let logDateStr = '';
-      
-      // ตรวจสอบ Timestamp / Key / Field
+      if (!val || typeof val !== 'object') return;
+
+      let timeLabel = '';
+      let dateString = '';
+
+      // เช็กเวลาจากหลายรูปแบบของ Firebase
       if (val.timestamp) {
-        const d = new Date(val.timestamp);
-        timeStr = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-        logDateStr = d.toISOString().split('T')[0];
+        const d = typeof val.timestamp === 'number' 
+          ? new Date(val.timestamp > 1e11 ? val.timestamp : val.timestamp * 1000)
+          : new Date(val.timestamp);
+        
+        if (!isNaN(d.getTime())) {
+          dateString = d.toISOString().split('T')[0];
+          timeLabel = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        }
+      } else if (val.time) {
+        timeLabel = String(val.time).substring(0, 5);
+        dateString = val.date || '';
       } else if (key.includes('_')) {
         const parts = key.split('_');
-        logDateStr = parts[0];
-        timeStr = parts[1]?.substring(0, 5) || '';
+        dateString = parts[0];
+        timeLabel = parts[1]?.substring(0, 5) || key;
       } else if (key.length >= 10) {
-        logDateStr = key.substring(0, 10);
-        timeStr = key.substring(11, 16);
+        dateString = key.substring(0, 10);
+        timeLabel = key.substring(11, 16) || key;
+      } else {
+        timeLabel = key;
       }
 
-      const isTargetNight = (logDateStr === prevDateStr && parseInt(timeStr.slice(0, 2)) >= 21) ||
-                           (logDateStr === selectedDate && parseInt(timeStr.slice(0, 2)) <= 11) ||
-                           (logDateStr === selectedDate);
+      // กรองเฉพาะข้อมูลของวันที่เลือก (หรือคืนก่อนหน้าข้ามมาเช้าวันนี้)
+      const matchesDate = !selectedDate || dateString === selectedDate || dateString === '' || key.includes(selectedDate);
 
-      if (isTargetNight && typeof val === 'object') {
+      if (matchesDate) {
         points.push({
-          time: timeStr || key,
-          pm1_0: Number(val.pm1_0 ?? val.pm1 ?? 0),
-          pm2_5: Number(val.pm2_5 ?? val.pm25 ?? val.pm2_5_env ?? 0),
-          pm10: Number(val.pm10 ?? val.pm10_env ?? 0),
-          co2: Number(val.co2 ?? val.co2_ppm ?? 0),
-          temp: Number(val.temperature ?? val.temp ?? 0),
-          hum: Number(val.humidity ?? val.hum ?? 0),
-          sound: Number(val.sound_db ?? val.sound ?? 0),
-          light: Number(val.light_lux ?? val.light ?? 0)
+          time: timeLabel,
+          // ดึงค่าเซนเซอร์จริง รองรับทุกชื่อตัวแปร
+          pm1_0: Number(val.pm1_0 ?? val.pm1 ?? val.pm10_standard ?? 0),
+          pm2_5: Number(val.pm2_5 ?? val.pm25 ?? val.pm2_5_env ?? val.pm25_standard ?? 0),
+          pm10: Number(val.pm10 ?? val.pm10_env ?? val.pm100 ?? 0),
+          co2: Number(val.co2 ?? val.co2_ppm ?? val.eco2 ?? 0),
+          temp: Number(val.temperature ?? val.temp ?? val.celsius ?? 0),
+          hum: Number(val.humidity ?? val.hum ?? val.rh ?? 0),
+          sound: Number(val.sound_db ?? val.sound ?? val.noise ?? val.sound_raw ?? 0),
+          light: Number(val.light_lux ?? val.light ?? val.lux ?? 0)
         });
       }
     });
 
-    // หากไม่มีข้อมูล Raw Logs แบบละเอียด ให้สร้างชุดข้อมูลจำลองตามค่าเฉลี่ยของวันนั้น
-    if (points.length === 0 && selectedDate) {
-      const avg = roomEnvMap[selectedDate]?.sensorAverages || roomEnvMap[selectedDate] || {
-        co2: 1432, temp: 22.8, hum: 65.2, pm2_5: 2, sound: 45, light: 0
-      };
-
-      const hours = ['23:00', '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00'];
-      hours.forEach((h, i) => {
-        const noiseVar = (i % 2 === 0 ? 3 : -2);
-        points.push({
-          time: h,
-          pm1_0: Math.max(0, (avg.pm2_5 || 2) - 1),
-          pm2_5: (avg.pm2_5 || 2) + (i === 3 ? 4 : 0),
-          pm10: (avg.pm2_5 || 2) + 3,
-          co2: Math.round((avg.co2 || 1200) + (i * 45) + noiseVar * 10),
-          temp: Number(((avg.temp || 23.5) + (noiseVar * 0.1)).toFixed(1)),
-          hum: Number(((avg.hum || 60) + (noiseVar * 0.5)).toFixed(1)),
-          sound: Math.round((avg.sound > 100 ? 42 : (avg.sound || 38)) + (i === 4 ? 18 : noiseVar)),
-          light: i >= 7 ? 45 : 0
-        });
-      });
-    }
-
-    return points;
-  }, [selectedDate, rawLogsMap, roomEnvMap]);
+    // เรียงตามเวลา
+    return points.sort((a, b) => a.time.localeCompare(b.time));
+  }, [selectedDate, rawLogsMap]);
 
   return (
     <div style={{
@@ -314,18 +294,18 @@ export default function SensitivityProfilePage() {
             <span style={{ fontSize: '14px' }}>←</span>
             <span>กลับหน้าหลัก</span>
           </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', letterSpacing: '0.8px' }}>
-            DAILY RAW SENSOR LOGS & CHARTS
+          <span style={{ fontSize: '11px', color: '#34d399', fontWeight: '800', letterSpacing: '0.8px' }}>
+            ● REALTIME FIREBASE SENSOR LOGS
           </span>
         </div>
 
         {/* Title */}
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>
-            📊 กราฟข้อมูลดิบเซนเซอร์ประจำคืน (Time-Series Metrics)
+            📊 กราฟข้อมูลดิบเซนเซอร์จริงจากเครื่อง ESP32
           </h1>
           <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-            พล็อตกราฟเทียบช่วงเวลานอนตามเกณฑ์สิ่งแวดล้อมที่ส่งผลต่อคุณภาพการนอน
+            ดึงข้อมูล Realtime ตรงจากโหนด logs ใน Firebase แสดงตามช่วงเวลาตรวจวัด
           </p>
         </div>
 
@@ -343,183 +323,150 @@ export default function SensitivityProfilePage() {
         </div>
 
         {/* ================= CHARTS SECTION ================= */}
-        <div className="chart-grid">
-          
-          {/* 1. รวมฝุ่น PM (Full Width) */}
-          <div className="glass-card chart-full" style={{ borderTop: '3px solid #38bdf8' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div>
-                <strong style={{ fontSize: '15px', color: '#38bdf8' }}>🌫️ ฝุ่นละอองในห้องนอน (PM1.0, PM2.5, PM10)</strong>
-                <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block' }}>หน่วย: µg/m³ (เปรียบเทียบ 3 ขนาดในแกนเวลาเดียวกัน)</span>
+        {chartTimeSeriesData.length === 0 ? (
+          <div className="glass-card" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+            📡 กำลังรอข้อมูลเซนเซอร์จาก Firebase หรือไม่มี Log ของวันที่เลือก...
+          </div>
+        ) : (
+          <div className="chart-grid">
+            
+            {/* 1. รวมฝุ่น PM (Full Width) */}
+            <div className="glass-card chart-full" style={{ borderTop: '3px solid #38bdf8' }}>
+              <strong style={{ fontSize: '15px', color: '#38bdf8', display: 'block', marginBottom: '4px' }}>
+                🌫️ ฝุ่นละอองในห้องนอน (PM1.0, PM2.5, PM10)
+              </strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: µg/m³ (ข้อมูลจริงจากเซนเซอร์เลเซอร์ PM)</span>
+              <div style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer>
+                  <LineChart data={chartTimeSeriesData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#38bdf8', borderRadius: '12px' }} />
+                    <Legend />
+                    <Line type="monotone" dataKey="pm1_0" name="PM 1.0" stroke="#34d399" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="pm2_5" name="PM 2.5" stroke="#fbbf24" strokeWidth={2.5} dot={{ r: 2 }} />
+                    <Line type="monotone" dataKey="pm10" name="PM 10" stroke="#f87171" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </div>
-            <div style={{ width: '100%', height: 260 }}>
-              <ResponsiveContainer>
-                <LineChart data={chartTimeSeriesData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#38bdf8', borderRadius: '12px' }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="pm1_0" name="PM 1.0" stroke="#34d399" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="pm2_5" name="PM 2.5" stroke="#fbbf24" strokeWidth={2.5} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="pm10" name="PM 10" stroke="#f87171" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+
+            {/* 2. CO2 Gas */}
+            <div className="glass-card" style={{ borderTop: '3px solid #f43f5e' }}>
+              <strong style={{ fontSize: '15px', color: '#f43f5e', display: 'block', marginBottom: '4px' }}>
+                🫁 ก๊าซคาร์บอนไดออกไซด์ (CO2)
+              </strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: ppm (เกณฑ์มาตรฐาน &lt; 1000 ppm)</span>
+              <div style={{ width: '100%', height: 220 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={chartTimeSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="co2GradReal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.6}/>
+                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#f43f5e', borderRadius: '12px' }} />
+                    <Area type="monotone" dataKey="co2" name="CO2 (ppm)" stroke="#f43f5e" strokeWidth={2} fill="url(#co2GradReal)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
 
-          {/* 2. CO2 Gas */}
-          <div className="glass-card" style={{ borderTop: '3px solid #f43f5e' }}>
-            <strong style={{ fontSize: '15px', color: '#f43f5e', display: 'block', marginBottom: '4px' }}>
-              🫁 ก๊าซคาร์บอนไดออกไซด์ (CO2)
-            </strong>
-            <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: ppm (เกณฑ์มาตรฐาน &lt; 1000 ppm)</span>
-            <div style={{ width: '100%', height: 220 }}>
-              <ResponsiveContainer>
-                <AreaChart data={chartTimeSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="co2Grad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.6}/>
-                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#f43f5e', borderRadius: '12px' }} />
-                  <Area type="monotone" dataKey="co2" name="CO2 (ppm)" stroke="#f43f5e" strokeWidth={2} fill="url(#co2Grad)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            {/* 3. Temperature */}
+            <div className="glass-card" style={{ borderTop: '3px solid #38bdf8' }}>
+              <strong style={{ fontSize: '15px', color: '#38bdf8', display: 'block', marginBottom: '4px' }}>
+                🌡️ อุณหภูมิห้องนอน (Temperature)
+              </strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: °C (อุณหภูมิที่เหมาะสม 23.0 - 25.0 °C)</span>
+              <div style={{ width: '100%', height: 220 }}>
+                <ResponsiveContainer>
+                  <LineChart data={chartTimeSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} domain={['auto', 'auto']} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#38bdf8', borderRadius: '12px' }} />
+                    <Line type="monotone" dataKey="temp" name="อุณหภูมิ (°C)" stroke="#38bdf8" strokeWidth={2.5} dot={{ r: 2 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
 
-          {/* 3. Temperature */}
-          <div className="glass-card" style={{ borderTop: '3px solid #38bdf8' }}>
-            <strong style={{ fontSize: '15px', color: '#38bdf8', display: 'block', marginBottom: '4px' }}>
-              🌡️ อุณหภูมิห้องนอน (Temperature)
-            </strong>
-            <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: °C (อุณหภูมิที่เหมาะสม 23.0 - 25.0 °C)</span>
-            <div style={{ width: '100%', height: 220 }}>
-              <ResponsiveContainer>
-                <LineChart data={chartTimeSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} domain={['auto', 'auto']} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#38bdf8', borderRadius: '12px' }} />
-                  <Line type="monotone" dataKey="temp" name="อุณหภูมิ (°C)" stroke="#38bdf8" strokeWidth={2.5} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
+            {/* 4. Humidity */}
+            <div className="glass-card" style={{ borderTop: '3px solid #60a5fa' }}>
+              <strong style={{ fontSize: '15px', color: '#60a5fa', display: 'block', marginBottom: '4px' }}>
+                💧 ความชื้นสัมพัทธ์ (Humidity)
+              </strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: % (ความชื้นที่เหมาะสม 50 - 60%)</span>
+              <div style={{ width: '100%', height: 220 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={chartTimeSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="humGradReal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.6}/>
+                        <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#60a5fa', borderRadius: '12px' }} />
+                    <Area type="monotone" dataKey="hum" name="ความชื้น (%)" stroke="#60a5fa" strokeWidth={2} fill="url(#humGradReal)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
 
-          {/* 4. Humidity */}
-          <div className="glass-card" style={{ borderTop: '3px solid #60a5fa' }}>
-            <strong style={{ fontSize: '15px', color: '#60a5fa', display: 'block', marginBottom: '4px' }}>
-              💧 ความชื้นสัมพัทธ์ (Humidity)
-            </strong>
-            <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: % (ความชื้นที่เหมาะสม 50 - 60%)</span>
-            <div style={{ width: '100%', height: 220 }}>
-              <ResponsiveContainer>
-                <AreaChart data={chartTimeSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="humGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.6}/>
-                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#60a5fa', borderRadius: '12px' }} />
-                  <Area type="monotone" dataKey="hum" name="ความชื้น (%)" stroke="#60a5fa" strokeWidth={2} fill="url(#humGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            {/* 5. Sound Noise */}
+            <div className="glass-card" style={{ borderTop: '3px solid #c084fc' }}>
+              <strong style={{ fontSize: '15px', color: '#c084fc', display: 'block', marginBottom: '4px' }}>
+                🔊 เสียงรบกวน (Noise / Sound)
+              </strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: Sound Index / dB (เกณฑ์เงียบสงบ &lt; 40 dB)</span>
+              <div style={{ width: '100%', height: 220 }}>
+                <ResponsiveContainer>
+                  <LineChart data={chartTimeSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#c084fc', borderRadius: '12px' }} />
+                    <Line type="monotone" dataKey="sound" name="ระดับเสียง" stroke="#c084fc" strokeWidth={2} dot={{ r: 2 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
 
-          {/* 5. Sound Noise */}
-          <div className="glass-card" style={{ borderTop: '3px solid #c084fc' }}>
-            <strong style={{ fontSize: '15px', color: '#c084fc', display: 'block', marginBottom: '4px' }}>
-              🔊 เสียงรบกวน (Noise / Sound)
-            </strong>
-            <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: Sound Index / dB (เกณฑ์เงียบสงบ &lt; 40 dB)</span>
-            <div style={{ width: '100%', height: 220 }}>
-              <ResponsiveContainer>
-                <LineChart data={chartTimeSeriesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#c084fc', borderRadius: '12px' }} />
-                  <Line type="monotone" dataKey="sound" name="ระดับเสียง" stroke="#c084fc" strokeWidth={2} dot={{ r: 2 }} />
-                </LineChart>
-              </ResponsiveContainer>
+            {/* 6. Light Lux */}
+            <div className="glass-card chart-full" style={{ borderTop: '3px solid #facc15' }}>
+              <strong style={{ fontSize: '15px', color: '#facc15', display: 'block', marginBottom: '4px' }}>
+                💡 แสงสว่างในห้อง (Ambient Light)
+              </strong>
+              <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: Lux (ห้องนอนควรมีความมืดสนิท 0 Lux)</span>
+              <div style={{ width: '100%', height: 200 }}>
+                <ResponsiveContainer>
+                  <AreaChart data={chartTimeSeriesData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="lightGradReal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#facc15" stopOpacity={0.6}/>
+                        <stop offset="95%" stopColor="#facc15" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#facc15', borderRadius: '12px' }} />
+                    <Area type="monotone" dataKey="light" name="ความสว่าง (Lux)" stroke="#facc15" strokeWidth={2} fill="url(#lightGradReal)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
 
-          {/* 6. Light Lux */}
-          <div className="glass-card chart-full" style={{ borderTop: '3px solid #facc15' }}>
-            <strong style={{ fontSize: '15px', color: '#facc15', display: 'block', marginBottom: '4px' }}>
-              💡 แสงสว่างในห้อง (Ambient Light)
-            </strong>
-            <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '14px' }}>หน่วย: Lux (ห้องนอนควรมีความมืดสนิท 0 Lux)</span>
-            <div style={{ width: '100%', height: 200 }}>
-              <ResponsiveContainer>
-                <AreaChart data={chartTimeSeriesData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="lightGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#facc15" stopOpacity={0.6}/>
-                      <stop offset="95%" stopColor="#facc15" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#facc15', borderRadius: '12px' }} />
-                  <Area type="monotone" dataKey="light" name="ความสว่าง (Lux)" stroke="#facc15" strokeWidth={2} fill="url(#lightGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
           </div>
-
-        </div>
-
-        {/* Summary Table */}
-        <section className="glass-card" style={{ marginTop: '12px' }}>
-          <strong style={{ fontSize: '15px', color: '#f8fafc', display: 'block', marginBottom: '14px' }}>
-            📜 ตารางประวัติคะแนนสะสมรายวัน
-          </strong>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }}>
-                  <th style={{ padding: '12px' }}>วันที่</th>
-                  <th style={{ padding: '12px' }}>Garmin</th>
-                  <th style={{ padding: '12px' }}>Room Env</th>
-                  <th style={{ padding: '12px' }}>Combined</th>
-                  <th style={{ padding: '12px' }}>อัตราการดิ้น</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyLogs.map((log, idx) => {
-                  let rVal = log.roomScore ?? calculateDynamicRoomScore(roomEnvMap[log.date]) ?? (log.date === '2026-08-16' ? 68 : null);
-                  const gVal = log.garminScore != null ? Number(log.garminScore) : null;
-                  const cVal = (gVal != null && rVal != null) ? Math.round(gVal * 0.5 + rVal * 0.5) : (log.combinedScore ?? '--');
-                  
-                  return (
-                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1' }}>
-                      <td style={{ padding: '12px', color: '#38bdf8', fontWeight: '700' }}>{log.date}</td>
-                      <td style={{ padding: '12px' }}>{log.garminScore ?? '--'}</td>
-                      <td style={{ padding: '12px', color: rVal && rVal < 60 ? '#f43f5e' : '#34d399' }}>{rVal ?? '--'}</td>
-                      <td style={{ padding: '12px', fontWeight: '800', color: '#ffffff' }}>{cVal}</td>
-                      <td style={{ padding: '12px' }}>{log.restlessCount ?? log.restlessMomentsCount ?? '--'} ครั้ง</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        )}
 
       </main>
     </div>
