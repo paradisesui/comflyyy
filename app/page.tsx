@@ -139,11 +139,12 @@ export default function HomePage() {
     }
   };
 
+  // แถบปุ่มนำทาง 4 ปุ่ม: มีขอบสีประจำหมวด ไม่ใช้พื้นหลังโปร่งแสง
   const navTabs = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs' },
+    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', border: '#bae6fd', badgeBg: '#f0f9ff' },
+    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', border: '#e9d5ff', badgeBg: '#faf5ff' },
+    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', border: '#fecdd3', badgeBg: '#fff1f2' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', border: '#fde68a', badgeBg: '#fffdf0' },
   ];
 
   return (
@@ -171,28 +172,22 @@ export default function HomePage() {
           align-items: center;
           padding: 0 4px 4px 4px;
         }
-        /* แถบ Segmented แบบ Solid Flat ไม่มีความโปร่งใส */
-        .segmented-nav {
+        .clean-nav-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
-          padding: 6px;
-          background-color: #e2e8f0;
-          border: 1px solid #cbd5e1;
-          border-radius: 20px;
+          gap: 12px;
         }
         @media (min-width: 768px) {
-          .segmented-nav {
+          .clean-nav-grid {
             grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            border-radius: 9999px;
+            gap: 12px;
           }
         }
         .clean-card {
-          background-color: #ffffff;
+          background: #ffffff;
           border-radius: 28px;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 4px 16px -2px #e0f2fe;
+          border: 1px solid rgba(226, 232, 240, 0.85);
+          box-shadow: 0 6px 20px -4px rgba(186, 230, 253, 0.25);
         }
       `}</style>
 
@@ -209,7 +204,8 @@ export default function HomePage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '22px'
+              fontSize: '22px',
+              boxShadow: '0 4px 10px rgba(245, 158, 11, 0.12)'
             }}>
               🌙
             </div>
@@ -236,33 +232,46 @@ export default function HomePage() {
             justifyContent: 'center',
             color: '#64748b',
             textDecoration: 'none',
-            fontSize: '16px'
+            fontSize: '16px',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)'
           }}>
             👤
           </Link>
         </header>
 
-        {/* 4 Navigation Buttons: แบบที่ 2 ทึบสนิท Solid Clean */}
-        <nav className="segmented-nav">
+        {/* 4 Navigation Tabs: พื้นขาวทึบ มีขอบสี ไม่ซ้อนพื้นหลังโปร่งใส */}
+        <nav className="clean-nav-grid">
           {navTabs.map((tab, idx) => (
             <Link key={idx} href={tab.href} style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              padding: '12px 14px',
-              borderRadius: '16px',
+              gap: '12px',
+              padding: '12px 16px',
+              borderRadius: '18px',
               backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
+              border: `1.5px solid ${tab.border}`,
+              boxShadow: '0 2px 8px rgba(186, 230, 253, 0.18)',
               textDecoration: 'none',
-              transition: 'background-color 0.15s ease'
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
             }}>
-              <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '12px',
+                backgroundColor: tab.badgeBg,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                flexShrink: 0
+              }}>
+                {tab.icon}
+              </div>
               <div style={{ textAlign: 'left' }}>
                 <strong style={{ fontSize: '13.5px', color: '#1e293b', fontWeight: '800', display: 'block', lineHeight: 1.2 }}>
                   {tab.title}
                 </strong>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
                   {tab.desc}
                 </span>
               </div>
@@ -279,17 +288,18 @@ export default function HomePage() {
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
-            backgroundColor: '#ffffff'
+            background: 'linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)'
           }}>
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: '#f0f9ff',
+              backgroundColor: '#ffffff',
               border: '1px solid #bae6fd',
               padding: '6px 18px',
               borderRadius: '9999px',
-              marginBottom: '16px'
+              marginBottom: '16px',
+              boxShadow: '0 2px 6px rgba(186, 230, 253, 0.2)'
             }}>
               <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#0284c7' }}></span>
               <span style={{ fontSize: '12px', color: '#0369a1', fontWeight: '800', letterSpacing: '0.4px' }}>
@@ -392,7 +402,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Gemini AI Diagnosis Card - Flat Pastel Tint ทึบสนิท */}
+        {/* Gemini AI Diagnosis Card - สไตล์แบบที่ 1 (Flat Pastel Tint) */}
         <section className="clean-card" style={{
           padding: '28px',
           display: 'flex',
