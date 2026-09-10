@@ -139,11 +139,12 @@ export default function HomePage() {
     }
   };
 
+  // แบบที่ 1: Vertical Minimal Cards Configuration
   const navButtons = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', badgeBg: '#e0f2fe' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', badgeBg: '#ede9fe' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', badgeBg: '#fee2e2' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', badgeBg: '#fef3c7' },
+    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', iconBg: '#e0f2fe', border: '#bfdbfe' },
+    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', iconBg: '#f3e8ff', border: '#e9d5ff' },
+    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', iconBg: '#ffe4e6', border: '#fecdd3' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', iconBg: '#fef3c7', border: '#fde68a' },
   ];
 
   return (
@@ -171,13 +172,13 @@ export default function HomePage() {
           align-items: center;
           padding: 0 4px 4px 4px;
         }
-        .pill-grid {
+        .nav-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
+          gap: 14px;
         }
         @media (min-width: 768px) {
-          .pill-grid {
+          .nav-grid {
             grid-template-columns: repeat(4, 1fr);
           }
         }
@@ -237,46 +238,46 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 4 Navigation Buttons */}
-        <nav className="pill-grid">
+        {/* 4 Navigation Cards: แบบที่ 1 (Vertical Minimal Cards) */}
+        <nav className="nav-grid">
           {navButtons.map((btn, idx) => (
             <Link key={idx} href={btn.href} style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              gap: '12px',
-              padding: '12px 18px',
-              borderRadius: '9999px',
+              textAlign: 'center',
+              padding: '22px 14px 18px 14px',
+              borderRadius: '24px',
               backgroundColor: '#ffffff',
-              border: '1px solid #f1f5f9',
-              boxShadow: '0 2px 8px rgba(226, 232, 240, 0.45)',
-              textDecoration: 'none'
+              border: `1.5px solid ${btn.border}`,
+              boxShadow: '0 4px 16px -2px rgba(186, 230, 253, 0.22)',
+              textDecoration: 'none',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
             }}>
               <div style={{
-                width: '38px',
-                height: '38px',
+                width: '48px',
+                height: '48px',
                 borderRadius: '50%',
-                backgroundColor: btn.badgeBg,
+                backgroundColor: btn.iconBg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '18px',
-                flexShrink: 0
+                fontSize: '22px',
+                marginBottom: '10px'
               }}>
                 {btn.icon}
               </div>
-              <div>
-                <strong style={{ fontSize: '13.5px', display: 'block', color: '#1e293b', fontWeight: '800' }}>
-                  {btn.title}
-                </strong>
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                  {btn.desc}
-                </span>
-              </div>
+              <strong style={{ fontSize: '14.5px', color: '#0f172a', fontWeight: '800', marginBottom: '3px' }}>
+                {btn.title}
+              </strong>
+              <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: '500' }}>
+                {btn.desc}
+              </span>
             </Link>
           ))}
         </nav>
 
-        {/* Combined Sleep Score - ปรับเป็น Minimal Soft Cloud */}
+        {/* Combined Sleep Score - Minimal Soft Cloud */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div className="clean-card" style={{
             padding: '36px 24px',
@@ -287,7 +288,6 @@ export default function HomePage() {
             textAlign: 'center',
             background: 'linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)'
           }}>
-            {/* Pill หัวข้อแบบนุ่มนวล */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -305,7 +305,6 @@ export default function HomePage() {
               </span>
             </div>
 
-            {/* ตัวเลขคะแนนขนาดใหญ่ นุ่มตา ไม่กระด้าง */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '4px 0' }}>
               <span style={{
                 fontSize: '84px',
@@ -319,7 +318,6 @@ export default function HomePage() {
               <span style={{ fontSize: '22px', color: '#94a3b8', fontWeight: '600' }}>/ 100</span>
             </div>
 
-            {/* Badge สถานะผลการนอน */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
