@@ -140,15 +140,16 @@ export default function HomePage() {
     }
   };
 
-  const navTabs = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', border: '#bae6fd', badgeBg: '#eff6ff' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', border: '#e9d5ff', badgeBg: '#faf5ff' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', border: '#fecdd3', badgeBg: '#fff1f2' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', border: '#fde68a', badgeBg: '#fffbeb' },
+  const navMenuItems = [
+    { href: '/', icon: '🎯', title: 'Dashboard', active: true },
+    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', active: false },
+    { href: '/persona', icon: '⌚', title: 'Smart Watch', active: false },
+    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', active: false },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', active: false },
   ];
 
   // คำนวณเส้นรอบวงสำหรับ Circular Progress Ring
-  const circleRadius = 78;
+  const circleRadius = 110;
   const circumference = 2 * Math.PI * circleRadius;
   const numericScore = typeof combinedScoreValue === 'number' ? Math.min(100, Math.max(0, combinedScoreValue)) : 79;
   const strokeDashoffset = circumference - (numericScore / 100) * circumference;
@@ -157,376 +158,439 @@ export default function HomePage() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#f8fafc',
-      backgroundImage: 'radial-gradient(ellipse at 50% 0%, #e0f2fe 0%, #f8fafc 65%)',
       color: '#1e293b',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '24px 14px 60px 14px',
       display: 'flex',
-      justifyContent: 'center'
+      flexDirection: 'column'
     }}>
-      <main style={{
-        width: '100%',
-        maxWidth: '960px',
+      <style jsx global>{`
+        body {
+          margin: 0;
+          background-color: #f8fafc;
+        }
+      `}</style>
+
+      {/* ================= TOP APP BAR ================= */}
+      <header style={{
+        height: '62px',
+        backgroundColor: '#ffffff',
+        borderBottom: '1px solid #e2e8f0',
+        padding: '0 24px',
         display: 'flex',
-        flexDirection: 'column',
-        gap: '16px'
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50
       }}>
-
-        {/* 1. Header Bar */}
-        <header style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '0 4px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '50%',
-              backgroundColor: '#fffbeb',
-              border: '1px solid #fef3c7',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px',
-              boxShadow: '0 4px 10px rgba(245, 158, 11, 0.12)',
-              flexShrink: 0
-            }}>
-              🌙
-            </div>
-            <div>
-              <div style={{ fontSize: '22px', fontWeight: '900', letterSpacing: '0.4px', lineHeight: 1.1 }}>
-                <span style={{ color: '#f59e0b' }}>COM</span>
-                <span style={{ color: '#60a5fa' }}>FLYYY</span>
-                <span style={{ fontSize: '16px', fontWeight: '700', color: '#64748b', marginLeft: '6px' }}>SLEEP</span>
-              </div>
-              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
-                AI-Powered Personal Sleep Environment
-              </span>
-            </div>
-          </div>
-
-          <Link href="/account" style={{
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
             width: '38px',
             height: '38px',
             borderRadius: '50%',
-            backgroundColor: '#ffffff',
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fef3c7',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px'
+          }}>
+            🌙
+          </div>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: '900', letterSpacing: '0.4px', lineHeight: 1 }}>
+              <span style={{ color: '#f59e0b' }}>COM</span>
+              <span style={{ color: '#0284c7' }}>FLYYY</span>
+              <span style={{ fontSize: '15px', fontWeight: '700', color: '#64748b', marginLeft: '6px' }}>SLEEP</span>
+            </div>
+          </div>
+          <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '12px', display: 'none' }} className="top-sub-desc">
+            AI-Powered Personal Sleep Environment Studio
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            padding: '5px 12px',
+            borderRadius: '9999px',
+            fontSize: '11px',
+            fontWeight: '700',
+            color: '#15803d'
+          }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
+            ESP32: Online
+          </div>
+
+          <Link href="/account" style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            backgroundColor: '#f1f5f9',
             border: '1px solid #e2e8f0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#64748b',
             textDecoration: 'none',
-            fontSize: '15px',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
-            flexShrink: 0
+            fontSize: '15px'
           }}>
             👤
           </Link>
-        </header>
+        </div>
+      </header>
 
-        {/* 2. Navigation 4 ปุ่ม: รองรับทั้งแนวตั้งมือถือและ 4 คอลัมน์บนจอใหญ่ */}
-        <nav style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: '10px',
-          width: '100%'
-        }}>
-          {navTabs.map((tab, idx) => (
-            <Link key={idx} href={tab.href} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 14px',
-              borderRadius: '18px',
-              backgroundColor: '#ffffff',
-              border: `1.5px solid ${tab.border}`,
-              boxShadow: '0 2px 10px rgba(186, 230, 253, 0.18)',
-              textDecoration: 'none',
-              transition: 'transform 0.15s ease'
-            }}>
-              <div style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '12px',
-                backgroundColor: tab.badgeBg,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                flexShrink: 0
-              }}>
-                {tab.icon}
-              </div>
-              <div style={{ textAlign: 'left' }}>
-                <strong style={{
-                  fontSize: '13.5px',
-                  color: '#1e293b',
-                  fontWeight: '800',
-                  display: 'block',
-                  lineHeight: 1.25
-                }}>
-                  {tab.title}
-                </strong>
-                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
-                  {tab.desc}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </nav>
+      {/* ================= 3-COLUMN WORKSPACE ================= */}
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        width: '100%',
+        maxWidth: '1560px',
+        margin: '0 auto',
+        padding: '16px',
+        gap: '16px',
+        boxSizing: 'border-box',
+        flexWrap: 'wrap'
+      }}>
 
-        {/* 3. Combined Sleep Score Card: โฉมใหม่พร้อม Circular Progress Ring สมส่วน สวยงาม */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '26px',
-            border: '1px solid rgba(226, 232, 240, 0.85)',
-            boxShadow: '0 8px 24px -4px rgba(186, 230, 253, 0.28)',
-            padding: '24px 16px 22px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center',
-            background: 'linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)'
-          }}>
-            {/* หัวข้อขนาดกะทัดรัด ไม่แตกเป็น 2 บรรทัด */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: '#eff6ff',
-              padding: '5px 14px',
-              borderRadius: '9999px',
-              marginBottom: '14px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#0284c7' }}></span>
-              <span style={{ fontSize: '11.5px', color: '#0369a1', fontWeight: '800', letterSpacing: '0.4px' }}>
-                COMBINED SLEEP SCORE
-              </span>
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
-                • {latestDate || '2026-09-05'}
-              </span>
-            </div>
-
-            {/* Circular Progress Ring พร้อมตัวเลขกึ่งกลาง */}
-            <div style={{ position: 'relative', width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="180" height="180" viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
-                {/* Background Ring */}
-                <circle
-                  cx="90"
-                  cy="90"
-                  r={circleRadius}
-                  stroke="#e0f2fe"
-                  strokeWidth="10"
-                  fill="transparent"
-                />
-                {/* Active Gradient/Solid Ring */}
-                <circle
-                  cx="90"
-                  cy="90"
-                  r={circleRadius}
-                  stroke="#0284c7"
-                  strokeWidth="10"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                  fill="transparent"
-                  style={{ transition: 'stroke-dashoffset 0.8s ease' }}
-                />
-              </svg>
-
-              {/* Text Inside Circle */}
-              <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
-                  <span style={{
-                    fontSize: '56px',
-                    fontWeight: '900',
-                    color: '#0284c7',
-                    lineHeight: 1,
-                    letterSpacing: '-1.5px'
-                  }}>
-                    {combinedScoreDisplay}
-                  </span>
-                  <span style={{ fontSize: '16px', color: '#94a3b8', fontWeight: '600' }}>/100</span>
-                </div>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginTop: '4px' }}>
-                  ภาพรวมคืนนี้
-                </span>
-              </div>
-            </div>
-
-            {/* Badge สถานะผลการนอน */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '12px',
-              color: '#15803d',
-              fontWeight: '700',
-              marginTop: '16px',
-              backgroundColor: '#f0fdf4',
-              padding: '6px 16px',
-              borderRadius: '9999px',
-              border: '1px solid #bbf7d0'
-            }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
-              คุณภาพการนอนหลับโดยรวมอยู่ในเกณฑ์ดี
-            </div>
-          </div>
-
-          {/* Sub Scores แฝด (Garmin & Room Env) */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px'
-          }}>
-            <div style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '22px',
-              border: '1px solid rgba(226, 232, 240, 0.85)',
-              boxShadow: '0 4px 14px -2px rgba(186, 230, 253, 0.2)',
-              padding: '16px 12px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                backgroundColor: '#f5f3ff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '17px',
-                marginBottom: '4px'
-              }}>
-                ⌚
-              </div>
-              <span style={{ fontSize: '11px', color: '#7c3aed', fontWeight: '800', letterSpacing: '0.3px' }}>
-                GARMIN SCORE
-              </span>
-              <strong style={{ fontSize: '28px', fontWeight: '900', color: '#6d28d9', margin: '2px 0' }}>
-                {garminScoreDisplay ?? '--'}
-              </strong>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนจากนาฬิกา</span>
-            </div>
-
-            <div style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '22px',
-              border: '1px solid rgba(226, 232, 240, 0.85)',
-              boxShadow: '0 4px 14px -2px rgba(186, 230, 253, 0.2)',
-              padding: '16px 12px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                backgroundColor: '#ecfdf5',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '17px',
-                marginBottom: '4px'
-              }}>
-                🌿
-              </div>
-              <span style={{ fontSize: '11px', color: '#059669', fontWeight: '800', letterSpacing: '0.3px' }}>
-                ROOM ENV SCORE
-              </span>
-              <strong style={{ fontSize: '28px', fontWeight: '900', color: '#047857', margin: '2px 0' }}>
-                {roomScoreDisplay ?? '--'}
-              </strong>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนสภาพแวดล้อม</span>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. Gemini AI Diagnosis Card */}
-        <section style={{
+        {/* 1. LEFT SIDEBAR: Navigation & Controls */}
+        <aside style={{
+          flex: '0 0 230px',
           backgroundColor: '#ffffff',
-          borderRadius: '24px',
-          border: '1px solid rgba(226, 232, 240, 0.85)',
-          boxShadow: '0 6px 20px -4px rgba(186, 230, 253, 0.25)',
-          padding: '20px 16px',
+          borderRadius: '20px',
+          border: '1px solid #e2e8f0',
+          padding: '18px 14px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '14px'
+          gap: '16px',
+          boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)',
+          height: 'fit-content'
         }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '50%',
-                backgroundColor: '#fef3c7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                flexShrink: 0
-              }}>
-                ✨
-              </div>
-              <div>
-                <strong style={{ fontSize: '14px', color: '#1e293b', fontWeight: '900', display: 'block', lineHeight: 1.2 }}>
-                  ผลวิเคราะห์และคำแนะนำจาก AI
-                </strong>
-                <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '600' }}>
-                  GEMINI SLEEP COACH
-                </span>
-              </div>
+          <div>
+            <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.8px', textTransform: 'uppercase', paddingLeft: '8px' }}>
+              System Navigation
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+              {navMenuItems.map((item, idx) => (
+                <Link key={idx} href={item.href} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  borderRadius: '12px',
+                  backgroundColor: item.active ? '#f0f9ff' : 'transparent',
+                  border: item.active ? '1px solid #bae6fd' : '1px solid transparent',
+                  color: item.active ? '#0284c7' : '#475569',
+                  textDecoration: 'none',
+                  fontSize: '13px',
+                  fontWeight: item.active ? '800' : '600',
+                  transition: 'background-color 0.15s ease'
+                }}>
+                  <span style={{ fontSize: '15px' }}>{item.icon}</span>
+                  <span>{item.title}</span>
+                </Link>
+              ))}
             </div>
+          </div>
 
+          <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
+            <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.8px', textTransform: 'uppercase', paddingLeft: '8px' }}>
+              AI Workflow
+            </span>
             <button
               onClick={handleAnalyzeWithAI}
               disabled={loadingAi}
               style={{
-                backgroundColor: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                color: '#0284c7',
-                padding: '6px 14px',
-                borderRadius: '9999px',
-                fontSize: '11.5px',
+                width: '100%',
+                marginTop: '10px',
+                padding: '10px',
+                borderRadius: '12px',
+                backgroundColor: '#0284c7',
+                border: 'none',
+                color: '#ffffff',
+                fontSize: '12.5px',
                 fontWeight: '700',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                whiteSpace: 'nowrap'
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)'
               }}
             >
               {loadingAi ? 'กำลังวิเคราะห์...' : '🔄 วิเคราะห์ใหม่'}
             </button>
           </div>
 
-          {/* Sub Card 1: Diagnosis */}
+          <div style={{
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            padding: '12px',
+            fontSize: '11.5px',
+            color: '#64748b'
+          }}>
+            <strong style={{ color: '#0f172a', display: 'block', marginBottom: '4px', fontSize: '11px', textTransform: 'uppercase' }}>
+              Session State
+            </strong>
+            <div>Date: <span style={{ fontWeight: '700', color: '#334155' }}>{latestDate || '2026-09-05'}</span></div>
+            <div style={{ marginTop: '2px' }}>Sync: <span style={{ fontWeight: '700', color: '#15803d' }}>Realtime RTDB ✓</span></div>
+          </div>
+        </aside>
+
+        {/* 2. CENTER STAGE: Main Visual Dashboard */}
+        <section style={{
+          flex: '1 1 540px',
+          minWidth: '320px',
+          backgroundColor: '#ffffff',
+          borderRadius: '24px',
+          border: '1px solid #e2e8f0',
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '24px',
+          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)'
+        }}>
+          {/* Subheader bar */}
+          <div style={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid #f1f5f9',
+            paddingBottom: '14px'
+          }}>
+            <div>
+              <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>
+                Daily Sleep Synthesis
+              </strong>
+              <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                การประเมินสภาวะการนอนหลับและการควบคุมสภาพแวดล้อม
+              </span>
+            </div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: '#eff6ff',
+              border: '1px solid #bae6fd',
+              padding: '4px 12px',
+              borderRadius: '9999px',
+              fontSize: '11px',
+              fontWeight: '800',
+              color: '#0284c7'
+            }}>
+              LIVE SYNTHESIS
+            </div>
+          </div>
+
+          {/* Big Center Circular Progress Ring */}
+          <div style={{
+            position: 'relative',
+            width: '260px',
+            height: '260px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: '8px'
+          }}>
+            <svg width="260" height="260" viewBox="0 0 260 260" style={{ transform: 'rotate(-90deg)' }}>
+              <circle
+                cx="130"
+                cy="130"
+                r={circleRadius}
+                stroke="#f1f5f9"
+                strokeWidth="16"
+                fill="transparent"
+              />
+              <circle
+                cx="130"
+                cy="130"
+                r={circleRadius}
+                stroke="#0284c7"
+                strokeWidth="16"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="transparent"
+                style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+              />
+            </svg>
+
+            <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{
+                fontSize: '76px',
+                fontWeight: '900',
+                color: '#0f172a',
+                lineHeight: 1,
+                letterSpacing: '-2px'
+              }}>
+                {combinedScoreDisplay}
+              </span>
+              <span style={{ fontSize: '16px', color: '#94a3b8', fontWeight: '700', marginTop: '2px' }}>/ 100</span>
+              <span style={{ fontSize: '11.5px', color: '#0284c7', fontWeight: '800', letterSpacing: '0.8px', marginTop: '6px' }}>
+                COMBINED SCORE
+              </span>
+            </div>
+          </div>
+
+          {/* Quality Badge */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            padding: '6px 18px',
+            borderRadius: '9999px',
+            fontSize: '12px',
+            fontWeight: '700',
+            color: '#15803d'
+          }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
+            คุณภาพการนอนหลับโดยรวมอยู่ในเกณฑ์ดี
+          </div>
+
+          {/* Sub Scores แฝด (Garmin & Room Env) 2 ใบใหญ่ด้านล่าง */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '14px',
+            width: '100%',
+            marginTop: 'auto'
+          }}>
+            <div style={{
+              backgroundColor: '#faf5ff',
+              border: '1px solid #e9d5ff',
+              borderRadius: '18px',
+              padding: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '18px' }}>⌚</span>
+                  <strong style={{ fontSize: '12px', color: '#7c3aed', letterSpacing: '0.3px' }}>
+                    GARMIN SCORE
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '42px', fontWeight: '900', color: '#6d28d9', lineHeight: 1 }}>
+                    {garminScoreDisplay ?? '--'}
+                  </span>
+                  <span style={{ fontSize: '14px', color: '#a78bfa', fontWeight: '600' }}>/100</span>
+                </div>
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '12px', borderTop: '1px solid #f3e8ff', paddingTop: '8px' }}>
+                สุขอนามัยการนอนและอัตราดิ้นตื่น
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '18px',
+              padding: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '18px' }}>🌿</span>
+                  <strong style={{ fontSize: '12px', color: '#047857', letterSpacing: '0.3px' }}>
+                    ROOM ENV SCORE
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '42px', fontWeight: '900', color: '#059669', lineHeight: 1 }}>
+                    {roomScoreDisplay ?? '--'}
+                  </span>
+                  <span style={{ fontSize: '14px', color: '#6ee7b7', fontWeight: '600' }}>/100</span>
+                </div>
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '12px', borderTop: '1px solid #dcfce7', paddingTop: '8px' }}>
+                สภาพแวดล้อม (CO2, Temp, Hum, Sound)
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 3. RIGHT PANEL: Gemini AI Diagnostic & Actions */}
+        <aside style={{
+          flex: '1 1 380px',
+          minWidth: '320px',
+          backgroundColor: '#ffffff',
+          borderRadius: '24px',
+          border: '1px solid #e2e8f0',
+          padding: '22px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)'
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #f1f5f9',
+            paddingBottom: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px'
+              }}>
+                ✨
+              </div>
+              <div>
+                <strong style={{ fontSize: '14px', color: '#0f172a', display: 'block' }}>
+                  Gemini AI Advisor
+                </strong>
+                <span style={{ fontSize: '10.5px', color: '#64748b' }}>
+                  Contextual Diagnosis &amp; Actions
+                </span>
+              </div>
+            </div>
+
+            <span style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              color: '#15803d',
+              fontSize: '10px',
+              fontWeight: '800',
+              padding: '3px 8px',
+              borderRadius: '9999px'
+            }}>
+              READY
+            </span>
+          </div>
+
+          {/* Part 1: Diagnosis (Root Cause) */}
           <div style={{
             backgroundColor: '#fffdfa',
             border: '1px solid #fed7aa',
-            borderRadius: '18px',
-            padding: '16px 18px'
+            borderRadius: '16px',
+            padding: '16px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
               <span style={{ fontSize: '15px' }}>🚨</span>
-              <strong style={{ fontSize: '12.5px', color: '#c2410c', letterSpacing: '0.2px' }}>
-                สาเหตุเชิงลึกจากสภาพแวดล้อมจริง (Diagnosis)
+              <strong style={{ fontSize: '12.5px', color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                สาเหตุเชิงลึกจากสภาพแวดล้อม (Diagnosis)
               </strong>
             </div>
             <div style={{
@@ -540,17 +604,20 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Sub Card 2: Actionable Recommendations */}
+          {/* Part 2: Actionable Recommendations */}
           <div style={{
             backgroundColor: '#f8fbff',
             border: '1px solid #bae6fd',
-            borderRadius: '18px',
-            padding: '16px 18px'
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
               <span style={{ fontSize: '15px' }}>💡</span>
-              <strong style={{ fontSize: '12.5px', color: '#0369a1', letterSpacing: '0.2px' }}>
-                วิธีปรับห้องนอนคืนนี้ (Actionable Recommendations)
+              <strong style={{ fontSize: '12.5px', color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                วิธีปรับห้องนอนคืนนี้ (Actionable)
               </strong>
             </div>
             <div style={{
@@ -562,8 +629,9 @@ export default function HomePage() {
               {aiInsight?.recommendation || "1. แง้มประตูหรือเปิดพัดลมดูดอากาศเพื่อลดค่า CO2\n2. ปรับอุณหภูมิห้องให้อยู่ที่ 24-25°C"}
             </div>
           </div>
-        </section>
-      </main>
+        </aside>
+
+      </div>
     </div>
   );
 }
