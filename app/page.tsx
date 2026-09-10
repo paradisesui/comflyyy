@@ -139,12 +139,11 @@ export default function HomePage() {
     }
   };
 
-  // แบบที่ 3: Floating Minimal Circles Configuration
-  const circleNavItems = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', bg: '#eff6ff', border: '#bfdbfe' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', bg: '#faf5ff', border: '#e9d5ff' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', bg: '#fff1f2', border: '#fecdd3' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', bg: '#fffbeb', border: '#fde68a' },
+  const navTabs = [
+    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน' },
+    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona' },
+    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs' },
   ];
 
   return (
@@ -172,31 +171,28 @@ export default function HomePage() {
           align-items: center;
           padding: 0 4px 4px 4px;
         }
-        .floating-nav {
+        /* แถบ Segmented แบบ Solid Flat ไม่มีความโปร่งใส */
+        .segmented-nav {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
-          padding: 6px 4px;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+          padding: 6px;
+          background-color: #e2e8f0;
+          border: 1px solid #cbd5e1;
+          border-radius: 20px;
         }
-        .circle-btn {
-          width: 64px;
-          height: 64px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justifyContent: center;
-          font-size: 26px;
-          transition: transform 0.18s ease, box-shadow 0.18s ease;
-          box-shadow: 0 4px 14px -2px rgba(186, 230, 253, 0.35);
-        }
-        .circle-btn:hover {
-          transform: translateY(-3px);
+        @media (min-width: 768px) {
+          .segmented-nav {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            border-radius: 9999px;
+          }
         }
         .clean-card {
-          background: #ffffff;
+          background-color: #ffffff;
           border-radius: 28px;
-          border: 1px solid rgba(226, 232, 240, 0.85);
-          box-shadow: 0 6px 20px -4px rgba(186, 230, 253, 0.25);
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 16px -2px #e0f2fe;
         }
       `}</style>
 
@@ -213,8 +209,7 @@ export default function HomePage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '22px',
-              boxShadow: '0 4px 10px rgba(245, 158, 11, 0.12)'
+              fontSize: '22px'
             }}>
               🌙
             </div>
@@ -241,39 +236,34 @@ export default function HomePage() {
             justifyContent: 'center',
             color: '#64748b',
             textDecoration: 'none',
-            fontSize: '16px',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)'
+            fontSize: '16px'
           }}>
             👤
           </Link>
         </header>
 
-        {/* 4 Navigation Buttons: แบบที่ 3 (Floating Minimal Circles) */}
-        <nav className="floating-nav">
-          {circleNavItems.map((item, idx) => (
-            <Link key={idx} href={item.href} style={{
+        {/* 4 Navigation Buttons: แบบที่ 2 ทึบสนิท Solid Clean */}
+        <nav className="segmented-nav">
+          {navTabs.map((tab, idx) => (
+            <Link key={idx} href={tab.href} style={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '12px 14px',
+              borderRadius: '16px',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
               textDecoration: 'none',
-              gap: '8px',
-              textAlign: 'center'
+              transition: 'background-color 0.15s ease'
             }}>
-              <div
-                className="circle-btn"
-                style={{
-                  backgroundColor: item.bg,
-                  border: `2px solid ${item.border}`,
-                }}
-              >
-                {item.icon}
-              </div>
-              <div>
-                <strong style={{ fontSize: '13.5px', color: '#0f172a', fontWeight: '800', display: 'block', lineHeight: 1.2 }}>
-                  {item.title}
+              <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+              <div style={{ textAlign: 'left' }}>
+                <strong style={{ fontSize: '13.5px', color: '#1e293b', fontWeight: '800', display: 'block', lineHeight: 1.2 }}>
+                  {tab.title}
                 </strong>
-                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
-                  {item.desc}
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+                  {tab.desc}
                 </span>
               </div>
             </Link>
@@ -289,18 +279,17 @@ export default function HomePage() {
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
-            background: 'linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)'
+            backgroundColor: '#ffffff'
           }}>
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: '#ffffff',
+              backgroundColor: '#f0f9ff',
               border: '1px solid #bae6fd',
               padding: '6px 18px',
               borderRadius: '9999px',
-              marginBottom: '16px',
-              boxShadow: '0 2px 6px rgba(186, 230, 253, 0.2)'
+              marginBottom: '16px'
             }}>
               <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#0284c7' }}></span>
               <span style={{ fontSize: '12px', color: '#0369a1', fontWeight: '800', letterSpacing: '0.4px' }}>
@@ -403,7 +392,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Gemini AI Diagnosis Card - สไตล์แบบที่ 1 (Flat Pastel Tint) */}
+        {/* Gemini AI Diagnosis Card - Flat Pastel Tint ทึบสนิท */}
         <section className="clean-card" style={{
           padding: '28px',
           display: 'flex',
