@@ -139,12 +139,12 @@ export default function HomePage() {
     }
   };
 
-  // แบบที่ 1: Vertical Minimal Cards Configuration
-  const navButtons = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', iconBg: '#e0f2fe', border: '#bfdbfe' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', iconBg: '#f3e8ff', border: '#e9d5ff' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', iconBg: '#ffe4e6', border: '#fecdd3' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', iconBg: '#fef3c7', border: '#fde68a' },
+  // ข้อมูลชุดแท็บนำทาง
+  const navTabs = [
+    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน' },
+    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona' },
+    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs' },
   ];
 
   return (
@@ -172,14 +172,22 @@ export default function HomePage() {
           align-items: center;
           padding: 0 4px 4px 4px;
         }
-        .nav-grid {
+        .segmented-nav {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 14px;
+          gap: 8px;
+          padding: 8px;
+          background-color: rgba(241, 245, 249, 0.85);
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          border-radius: 24px;
+          backdrop-filter: blur(12px);
         }
         @media (min-width: 768px) {
-          .nav-grid {
+          .segmented-nav {
             grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            border-radius: 9999px;
+            padding: 6px;
           }
         }
         .clean-card {
@@ -238,46 +246,36 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 4 Navigation Cards: แบบที่ 1 (Vertical Minimal Cards) */}
-        <nav className="nav-grid">
-          {navButtons.map((btn, idx) => (
-            <Link key={idx} href={btn.href} style={{
+        {/* 4 Navigation Buttons: แบบที่ 2 (Segmented Glass Tab Bar) */}
+        <nav className="segmented-nav">
+          {navTabs.map((tab, idx) => (
+            <Link key={idx} href={tab.href} style={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              textAlign: 'center',
-              padding: '22px 14px 18px 14px',
-              borderRadius: '24px',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '12px 14px',
+              borderRadius: '18px',
               backgroundColor: '#ffffff',
-              border: `1.5px solid ${btn.border}`,
-              boxShadow: '0 4px 16px -2px rgba(186, 230, 253, 0.22)',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
               textDecoration: 'none',
-              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+              transition: 'all 0.15s ease'
             }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                backgroundColor: btn.iconBg,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '22px',
-                marginBottom: '10px'
-              }}>
-                {btn.icon}
+              <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+              <div style={{ textAlign: 'left' }}>
+                <strong style={{ fontSize: '13.5px', color: '#1e293b', fontWeight: '800', display: 'block', lineHeight: 1.2 }}>
+                  {tab.title}
+                </strong>
+                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
+                  {tab.desc}
+                </span>
               </div>
-              <strong style={{ fontSize: '14.5px', color: '#0f172a', fontWeight: '800', marginBottom: '3px' }}>
-                {btn.title}
-              </strong>
-              <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: '500' }}>
-                {btn.desc}
-              </span>
             </Link>
           ))}
         </nav>
 
-        {/* Combined Sleep Score - Minimal Soft Cloud */}
+        {/* Combined Sleep Score Card */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div className="clean-card" style={{
             padding: '36px 24px',
@@ -452,7 +450,7 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Sub Card 1: Diagnosis (Warm Pastel Sand Tint) */}
+          {/* Sub Card 1: Diagnosis */}
           <div style={{
             backgroundColor: '#fffdfa',
             border: '1px solid #fed7aa',
@@ -476,7 +474,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Sub Card 2: Actionable Recommendations (Soft Sky Blue Tint) */}
+          {/* Sub Card 2: Actionable Recommendations */}
           <div style={{
             backgroundColor: '#f8fbff',
             border: '1px solid #bae6fd',
