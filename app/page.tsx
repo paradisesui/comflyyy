@@ -140,16 +140,16 @@ export default function HomePage() {
     }
   };
 
-  // 4 ปุ่มแบบสีพาสเทลทั้งกล่อง ไร้เส้นขอบ (No Borders, Solid Pastel Cards)
+  // ปรับสี Comfy Room ให้เข้ม เด่นชัดขึ้นอย่างลงตัว
   const navTabs = [
     { 
       href: '/sensors', 
       icon: '🛏️', 
       title: 'Comfy Room', 
       desc: 'คุณภาพห้องนอน', 
-      bg: '#e0f2fe', 
+      bg: '#bae6fd', 
       textColor: '#0369a1',
-      subTextColor: '#0284c7'
+      subTextColor: '#075985'
     },
     { 
       href: '/persona', 
@@ -259,7 +259,7 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 2. Navigation 4 ปุ่ม: สีทั้งกล่อง ไม่มีขอบ (Solid Pastel No-Border Cards) */}
+        {/* 2. Navigation 4 ปุ่ม: สีพาสเทลเนื้อเต็ม ไม่มีขอบ */}
         <nav style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -306,8 +306,8 @@ export default function HomePage() {
                 <span style={{ 
                   fontSize: '11px', 
                   color: tab.subTextColor, 
-                  fontWeight: '500',
-                  opacity: 0.85
+                  fontWeight: '600',
+                  opacity: 0.9
                 }}>
                   {tab.desc}
                 </span>
@@ -316,7 +316,7 @@ export default function HomePage() {
           ))}
         </nav>
 
-        {/* 3. Combined Sleep Score Card: Circular Progress Ring สมส่วน */}
+        {/* 3. Combined Sleep Score Card */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{
             backgroundColor: '#ffffff',
@@ -331,7 +331,6 @@ export default function HomePage() {
             textAlign: 'center',
             background: 'linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)'
           }}>
-            {/* หัวข้อขนาดกะทัดรัด */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -353,7 +352,6 @@ export default function HomePage() {
             {/* Circular Progress Ring พร้อมตัวเลขกึ่งกลาง */}
             <div style={{ position: 'relative', width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="180" height="180" viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
-                {/* Background Ring */}
                 <circle
                   cx="90"
                   cy="90"
@@ -362,7 +360,6 @@ export default function HomePage() {
                   strokeWidth="10"
                   fill="transparent"
                 />
-                {/* Active Gradient/Solid Ring */}
                 <circle
                   cx="90"
                   cy="90"
@@ -377,7 +374,6 @@ export default function HomePage() {
                 />
               </svg>
 
-              {/* Text Inside Circle */}
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
                   <span style={{
