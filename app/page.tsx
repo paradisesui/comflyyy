@@ -139,12 +139,12 @@ export default function HomePage() {
     }
   };
 
-  // ข้อมูลชุดแท็บนำทาง
-  const navTabs = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs' },
+  // แบบที่ 3: Floating Minimal Circles Configuration
+  const circleNavItems = [
+    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', bg: '#eff6ff', border: '#bfdbfe' },
+    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', bg: '#faf5ff', border: '#e9d5ff' },
+    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', bg: '#fff1f2', border: '#fecdd3' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', bg: '#fffbeb', border: '#fde68a' },
   ];
 
   return (
@@ -172,23 +172,25 @@ export default function HomePage() {
           align-items: center;
           padding: 0 4px 4px 4px;
         }
-        .segmented-nav {
+        .floating-nav {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
-          padding: 8px;
-          background-color: rgba(241, 245, 249, 0.85);
-          border: 1px solid rgba(226, 232, 240, 0.9);
-          border-radius: 24px;
-          backdrop-filter: blur(12px);
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          padding: 6px 4px;
         }
-        @media (min-width: 768px) {
-          .segmented-nav {
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            border-radius: 9999px;
-            padding: 6px;
-          }
+        .circle-btn {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justifyContent: center;
+          font-size: 26px;
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
+          box-shadow: 0 4px 14px -2px rgba(186, 230, 253, 0.35);
+        }
+        .circle-btn:hover {
+          transform: translateY(-3px);
         }
         .clean-card {
           background: #ffffff;
@@ -246,29 +248,32 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 4 Navigation Buttons: แบบที่ 2 (Segmented Glass Tab Bar) */}
-        <nav className="segmented-nav">
-          {navTabs.map((tab, idx) => (
-            <Link key={idx} href={tab.href} style={{
+        {/* 4 Navigation Buttons: แบบที่ 3 (Floating Minimal Circles) */}
+        <nav className="floating-nav">
+          {circleNavItems.map((item, idx) => (
+            <Link key={idx} href={item.href} style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              padding: '12px 14px',
-              borderRadius: '18px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
               textDecoration: 'none',
-              transition: 'all 0.15s ease'
+              gap: '8px',
+              textAlign: 'center'
             }}>
-              <span style={{ fontSize: '18px' }}>{tab.icon}</span>
-              <div style={{ textAlign: 'left' }}>
-                <strong style={{ fontSize: '13.5px', color: '#1e293b', fontWeight: '800', display: 'block', lineHeight: 1.2 }}>
-                  {tab.title}
+              <div
+                className="circle-btn"
+                style={{
+                  backgroundColor: item.bg,
+                  border: `2px solid ${item.border}`,
+                }}
+              >
+                {item.icon}
+              </div>
+              <div>
+                <strong style={{ fontSize: '13.5px', color: '#0f172a', fontWeight: '800', display: 'block', lineHeight: 1.2 }}>
+                  {item.title}
                 </strong>
                 <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
-                  {tab.desc}
+                  {item.desc}
                 </span>
               </div>
             </Link>
