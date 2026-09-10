@@ -140,11 +140,44 @@ export default function HomePage() {
     }
   };
 
+  // 4 ปุ่มแบบสีพาสเทลทั้งกล่อง ไร้เส้นขอบ (No Borders, Solid Pastel Cards)
   const navTabs = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', border: '#bae6fd', badgeBg: '#eff6ff' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', border: '#e9d5ff', badgeBg: '#faf5ff' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', border: '#fecdd3', badgeBg: '#fff1f2' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', border: '#fde68a', badgeBg: '#fffbeb' },
+    { 
+      href: '/sensors', 
+      icon: '🛏️', 
+      title: 'Comfy Room', 
+      desc: 'คุณภาพห้องนอน', 
+      bg: '#e0f2fe', 
+      textColor: '#0369a1',
+      subTextColor: '#0284c7'
+    },
+    { 
+      href: '/persona', 
+      icon: '⌚', 
+      title: 'Smart Watch', 
+      desc: 'Garmin Persona', 
+      bg: '#ede9fe', 
+      textColor: '#6d28d9',
+      subTextColor: '#7c3aed'
+    },
+    { 
+      href: '/sensitivity', 
+      icon: '🎯', 
+      title: 'Sensitivity', 
+      desc: 'จุดอ่อนการนอน', 
+      bg: '#fee2e2', 
+      textColor: '#b91c1c',
+      subTextColor: '#dc2626'
+    },
+    { 
+      href: '/sensitivity-profile', 
+      icon: '📜', 
+      title: 'ประวัติสะสม', 
+      desc: 'History Logs', 
+      bg: '#fef3c7', 
+      textColor: '#b45309',
+      subTextColor: '#d97706'
+    },
   ];
 
   // คำนวณเส้นรอบวงสำหรับ Circular Progress Ring
@@ -226,11 +259,11 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 2. Navigation 4 ปุ่ม: รองรับทั้งแนวตั้งมือถือและ 4 คอลัมน์บนจอใหญ่ */}
+        {/* 2. Navigation 4 ปุ่ม: สีทั้งกล่อง ไม่มีขอบ (Solid Pastel No-Border Cards) */}
         <nav style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: '10px',
+          gap: '12px',
           width: '100%'
         }}>
           {navTabs.map((tab, idx) => (
@@ -238,11 +271,11 @@ export default function HomePage() {
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              padding: '12px 14px',
-              borderRadius: '18px',
-              backgroundColor: '#ffffff',
-              border: `1.5px solid ${tab.border}`,
-              boxShadow: '0 2px 10px rgba(186, 230, 253, 0.18)',
+              padding: '14px 16px',
+              borderRadius: '20px',
+              backgroundColor: tab.bg,
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
               textDecoration: 'none',
               transition: 'transform 0.15s ease'
             }}>
@@ -250,26 +283,32 @@ export default function HomePage() {
                 width: '38px',
                 height: '38px',
                 borderRadius: '12px',
-                backgroundColor: tab.badgeBg,
+                backgroundColor: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '18px',
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: '0 2px 5px rgba(0, 0, 0, 0.04)'
               }}>
                 {tab.icon}
               </div>
               <div style={{ textAlign: 'left' }}>
                 <strong style={{
                   fontSize: '13.5px',
-                  color: '#1e293b',
+                  color: tab.textColor,
                   fontWeight: '800',
                   display: 'block',
                   lineHeight: 1.25
                 }}>
                   {tab.title}
                 </strong>
-                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
+                <span style={{ 
+                  fontSize: '11px', 
+                  color: tab.subTextColor, 
+                  fontWeight: '500',
+                  opacity: 0.85
+                }}>
                   {tab.desc}
                 </span>
               </div>
@@ -277,7 +316,7 @@ export default function HomePage() {
           ))}
         </nav>
 
-        {/* 3. Combined Sleep Score Card: โฉมใหม่พร้อม Circular Progress Ring สมส่วน สวยงาม */}
+        {/* 3. Combined Sleep Score Card: Circular Progress Ring สมส่วน */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{
             backgroundColor: '#ffffff',
@@ -292,7 +331,7 @@ export default function HomePage() {
             textAlign: 'center',
             background: 'linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)'
           }}>
-            {/* หัวข้อขนาดกะทัดรัด ไม่แตกเป็น 2 บรรทัด */}
+            {/* หัวข้อขนาดกะทัดรัด */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
