@@ -95,9 +95,10 @@ export default function HomePage() {
   // คำนวณคะแนนแบบ Dynamic Fallback
   const garminScoreDisplay = garminData?.garminSleepScore ?? latestData?.garminScore ?? 93;
   const roomScoreDisplay = latestData?.roomScore ?? calculateDynamicRoomScore(roomData) ?? 68;
-  const combinedScoreDisplay = (garminScoreDisplay && roomScoreDisplay)
+  const combinedScoreValue = (garminScoreDisplay && roomScoreDisplay)
     ? Math.round(Number(garminScoreDisplay) * 0.5 + Number(roomScoreDisplay) * 0.5)
-    : '--';
+    : 79;
+  const combinedScoreDisplay = (garminScoreDisplay && roomScoreDisplay) ? combinedScoreValue : '--';
 
   const handleAnalyzeWithAI = async () => {
     if (!latestDate) return;
@@ -139,13 +140,18 @@ export default function HomePage() {
     }
   };
 
-  // แถบนำทาง 4 ปุ่ม แบบขอบสีพาสเทล พื้นขาว คลีน มินิมอล
   const navTabs = [
     { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', border: '#bae6fd', badgeBg: '#eff6ff' },
     { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', border: '#e9d5ff', badgeBg: '#faf5ff' },
     { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', border: '#fecdd3', badgeBg: '#fff1f2' },
     { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', border: '#fde68a', badgeBg: '#fffbeb' },
   ];
+
+  // คำนวณเส้นรอบวงสำหรับ Circular Progress Ring
+  const circleRadius = 78;
+  const circumference = 2 * Math.PI * circleRadius;
+  const numericScore = typeof combinedScoreValue === 'number' ? Math.min(100, Math.max(0, combinedScoreValue)) : 79;
+  const strokeDashoffset = circumference - (numericScore / 100) * circumference;
 
   return (
     <div style={{
@@ -154,7 +160,7 @@ export default function HomePage() {
       backgroundImage: 'radial-gradient(ellipse at 50% 0%, #e0f2fe 0%, #f8fafc 65%)',
       color: '#1e293b',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '36px 16px 64px 16px',
+      padding: '24px 14px 60px 14px',
       display: 'flex',
       justifyContent: 'center'
     }}>
@@ -163,7 +169,7 @@ export default function HomePage() {
         maxWidth: '960px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px'
+        gap: '16px'
       }}>
 
         {/* 1. Header Bar */}
@@ -173,37 +179,37 @@ export default function HomePage() {
           alignItems: 'center',
           padding: '0 4px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
-              width: '44px',
-              height: '44px',
+              width: '42px',
+              height: '42px',
               borderRadius: '50%',
               backgroundColor: '#fffbeb',
               border: '1px solid #fef3c7',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '22px',
+              fontSize: '20px',
               boxShadow: '0 4px 10px rgba(245, 158, 11, 0.12)',
               flexShrink: 0
             }}>
               🌙
             </div>
             <div>
-              <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '0.5px', lineHeight: 1.1 }}>
+              <div style={{ fontSize: '22px', fontWeight: '900', letterSpacing: '0.4px', lineHeight: 1.1 }}>
                 <span style={{ color: '#f59e0b' }}>COM</span>
                 <span style={{ color: '#60a5fa' }}>FLYYY</span>
-                <span style={{ fontSize: '18px', fontWeight: '700', color: '#64748b', marginLeft: '8px' }}>SLEEP</span>
+                <span style={{ fontSize: '16px', fontWeight: '700', color: '#64748b', marginLeft: '6px' }}>SLEEP</span>
               </div>
-              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '500' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
                 AI-Powered Personal Sleep Environment
               </span>
             </div>
           </div>
 
           <Link href="/account" style={{
-            width: '42px',
-            height: '42px',
+            width: '38px',
+            height: '38px',
             borderRadius: '50%',
             backgroundColor: '#ffffff',
             border: '1px solid #e2e8f0',
@@ -212,7 +218,7 @@ export default function HomePage() {
             justifyContent: 'center',
             color: '#64748b',
             textDecoration: 'none',
-            fontSize: '16px',
+            fontSize: '15px',
             boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
             flexShrink: 0
           }}>
@@ -220,54 +226,50 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 2. Navigation 4 ปุ่ม: บังคับ Flex-wrap และ Card Layout ด้วย Inline Styles ไม่เพี้ยนแน่นอน */}
+        {/* 2. Navigation 4 ปุ่ม: รองรับทั้งแนวตั้งมือถือและ 4 คอลัมน์บนจอใหญ่ */}
         <nav style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '14px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: '10px',
           width: '100%'
         }}>
           {navTabs.map((tab, idx) => (
             <Link key={idx} href={tab.href} style={{
-              flex: '1 1 200px',
-              minWidth: '180px',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              padding: '14px 16px',
-              borderRadius: '20px',
+              padding: '12px 14px',
+              borderRadius: '18px',
               backgroundColor: '#ffffff',
               border: `1.5px solid ${tab.border}`,
-              boxShadow: '0 4px 16px -2px rgba(186, 230, 253, 0.2)',
+              boxShadow: '0 2px 10px rgba(186, 230, 253, 0.18)',
               textDecoration: 'none',
-              boxSizing: 'border-box',
               transition: 'transform 0.15s ease'
             }}>
               <div style={{
-                width: '40px',
-                height: '40px',
+                width: '38px',
+                height: '38px',
                 borderRadius: '12px',
                 backgroundColor: tab.badgeBg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '20px',
+                fontSize: '18px',
                 flexShrink: 0
               }}>
                 {tab.icon}
               </div>
               <div style={{ textAlign: 'left' }}>
                 <strong style={{
-                  fontSize: '14px',
+                  fontSize: '13.5px',
                   color: '#1e293b',
                   fontWeight: '800',
                   display: 'block',
-                  lineHeight: 1.25,
-                  marginBottom: '2px'
+                  lineHeight: 1.25
                 }}>
                   {tab.title}
                 </strong>
-                <span style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: '500' }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
                   {tab.desc}
                 </span>
               </div>
@@ -275,65 +277,102 @@ export default function HomePage() {
           ))}
         </nav>
 
-        {/* 3. Combined Sleep Score Card */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {/* 3. Combined Sleep Score Card: โฉมใหม่พร้อม Circular Progress Ring สมส่วน สวยงาม */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{
             backgroundColor: '#ffffff',
-            borderRadius: '28px',
+            borderRadius: '26px',
             border: '1px solid rgba(226, 232, 240, 0.85)',
-            boxShadow: '0 6px 20px -4px rgba(186, 230, 253, 0.25)',
-            padding: '36px 24px',
+            boxShadow: '0 8px 24px -4px rgba(186, 230, 253, 0.28)',
+            padding: '24px 16px 22px 16px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
-            background: 'linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)'
+            background: 'linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)'
           }}>
+            {/* หัวข้อขนาดกะทัดรัด ไม่แตกเป็น 2 บรรทัด */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #bae6fd',
-              padding: '6px 18px',
+              backgroundColor: '#eff6ff',
+              padding: '5px 14px',
               borderRadius: '9999px',
-              marginBottom: '16px',
-              boxShadow: '0 2px 6px rgba(186, 230, 253, 0.2)'
+              marginBottom: '14px'
             }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#0284c7' }}></span>
-              <span style={{ fontSize: '12px', color: '#0369a1', fontWeight: '800', letterSpacing: '0.4px' }}>
-                COMBINED SLEEP SCORE ({latestDate || '2026-08-16'})
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#0284c7' }}></span>
+              <span style={{ fontSize: '11.5px', color: '#0369a1', fontWeight: '800', letterSpacing: '0.4px' }}>
+                COMBINED SLEEP SCORE
+              </span>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                • {latestDate || '2026-09-05'}
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '4px 0' }}>
-              <span style={{
-                fontSize: '84px',
-                fontWeight: '900',
-                color: '#0284c7',
-                lineHeight: 1,
-                letterSpacing: '-2px'
-              }}>
-                {combinedScoreDisplay}
-              </span>
-              <span style={{ fontSize: '22px', color: '#94a3b8', fontWeight: '600' }}>/ 100</span>
+            {/* Circular Progress Ring พร้อมตัวเลขกึ่งกลาง */}
+            <div style={{ position: 'relative', width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="180" height="180" viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
+                {/* Background Ring */}
+                <circle
+                  cx="90"
+                  cy="90"
+                  r={circleRadius}
+                  stroke="#e0f2fe"
+                  strokeWidth="10"
+                  fill="transparent"
+                />
+                {/* Active Gradient/Solid Ring */}
+                <circle
+                  cx="90"
+                  cy="90"
+                  r={circleRadius}
+                  stroke="#0284c7"
+                  strokeWidth="10"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  fill="transparent"
+                  style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+                />
+              </svg>
+
+              {/* Text Inside Circle */}
+              <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+                  <span style={{
+                    fontSize: '56px',
+                    fontWeight: '900',
+                    color: '#0284c7',
+                    lineHeight: 1,
+                    letterSpacing: '-1.5px'
+                  }}>
+                    {combinedScoreDisplay}
+                  </span>
+                  <span style={{ fontSize: '16px', color: '#94a3b8', fontWeight: '600' }}>/100</span>
+                </div>
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginTop: '4px' }}>
+                  ภาพรวมคืนนี้
+                </span>
+              </div>
             </div>
 
+            {/* Badge สถานะผลการนอน */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              fontSize: '13px',
+              fontSize: '12px',
               color: '#15803d',
               fontWeight: '700',
               marginTop: '16px',
               backgroundColor: '#f0fdf4',
-              padding: '6px 20px',
+              padding: '6px 16px',
               borderRadius: '9999px',
               border: '1px solid #bbf7d0'
             }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
               คุณภาพการนอนหลับโดยรวมอยู่ในเกณฑ์ดี
             </div>
           </div>
@@ -341,15 +380,15 @@ export default function HomePage() {
           {/* Sub Scores แฝด (Garmin & Room Env) */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            gap: '14px'
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px'
           }}>
             <div style={{
               backgroundColor: '#ffffff',
-              borderRadius: '24px',
+              borderRadius: '22px',
               border: '1px solid rgba(226, 232, 240, 0.85)',
-              boxShadow: '0 6px 20px -4px rgba(186, 230, 253, 0.25)',
-              padding: '22px 18px',
+              boxShadow: '0 4px 14px -2px rgba(186, 230, 253, 0.2)',
+              padding: '16px 12px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -357,33 +396,33 @@ export default function HomePage() {
               textAlign: 'center'
             }}>
               <div style={{
-                width: '40px',
-                height: '40px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '50%',
                 backgroundColor: '#f5f3ff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '18px',
-                marginBottom: '6px'
+                fontSize: '17px',
+                marginBottom: '4px'
               }}>
                 ⌚
               </div>
-              <span style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '800', letterSpacing: '0.3px' }}>
+              <span style={{ fontSize: '11px', color: '#7c3aed', fontWeight: '800', letterSpacing: '0.3px' }}>
                 GARMIN SCORE
               </span>
-              <strong style={{ fontSize: '34px', fontWeight: '900', color: '#6d28d9', margin: '2px 0' }}>
+              <strong style={{ fontSize: '28px', fontWeight: '900', color: '#6d28d9', margin: '2px 0' }}>
                 {garminScoreDisplay ?? '--'}
               </strong>
-              <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>คะแนนจากนาฬิกา</span>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนจากนาฬิกา</span>
             </div>
 
             <div style={{
               backgroundColor: '#ffffff',
-              borderRadius: '24px',
+              borderRadius: '22px',
               border: '1px solid rgba(226, 232, 240, 0.85)',
-              boxShadow: '0 6px 20px -4px rgba(186, 230, 253, 0.25)',
-              padding: '22px 18px',
+              boxShadow: '0 4px 14px -2px rgba(186, 230, 253, 0.2)',
+              padding: '16px 12px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -391,25 +430,25 @@ export default function HomePage() {
               textAlign: 'center'
             }}>
               <div style={{
-                width: '40px',
-                height: '40px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '50%',
                 backgroundColor: '#ecfdf5',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '18px',
-                marginBottom: '6px'
+                fontSize: '17px',
+                marginBottom: '4px'
               }}>
                 🌿
               </div>
-              <span style={{ fontSize: '12px', color: '#059669', fontWeight: '800', letterSpacing: '0.3px' }}>
+              <span style={{ fontSize: '11px', color: '#059669', fontWeight: '800', letterSpacing: '0.3px' }}>
                 ROOM ENV SCORE
               </span>
-              <strong style={{ fontSize: '34px', fontWeight: '900', color: '#047857', margin: '2px 0' }}>
+              <strong style={{ fontSize: '28px', fontWeight: '900', color: '#047857', margin: '2px 0' }}>
                 {roomScoreDisplay ?? '--'}
               </strong>
-              <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>คะแนนสภาพแวดล้อม</span>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนสภาพแวดล้อม</span>
             </div>
           </div>
         </section>
@@ -417,40 +456,39 @@ export default function HomePage() {
         {/* 4. Gemini AI Diagnosis Card */}
         <section style={{
           backgroundColor: '#ffffff',
-          borderRadius: '28px',
+          borderRadius: '24px',
           border: '1px solid rgba(226, 232, 240, 0.85)',
           boxShadow: '0 6px 20px -4px rgba(186, 230, 253, 0.25)',
-          padding: '28px',
+          padding: '20px 16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px'
+          gap: '14px'
         }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '12px'
+            gap: '10px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{
-                width: '38px',
-                height: '38px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 backgroundColor: '#fef3c7',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '18px',
+                fontSize: '16px',
                 flexShrink: 0
               }}>
                 ✨
               </div>
               <div>
-                <strong style={{ fontSize: '15.5px', color: '#1e293b', fontWeight: '900', display: 'block' }}>
+                <strong style={{ fontSize: '14px', color: '#1e293b', fontWeight: '900', display: 'block', lineHeight: 1.2 }}>
                   ผลวิเคราะห์และคำแนะนำจาก AI
                 </strong>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '600' }}>
                   GEMINI SLEEP COACH
                 </span>
               </div>
@@ -463,14 +501,15 @@ export default function HomePage() {
                 backgroundColor: '#eff6ff',
                 border: '1px solid #bfdbfe',
                 color: '#0284c7',
-                padding: '6px 16px',
+                padding: '6px 14px',
                 borderRadius: '9999px',
-                fontSize: '12px',
+                fontSize: '11.5px',
                 fontWeight: '700',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '4px',
+                whiteSpace: 'nowrap'
               }}
             >
               {loadingAi ? 'กำลังวิเคราะห์...' : '🔄 วิเคราะห์ใหม่'}
@@ -481,19 +520,19 @@ export default function HomePage() {
           <div style={{
             backgroundColor: '#fffdfa',
             border: '1px solid #fed7aa',
-            borderRadius: '20px',
-            padding: '18px 22px'
+            borderRadius: '18px',
+            padding: '16px 18px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span style={{ fontSize: '15px' }}>🚨</span>
-              <strong style={{ fontSize: '13px', color: '#c2410c', letterSpacing: '0.2px' }}>
+              <strong style={{ fontSize: '12.5px', color: '#c2410c', letterSpacing: '0.2px' }}>
                 สาเหตุเชิงลึกจากสภาพแวดล้อมจริง (Diagnosis)
               </strong>
             </div>
             <div style={{
-              fontSize: '13.5px',
+              fontSize: '13px',
               color: '#475569',
-              lineHeight: 1.75,
+              lineHeight: 1.7,
               fontWeight: '450',
               whiteSpace: 'pre-line'
             }}>
@@ -505,19 +544,19 @@ export default function HomePage() {
           <div style={{
             backgroundColor: '#f8fbff',
             border: '1px solid #bae6fd',
-            borderRadius: '20px',
-            padding: '18px 22px'
+            borderRadius: '18px',
+            padding: '16px 18px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span style={{ fontSize: '15px' }}>💡</span>
-              <strong style={{ fontSize: '13px', color: '#0369a1', letterSpacing: '0.2px' }}>
+              <strong style={{ fontSize: '12.5px', color: '#0369a1', letterSpacing: '0.2px' }}>
                 วิธีปรับห้องนอนคืนนี้ (Actionable Recommendations)
               </strong>
             </div>
             <div style={{
-              fontSize: '13.5px',
+              fontSize: '13px',
               color: '#475569',
-              lineHeight: 1.75,
+              lineHeight: 1.7,
               whiteSpace: 'pre-line'
             }}>
               {aiInsight?.recommendation || "1. แง้มประตูหรือเปิดพัดลมดูดอากาศเพื่อลดค่า CO2\n2. ปรับอุณหภูมิห้องให้อยู่ที่ 24-25°C"}
