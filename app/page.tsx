@@ -93,11 +93,12 @@ export default function HomePage() {
   }, []);
 
   // คำนวณคะแนนแบบ Dynamic Fallback
-  const garminScoreDisplay = garminData?.garminSleepScore ?? latestData?.garminScore ?? 89;
+  const garminScoreDisplay = garminData?.garminSleepScore ?? latestData?.garminScore ?? 93;
   const roomScoreDisplay = latestData?.roomScore ?? calculateDynamicRoomScore(roomData) ?? 68;
-  const combinedScoreDisplay = (garminScoreDisplay && roomScoreDisplay)
+  const combinedScoreValue = (garminScoreDisplay && roomScoreDisplay)
     ? Math.round(Number(garminScoreDisplay) * 0.5 + Number(roomScoreDisplay) * 0.5)
-    : '--';
+    : 79;
+  const combinedScoreDisplay = (garminScoreDisplay && roomScoreDisplay) ? combinedScoreValue : '--';
 
   const handleAnalyzeWithAI = async () => {
     if (!latestDate) return;
@@ -139,13 +140,18 @@ export default function HomePage() {
     }
   };
 
-  // ปุ่มสีพาสเทลแบบเนื้อสีปกติ (Solid Soft Tone) ไม่ใช่แค่เส้นขอบ
   const navTabs = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', bg: '#e0f2fe', text: '#0369a1', iconBg: '#ffffff' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', bg: '#ede9fe', text: '#6d28d9', iconBg: '#ffffff' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', bg: '#fee2e2', text: '#be123c', iconBg: '#ffffff' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', bg: '#fef3c7', text: '#b45309', iconBg: '#ffffff' },
+    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน', border: '#bae6fd', badgeBg: '#eff6ff' },
+    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona', border: '#e9d5ff', badgeBg: '#faf5ff' },
+    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน', border: '#fecdd3', badgeBg: '#fff1f2' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs', border: '#fde68a', badgeBg: '#fffbeb' },
   ];
+
+  // คำนวณเส้นรอบวงสำหรับ Circular Progress Ring
+  const circleRadius = 78;
+  const circumference = 2 * Math.PI * circleRadius;
+  const numericScore = typeof combinedScoreValue === 'number' ? Math.min(100, Math.max(0, combinedScoreValue)) : 79;
+  const strokeDashoffset = circumference - (numericScore / 100) * circumference;
 
   return (
     <div style={{
@@ -154,7 +160,7 @@ export default function HomePage() {
       backgroundImage: 'radial-gradient(ellipse at 50% 0%, #e0f2fe 0%, #f8fafc 65%)',
       color: '#1e293b',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '24px 14px 64px 14px',
+      padding: '24px 14px 60px 14px',
       display: 'flex',
       justifyContent: 'center'
     }}>
@@ -163,7 +169,7 @@ export default function HomePage() {
         maxWidth: '960px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '18px'
+        gap: '16px'
       }}>
 
         {/* 1. Header Bar */}
@@ -202,8 +208,8 @@ export default function HomePage() {
           </div>
 
           <Link href="/account" style={{
-            width: '40px',
-            height: '40px',
+            width: '38px',
+            height: '38px',
             borderRadius: '50%',
             backgroundColor: '#ffffff',
             border: '1px solid #e2e8f0',
@@ -220,11 +226,11 @@ export default function HomePage() {
           </Link>
         </header>
 
-        {/* 2. Navigation 4 ปุ่ม: ปุ่มสีพาสเทลเนื้อปกติ ไม่ใช่แค่เส้นขอบ */}
+        {/* 2. Navigation 4 ปุ่ม: รองรับทั้งแนวตั้งมือถือและ 4 คอลัมน์บนจอใหญ่ */}
         <nav style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '12px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: '10px',
           width: '100%'
         }}>
           {navTabs.map((tab, idx) => (
@@ -232,38 +238,38 @@ export default function HomePage() {
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              padding: '12px 16px',
+              padding: '12px 14px',
               borderRadius: '18px',
-              backgroundColor: tab.bg,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+              backgroundColor: '#ffffff',
+              border: `1.5px solid ${tab.border}`,
+              boxShadow: '0 2px 10px rgba(186, 230, 253, 0.18)',
               textDecoration: 'none',
               transition: 'transform 0.15s ease'
             }}>
               <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                backgroundColor: tab.iconBg,
+                width: '38px',
+                height: '38px',
+                borderRadius: '12px',
+                backgroundColor: tab.badgeBg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '18px',
-                flexShrink: 0,
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.04)'
+                flexShrink: 0
               }}>
                 {tab.icon}
               </div>
               <div style={{ textAlign: 'left' }}>
                 <strong style={{
                   fontSize: '13.5px',
-                  color: tab.text,
+                  color: '#1e293b',
                   fontWeight: '800',
                   display: 'block',
-                  lineHeight: 1.2
+                  lineHeight: 1.25
                 }}>
                   {tab.title}
                 </strong>
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '500' }}>
                   {tab.desc}
                 </span>
               </div>
@@ -271,61 +277,98 @@ export default function HomePage() {
           ))}
         </nav>
 
-        {/* 3. Combined Sleep Score Card: คลีน มินิมอล สมส่วน */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {/* 3. Combined Sleep Score Card: โฉมใหม่พร้อม Circular Progress Ring สมส่วน สวยงาม */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{
             backgroundColor: '#ffffff',
             borderRadius: '26px',
             border: '1px solid rgba(226, 232, 240, 0.85)',
-            boxShadow: '0 6px 20px -4px rgba(186, 230, 253, 0.25)',
-            padding: '28px 20px',
+            boxShadow: '0 8px 24px -4px rgba(186, 230, 253, 0.28)',
+            padding: '24px 16px 22px 16px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
-            background: 'linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)'
+            background: 'linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)'
           }}>
+            {/* หัวข้อขนาดกะทัดรัด ไม่แตกเป็น 2 บรรทัด */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #bae6fd',
+              backgroundColor: '#eff6ff',
               padding: '5px 14px',
               borderRadius: '9999px',
-              marginBottom: '12px',
-              boxShadow: '0 2px 6px rgba(186, 230, 253, 0.2)'
+              marginBottom: '14px'
             }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#0284c7' }}></span>
-              <span style={{ fontSize: '11.5px', color: '#0369a1', fontWeight: '800', letterSpacing: '0.3px' }}>
-                COMBINED SLEEP SCORE ({latestDate || '2026-09-05'})
+              <span style={{ fontSize: '11.5px', color: '#0369a1', fontWeight: '800', letterSpacing: '0.4px' }}>
+                COMBINED SLEEP SCORE
+              </span>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                • {latestDate || '2026-09-05'}
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '2px 0' }}>
-              <span style={{
-                fontSize: '72px',
-                fontWeight: '900',
-                color: '#0284c7',
-                lineHeight: 1,
-                letterSpacing: '-2px'
-              }}>
-                {combinedScoreDisplay}
-              </span>
-              <span style={{ fontSize: '20px', color: '#94a3b8', fontWeight: '600' }}>/ 100</span>
+            {/* Circular Progress Ring พร้อมตัวเลขกึ่งกลาง */}
+            <div style={{ position: 'relative', width: '180px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="180" height="180" viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
+                {/* Background Ring */}
+                <circle
+                  cx="90"
+                  cy="90"
+                  r={circleRadius}
+                  stroke="#e0f2fe"
+                  strokeWidth="10"
+                  fill="transparent"
+                />
+                {/* Active Gradient/Solid Ring */}
+                <circle
+                  cx="90"
+                  cy="90"
+                  r={circleRadius}
+                  stroke="#0284c7"
+                  strokeWidth="10"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  fill="transparent"
+                  style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+                />
+              </svg>
+
+              {/* Text Inside Circle */}
+              <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+                  <span style={{
+                    fontSize: '56px',
+                    fontWeight: '900',
+                    color: '#0284c7',
+                    lineHeight: 1,
+                    letterSpacing: '-1.5px'
+                  }}>
+                    {combinedScoreDisplay}
+                  </span>
+                  <span style={{ fontSize: '16px', color: '#94a3b8', fontWeight: '600' }}>/100</span>
+                </div>
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginTop: '4px' }}>
+                  ภาพรวมคืนนี้
+                </span>
+              </div>
             </div>
 
+            {/* Badge สถานะผลการนอน */}
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              fontSize: '12.5px',
+              fontSize: '12px',
               color: '#15803d',
               fontWeight: '700',
-              marginTop: '12px',
+              marginTop: '16px',
               backgroundColor: '#f0fdf4',
-              padding: '6px 18px',
+              padding: '6px 16px',
               borderRadius: '9999px',
               border: '1px solid #bbf7d0'
             }}>
@@ -337,7 +380,7 @@ export default function HomePage() {
           {/* Sub Scores แฝด (Garmin & Room Env) */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: '1fr 1fr',
             gap: '12px'
           }}>
             <div style={{
@@ -345,7 +388,7 @@ export default function HomePage() {
               borderRadius: '22px',
               border: '1px solid rgba(226, 232, 240, 0.85)',
               boxShadow: '0 4px 14px -2px rgba(186, 230, 253, 0.2)',
-              padding: '18px 16px',
+              padding: '16px 12px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -353,8 +396,8 @@ export default function HomePage() {
               textAlign: 'center'
             }}>
               <div style={{
-                width: '38px',
-                height: '38px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '50%',
                 backgroundColor: '#f5f3ff',
                 display: 'flex',
@@ -365,10 +408,10 @@ export default function HomePage() {
               }}>
                 ⌚
               </div>
-              <span style={{ fontSize: '11.5px', color: '#7c3aed', fontWeight: '800', letterSpacing: '0.3px' }}>
+              <span style={{ fontSize: '11px', color: '#7c3aed', fontWeight: '800', letterSpacing: '0.3px' }}>
                 GARMIN SCORE
               </span>
-              <strong style={{ fontSize: '30px', fontWeight: '900', color: '#6d28d9', margin: '2px 0' }}>
+              <strong style={{ fontSize: '28px', fontWeight: '900', color: '#6d28d9', margin: '2px 0' }}>
                 {garminScoreDisplay ?? '--'}
               </strong>
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนจากนาฬิกา</span>
@@ -379,7 +422,7 @@ export default function HomePage() {
               borderRadius: '22px',
               border: '1px solid rgba(226, 232, 240, 0.85)',
               boxShadow: '0 4px 14px -2px rgba(186, 230, 253, 0.2)',
-              padding: '18px 16px',
+              padding: '16px 12px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -387,8 +430,8 @@ export default function HomePage() {
               textAlign: 'center'
             }}>
               <div style={{
-                width: '38px',
-                height: '38px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '50%',
                 backgroundColor: '#ecfdf5',
                 display: 'flex',
@@ -399,10 +442,10 @@ export default function HomePage() {
               }}>
                 🌿
               </div>
-              <span style={{ fontSize: '11.5px', color: '#059669', fontWeight: '800', letterSpacing: '0.3px' }}>
+              <span style={{ fontSize: '11px', color: '#059669', fontWeight: '800', letterSpacing: '0.3px' }}>
                 ROOM ENV SCORE
               </span>
-              <strong style={{ fontSize: '30px', fontWeight: '900', color: '#047857', margin: '2px 0' }}>
+              <strong style={{ fontSize: '28px', fontWeight: '900', color: '#047857', margin: '2px 0' }}>
                 {roomScoreDisplay ?? '--'}
               </strong>
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>คะแนนสภาพแวดล้อม</span>
@@ -410,13 +453,13 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 4. Gemini AI Diagnosis Card: วางปุ่มวิเคราะห์ใหม่อยู่ตรงนี้โดยเฉพาะ */}
+        {/* 4. Gemini AI Diagnosis Card */}
         <section style={{
           backgroundColor: '#ffffff',
-          borderRadius: '26px',
+          borderRadius: '24px',
           border: '1px solid rgba(226, 232, 240, 0.85)',
           boxShadow: '0 6px 20px -4px rgba(186, 230, 253, 0.25)',
-          padding: '24px 20px',
+          padding: '20px 16px',
           display: 'flex',
           flexDirection: 'column',
           gap: '14px'
@@ -429,20 +472,20 @@ export default function HomePage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{
-                width: '36px',
-                height: '36px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 backgroundColor: '#fef3c7',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '17px',
+                fontSize: '16px',
                 flexShrink: 0
               }}>
                 ✨
               </div>
               <div>
-                <strong style={{ fontSize: '14.5px', color: '#1e293b', fontWeight: '900', display: 'block', lineHeight: 1.2 }}>
+                <strong style={{ fontSize: '14px', color: '#1e293b', fontWeight: '900', display: 'block', lineHeight: 1.2 }}>
                   ผลวิเคราะห์และคำแนะนำจาก AI
                 </strong>
                 <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '600' }}>
@@ -451,7 +494,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* ย้ายปุ่มวิเคราะห์ใหม่มาไว้ในส่วน AI ชัดเจนและตรงบริบท */}
             <button
               onClick={handleAnalyzeWithAI}
               disabled={loadingAi}
