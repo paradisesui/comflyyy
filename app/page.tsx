@@ -201,7 +201,7 @@ export default function HomePage() {
             </div>
             <div>
               <span style={{ fontSize: '22px', fontWeight: '900', color: '#f8fafc', display: 'block' }}>
-                COMFY SLEEP
+                COMFLYYY SLEEP
               </span>
               <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
                 AI-Powered Personal Sleep Environment
