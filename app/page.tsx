@@ -14,7 +14,7 @@ export default function HomePage() {
   const [aiInsight, setAiInsight] = useState<any>(null);
   const [loadingAi, setLoadingAi] = useState<boolean>(false);
 
-  // คำนวณ Room Score ตามสูตรจริง
+  // คำนวณ Room Score ตามสูตร Comfy Room
   const calculateDynamicRoomScore = (data: any) => {
     if (!data) return null;
     let score = 100;
@@ -130,7 +130,7 @@ export default function HomePage() {
     }
   };
 
-  // เมนูนำทางแบบ Bottom Navigation Bar
+  // แถบเมนูด้านล่าง ปรับให้กดง่ายขึ้น
   const navTabs = [
     { href: '/', icon: '📊', title: 'ภาพรวม', active: true },
     { href: '/sensors', icon: '🛏️', title: 'ห้องนอน' },
@@ -151,7 +151,7 @@ export default function HomePage() {
       backgroundColor: '#f8fafc',
       color: '#0f172a',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '20px 14px 90px 14px', // เผื่อระยะล่าง 90px สำหรับ Bottom Bar
+      padding: '20px 14px 110px 14px', // เผื่อระยะล่าง 110px สำหรับ Bottom Bar ขนาดใหญ่ขึ้น
       display: 'flex',
       justifyContent: 'center'
     }}>
@@ -163,7 +163,7 @@ export default function HomePage() {
         gap: '14px'
       }}>
 
-        {/* 1. Header Bar คลีน ขาว-น้ำเงิน */}
+        {/* 1. Header Bar เรียบหรู ขาว-น้ำเงิน */}
         <header style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -181,8 +181,8 @@ export default function HomePage() {
           </div>
 
           <Link href="/account" style={{
-            width: '36px',
-            height: '36px',
+            width: '38px',
+            height: '38px',
             borderRadius: '50%',
             backgroundColor: '#ffffff',
             border: '1px solid #e2e8f0',
@@ -191,13 +191,13 @@ export default function HomePage() {
             justifyContent: 'center',
             color: '#1d4ed8',
             textDecoration: 'none',
-            fontSize: '14px'
+            fontSize: '15px'
           }}>
             👤
           </Link>
         </header>
 
-        {/* 2. Combined Score Card สีขาวล้วน ไม่ไล่เฉด */}
+        {/* 2. Combined Score Card ขาวมินิมอล */}
         <section style={{
           backgroundColor: '#ffffff',
           borderRadius: '20px',
@@ -286,13 +286,13 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 3. Sub Scores คู่: เปลี่ยน Garmin Score เป็นสีน้ำเงินเข้ม (Navy Blue) ไม่ใช้สีม่วง */}
+        {/* 3. Sub Scores คู่: Garmin Score ใช้สีม่วงยอดนิยมตามที่ขอ */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '12px'
         }}>
-          {/* Garmin Score: โทนสีขาว-น้ำเงิน สุภาพ */}
+          {/* Garmin Score: สีม่วง สดใส สวยงาม */}
           <Link href="/persona" style={{
             backgroundColor: '#ffffff',
             borderRadius: '18px',
@@ -302,17 +302,18 @@ export default function HomePage() {
             flexDirection: 'column',
             alignItems: 'center',
             textAlign: 'center',
-            textDecoration: 'none'
+            textDecoration: 'none',
+            transition: 'transform 0.15s ease'
           }}>
             <span style={{ fontSize: '18px', marginBottom: '2px' }}>⌚</span>
-            <span style={{ fontSize: '11px', color: '#1e3a8a', fontWeight: '800' }}>GARMIN SCORE</span>
-            <strong style={{ fontSize: '28px', fontWeight: '900', color: '#1e3a8a', margin: '2px 0' }}>
+            <span style={{ fontSize: '11px', color: '#7c3aed', fontWeight: '800' }}>GARMIN SCORE</span>
+            <strong style={{ fontSize: '28px', fontWeight: '900', color: '#6d28d9', margin: '2px 0' }}>
               {garminScoreDisplay ?? '--'}
             </strong>
-            <span style={{ fontSize: '10.5px', color: '#64748b' }}>คะแนนจากนาฬิกา →</span>
+            <span style={{ fontSize: '10.5px', color: '#94a3b8' }}>คะแนนจากนาฬิกา →</span>
           </Link>
 
-          {/* Room Env Score: โทนขาว-เขียวนิ่ง สุภาพ */}
+          {/* Room Env Score: สีเขียว สบายตา */}
           <Link href="/sensors" style={{
             backgroundColor: '#ffffff',
             borderRadius: '18px',
@@ -322,14 +323,15 @@ export default function HomePage() {
             flexDirection: 'column',
             alignItems: 'center',
             textAlign: 'center',
-            textDecoration: 'none'
+            textDecoration: 'none',
+            transition: 'transform 0.15s ease'
           }}>
             <span style={{ fontSize: '18px', marginBottom: '2px' }}>🌿</span>
-            <span style={{ fontSize: '11px', color: '#065f46', fontWeight: '800' }}>ROOM ENV SCORE</span>
+            <span style={{ fontSize: '11px', color: '#059669', fontWeight: '800' }}>ROOM ENV SCORE</span>
             <strong style={{ fontSize: '28px', fontWeight: '900', color: '#047857', margin: '2px 0' }}>
               {roomScoreDisplay ?? '--'}
             </strong>
-            <span style={{ fontSize: '10.5px', color: '#64748b' }}>คะแนนสภาพแวดล้อม →</span>
+            <span style={{ fontSize: '10.5px', color: '#94a3b8' }}>คะแนนสภาพแวดล้อม →</span>
           </Link>
         </div>
 
@@ -425,7 +427,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* 5. Fixed Bottom Navigation Bar (แทนที่ปุ่ม 4 ก้อนด้านบนอย่างสมบูรณ์) */}
+      {/* 5. Fixed Bottom Navigation Bar - ปรับขนาดใหญ่ขึ้น ชัดเจน กดง่าย */}
       <nav style={{
         position: 'fixed',
         bottom: 0,
@@ -434,17 +436,17 @@ export default function HomePage() {
         backgroundColor: '#ffffff',
         borderTop: '1px solid #e2e8f0',
         display: 'flex',
-        justifyContent: 'space-around',
+        justifyContent: 'center',
         alignItems: 'center',
-        padding: '8px 12px 14px 12px',
-        boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.04)',
+        padding: '10px 16px 18px 16px',
+        boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.05)',
         zIndex: 50
       }}>
         <div style={{
           width: '100%',
-          maxWidth: '600px',
+          maxWidth: '640px',
           display: 'flex',
-          justifyContent: 'space-around',
+          justifyContent: 'space-between',
           alignItems: 'center'
         }}>
           {navTabs.map((tab, idx) => (
@@ -452,15 +454,20 @@ export default function HomePage() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              justifyContent: 'center',
               textDecoration: 'none',
-              gap: '2px',
-              color: tab.active ? '#1d4ed8' : '#64748b'
+              gap: '4px',
+              padding: '6px 14px',
+              borderRadius: '14px',
+              backgroundColor: tab.active ? '#eff6ff' : 'transparent',
+              transition: 'background-color 0.15s ease'
             }}>
-              <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+              <span style={{ fontSize: '22px', lineHeight: 1 }}>{tab.icon}</span>
               <span style={{
-                fontSize: '10.5px',
-                fontWeight: tab.active ? '800' : '500',
-                color: tab.active ? '#1d4ed8' : '#64748b'
+                fontSize: '12px',
+                fontWeight: tab.active ? '800' : '600',
+                color: tab.active ? '#1d4ed8' : '#64748b',
+                lineHeight: 1
               }}>
                 {tab.title}
               </span>
