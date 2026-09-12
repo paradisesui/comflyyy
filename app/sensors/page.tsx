@@ -22,7 +22,6 @@ export default function SensorsPage() {
       const rawLogs = snapshot.val();
       const allLogs = Object.values(rawLogs);
 
-      // จัดกลุ่ม Logs ตามวันที่ YYYY-MM-DD แบบ Dynamic
       const groupedByDate: { [key: string]: any[] } = {};
       allLogs.forEach((log: any) => {
         let t = Number(log.timestamp) || 0;
@@ -32,7 +31,6 @@ export default function SensorsPage() {
         groupedByDate[d].push(log);
       });
 
-      // หาวันที่ล่าสุดที่มีข้อมูลบันทึกอยู่จริง
       const availableDates = Object.keys(groupedByDate).sort(
         (a, b) => new Date(b).getTime() - new Date(a).getTime()
       );
@@ -62,202 +60,255 @@ export default function SensorsPage() {
   }, []);
 
   const getSensorStatus = (type: string, val: number | null) => {
-    if (val === null || val === undefined) return { label: 'กำลังรอข้อมูล...', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)' };
+    if (val === null || val === undefined) {
+      return { label: 'กำลังรอข้อมูล...', color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0' };
+    }
 
     switch (type) {
       case 'co2':
-        if (val <= 800) return { label: '🟢 ดีเยี่ยม (อากาศบริสุทธิ์)', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' };
-        if (val <= 1000) return { label: '🟡 ปกติ (อยู่ในเกณฑ์)', color: '#facc15', bg: 'rgba(250, 204, 21, 0.12)' };
-        return { label: '🔴 อันตราย (ควรระบายอากาศ)', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
+        if (val <= 800) return { label: 'ดีเยี่ยม (อากาศบริสุทธิ์)', color: '#059669', bg: '#f0fdf4', border: '#dcfce7', dot: '#10b981' };
+        if (val <= 1000) return { label: 'ปกติ (อยู่ในเกณฑ์)', color: '#b45309', bg: '#fffbeb', border: '#fef3c7', dot: '#f59e0b' };
+        return { label: 'ควรระบายอากาศด่วน', color: '#b91c1c', bg: '#fef2f2', border: '#fee2e2', dot: '#ef4444' };
 
       case 'temp':
-        if (val >= 23 && val <= 25) return { label: '🟢 เย็นสบายพอดี (เหมาะสม)', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' };
-        if (val < 23) return { label: '🔵 ค่อนข้างเย็นเกินไป', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' };
-        return { label: '🔴 ร้อนเกินไป (เหงื่อออกง่าย)', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
+        if (val >= 23 && val <= 25) return { label: 'เย็นสบายพอดี (เหมาะสม)', color: '#059669', bg: '#f0fdf4', border: '#dcfce7', dot: '#10b981' };
+        if (val < 23) return { label: 'ค่อนข้างเย็นเกินไป', color: '#1d4ed8', bg: '#eff6ff', border: '#dbeafe', dot: '#2563eb' };
+        return { label: 'ร้อนเกินไป (เหงื่อออกง่าย)', color: '#b91c1c', bg: '#fef2f2', border: '#fee2e2', dot: '#ef4444' };
 
       case 'hum':
-        if (val >= 50 && val <= 60) return { label: '🟢 เหมาะสมสำหรับการนอน', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' };
-        if (val < 50) return { label: '🟡 ค่อนข้างแห้งเกินไป', color: '#facc15', bg: 'rgba(250, 204, 21, 0.12)' };
-        return { label: '🔴 ชื้นสูงเกินเกณฑ์ (อึดอัด)', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
+        if (val >= 50 && val <= 60) return { label: 'เหมาะสมสำหรับการนอน', color: '#059669', bg: '#f0fdf4', border: '#dcfce7', dot: '#10b981' };
+        if (val < 50) return { label: 'ค่อนข้างแห้งเกินไป', color: '#b45309', bg: '#fffbeb', border: '#fef3c7', dot: '#f59e0b' };
+        return { label: 'ชื้นสูงเกินเกณฑ์ (อึดอัด)', color: '#b91c1c', bg: '#fef2f2', border: '#fee2e2', dot: '#ef4444' };
 
       case 'pm25':
-        if (val <= 15) return { label: '🟢 ดีเยี่ยม (ไม่มีฝุ่น)', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' };
-        if (val <= 37.5) return { label: '🟡 ปานกลาง (ยอมรับได้)', color: '#facc15', bg: 'rgba(250, 204, 21, 0.12)' };
-        return { label: '🔴 มีฝุ่นรบกวนสูง', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
+        if (val <= 15) return { label: 'ดีเยี่ยม (ไม่มีฝุ่น)', color: '#059669', bg: '#f0fdf4', border: '#dcfce7', dot: '#10b981' };
+        if (val <= 37.5) return { label: 'ปานกลาง (ยอมรับได้)', color: '#b45309', bg: '#fffbeb', border: '#fef3c7', dot: '#f59e0b' };
+        return { label: 'มีฝุ่นรบกวนสูง', color: '#b91c1c', bg: '#fef2f2', border: '#fee2e2', dot: '#ef4444' };
 
       case 'sound':
-        if (val <= 40) return { label: '🟢 เงียบสงบ (ไม่มีเสียงรบกวน)', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' };
-        if (val <= 60) return { label: '🟡 มีเสียงรบกวนปานกลาง', color: '#facc15', bg: 'rgba(250, 204, 21, 0.12)' };
-        return { label: '🔴 มีเสียงรบกวนดังเกินไป', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
+        if (val <= 40) return { label: 'เงียบสงบ ไร้เสียงรบกวน', color: '#059669', bg: '#f0fdf4', border: '#dcfce7', dot: '#10b981' };
+        if (val <= 60) return { label: 'มีเสียงรบกวนปานกลาง', color: '#b45309', bg: '#fffbeb', border: '#fef3c7', dot: '#f59e0b' };
+        return { label: 'เสียงรบกวนดังเกินไป', color: '#b91c1c', bg: '#fef2f2', border: '#fee2e2', dot: '#ef4444' };
 
       case 'light':
-        if (val === 0) return { label: '🟢 มืดสนิท (เหมาะแก่การนอน)', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' };
-        return { label: '🔴 มีแสงสว่างแยงตา', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
+        if (val === 0) return { label: 'มืดสนิท เหมาะแก่การนอน', color: '#059669', bg: '#f0fdf4', border: '#dcfce7', dot: '#10b981' };
+        return { label: 'มีแสงสว่างแยงตา', color: '#b91c1c', bg: '#fef2f2', border: '#fee2e2', dot: '#ef4444' };
 
       default:
-        return { label: 'ปกติ', color: '#34d399', bg: 'rgba(52, 211, 153, 0.12)' };
+        return { label: 'ปกติ', color: '#059669', bg: '#f0fdf4', border: '#dcfce7', dot: '#10b981' };
     }
   };
 
   const sensorCards = [
-    { type: 'co2', title: 'ก๊าซ CO2', value: dailyAvgs?.co2, unit: 'ppm', icon: '🫁', color: '#38bdf8', standard: 'ต่ำกว่า 1000 ppm' },
-    { type: 'temp', title: 'อุณหภูมิห้อง', value: dailyAvgs?.temp, unit: '°C', icon: '🌡️', color: '#f43f5e', standard: '23.0 - 25.0 °C' },
-    { type: 'hum', title: 'ความชื้นสัมพัทธ์', value: dailyAvgs?.hum, unit: '%', icon: '💧', color: '#a855f7', standard: '50 - 60 %' },
-    { type: 'pm25', title: 'ฝุ่น PM2.5', value: dailyAvgs?.pm25, unit: 'µg/m³', icon: '🌫️', color: '#eab308', standard: 'ต่ำกว่า 37.5 µg/m³' },
-    { type: 'sound', title: 'เสียงรบกวน', value: dailyAvgs?.sound, unit: 'dB', icon: '🔊', color: '#34d399', standard: 'ต่ำกว่า 40 dB' },
-    { type: 'light', title: 'แสงสว่าง', value: dailyAvgs?.light, unit: 'Lux', icon: '💡', color: '#f97316', standard: '0 Lux (มืดสนิท)' },
+    { type: 'co2', title: 'ก๊าซ CO2', value: dailyAvgs?.co2, unit: 'ppm', icon: '🫁', color: '#1d4ed8', standard: 'ต่ำกว่า 1,000 ppm' },
+    { type: 'temp', title: 'อุณหภูมิห้อง', value: dailyAvgs?.temp, unit: '°C', icon: '🌡️', color: '#0f172a', standard: '23.0 - 25.0 °C' },
+    { type: 'hum', title: 'ความชื้นสัมพัทธ์', value: dailyAvgs?.hum, unit: '%', icon: '💧', color: '#0f172a', standard: '50 - 60 %' },
+    { type: 'pm25', title: 'ฝุ่น PM2.5', value: dailyAvgs?.pm25, unit: 'µg/m³', icon: '🌫️', color: '#0f172a', standard: 'ต่ำกว่า 37.5 µg/m³' },
+    { type: 'sound', title: 'เสียงรบกวน', value: dailyAvgs?.sound, unit: 'dB', icon: '🔊', color: '#059669', standard: 'ต่ำกว่า 40 dB' },
+    { type: 'light', title: 'แสงสว่าง', value: dailyAvgs?.light, unit: 'Lux', icon: '💡', color: '#0f172a', standard: '0 Lux (มืดสนิท)' },
+  ];
+
+  const navTabs = [
+    { href: '/', icon: '📊', title: 'ภาพรวม' },
+    { href: '/sensors', icon: '🛏️', title: 'ห้องนอน', active: true },
+    { href: '/persona', icon: '⌚', title: 'Garmin' },
+    { href: '/sensitivity', icon: '🎯', title: 'จุดอ่อน' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติ' },
   ];
 
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#030712',
-      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.22) 0%, transparent 70%)',
-      color: '#f8fafc',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '48px 16px 48px 16px',
+      backgroundColor: '#f8fafc',
+      color: '#0f172a',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      padding: '20px 14px 110px 14px',
       display: 'flex',
       justifyContent: 'center'
     }}>
-      <style jsx>{`
-        .container {
-          width: 100%;
-          max-width: 1100px;
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
+      <main style={{
+        width: '100%',
+        maxWidth: '700px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px'
+      }}>
 
-        .btn-back-glow {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          color: #ffffff;
-          text-decoration: none;
-          font-size: 13px;
-          font-weight: 800;
-          padding: 8px 20px 8px 12px;
-          border-radius: 9999px;
-          background: linear-gradient(135deg, rgba(2, 132, 199, 0.5) 0%, rgba(37, 99, 235, 0.7) 100%);
-          border: 1.5px solid rgba(56, 189, 248, 0.6);
-          box-shadow: 0 0 16px rgba(56, 189, 248, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          width: fit-content;
-          white-space: nowrap;
-        }
+        {/* Top Header */}
+        <header style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '2px 4px'
+        }}>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: '900', letterSpacing: '-0.3px', lineHeight: 1.1 }}>
+              <span style={{ color: '#1d4ed8' }}>COMFLYYY</span>
+              <span style={{ color: '#0f172a', marginLeft: '6px' }}>ROOM</span>
+            </div>
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+              สภาพแวดล้อมตรวจวัดจริงจาก ESP32
+            </span>
+          </div>
 
-        .btn-back-glow:hover {
-          transform: translateY(-2px) scale(1.02);
-          border-color: #38bdf8;
-          box-shadow: 0 0 24px rgba(56, 189, 248, 0.55), 0 8px 20px rgba(0, 0, 0, 0.4);
-          background: linear-gradient(135deg, rgba(56, 189, 248, 0.7) 0%, rgba(37, 99, 235, 0.9) 100%);
-        }
-
-        .arrow-badge {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-          line-height: 1;
-        }
-
-        .grid-sensors {
-          display: grid;
-          grid-template-columns: repeat(1, 1fr);
-          gap: 18px;
-        }
-
-        .sensor-card {
-          background: rgba(15, 23, 42, 0.7);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 24px;
-          padding: 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
-        }
-
-        @media (min-width: 640px) {
-          .grid-sensors {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (min-width: 1024px) {
-          .grid-sensors {
-            grid-template-columns: repeat(3, 1fr);
-          }
-        }
-      `}</style>
-
-      <main className="container">
-        {/* Header Bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link href="/" className="btn-back-glow">
-            <div className="arrow-badge">←</div>
-            <span> </span>
-          </Link>
-          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', letterSpacing: '0.8px' }}>
-            DAILY AVERAGE SENSOR METRICS
+          <span style={{
+            fontSize: '11px',
+            color: '#1d4ed8',
+            fontWeight: '700',
+            backgroundColor: '#eff6ff',
+            border: '1px solid #dbeafe',
+            padding: '4px 12px',
+            borderRadius: '9999px'
+          }}>
+            {activeDate || '2026-09-05'}
           </span>
-        </div>
+        </header>
 
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '0 0 4px 0', color: '#f8fafc' }}>
-            🛏️ คุณภาพห้องนอน ({activeDate ? `ข้อมูลประจำวันที่ ${activeDate}` : 'กำลังประมวลผล...'})
-          </h1>
-          <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-            ค่าเฉลี่ยตรวจวัดจริงจากเซ็นเซอร์ ESP32 พร้อมการประเมินสภาวะตามเกณฑ์มาตรฐาน
+        {/* Info Card */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '20px',
+          border: '1px solid #e2e8f0',
+          padding: '18px 16px'
+        }}>
+          <strong style={{ fontSize: '15px', color: '#0f172a', fontWeight: '800', display: 'block', marginBottom: '2px' }}>
+            คุณภาพห้องนอนโดยรวม
+          </strong>
+          <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+            ค่าเฉลี่ยตรวจวัดจากอุปกรณ์ IoT ตลอดทั้งคืน เพื่อนำไปประเมินร่วมกับสุขอนามัยการนอนหลับ
           </p>
         </div>
 
         {/* Sensor Cards Grid */}
-        <div className="grid-sensors">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '10px'
+        }}>
           {sensorCards.map((s, idx) => {
             const status = getSensorStatus(s.type, s.value);
 
             return (
-              <div key={idx} className="sensor-card">
+              <div key={idx} style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '18px',
+                border: '1px solid #e2e8f0',
+                padding: '16px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '700' }}>{s.title}</span>
-                  <span style={{ fontSize: '24px' }}>{s.icon}</span>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>
+                    {s.title}
+                  </span>
+                  <span style={{ fontSize: '18px' }}>{s.icon}</span>
                 </div>
 
-                <div style={{ fontSize: '36px', fontWeight: '900', color: s.color, lineHeight: 1, margin: '4px 0' }}>
-                  {s.value !== null && s.value !== undefined ? `${s.value} ` : '-- '}
-                  <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '600' }}>{s.unit}</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px', margin: '2px 0' }}>
+                  <span style={{
+                    fontSize: '28px',
+                    fontWeight: '900',
+                    color: s.color,
+                    lineHeight: 1,
+                    letterSpacing: '-1px'
+                  }}>
+                    {s.value !== null && s.value !== undefined ? s.value : '--'}
+                  </span>
+                  <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>
+                    {s.unit}
+                  </span>
                 </div>
 
                 <div style={{
-                  padding: '8px 12px',
-                  borderRadius: '10px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '4px 8px',
+                  borderRadius: '8px',
                   backgroundColor: status.bg,
+                  border: `1px solid ${status.border}`,
                   color: status.color,
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  border: `1px solid ${status.color}30`
+                  fontSize: '10.5px',
+                  fontWeight: '700'
                 }}>
-                  {status.label}
+                  {status.dot && (
+                    <span style={{
+                      width: '5px',
+                      height: '5px',
+                      borderRadius: '50%',
+                      backgroundColor: status.dot,
+                      flexShrink: 0
+                    }}></span>
+                  )}
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {status.label}
+                  </span>
                 </div>
 
-                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                  เกณฑ์มาตรฐาน: {s.standard}
+                <span style={{
+                  fontSize: '10px',
+                  color: '#94a3b8',
+                  marginTop: '2px',
+                  borderTop: '1px solid #f1f5f9',
+                  paddingTop: '6px'
+                }}>
+                  เกณฑ์: {s.standard}
                 </span>
               </div>
             );
           })}
         </div>
       </main>
+
+      {/* Fixed Bottom Navigation Bar */}
+      <nav style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#ffffff',
+        borderTop: '1px solid #e2e8f0',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '10px 16px 18px 16px',
+        boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.05)',
+        zIndex: 50
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: '640px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          {navTabs.map((tab, idx) => (
+            <Link key={idx} href={tab.href} style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+              gap: '4px',
+              padding: '6px 14px',
+              borderRadius: '14px',
+              backgroundColor: tab.active ? '#eff6ff' : 'transparent',
+              transition: 'background-color 0.15s ease'
+            }}>
+              <span style={{ fontSize: '22px', lineHeight: 1 }}>{tab.icon}</span>
+              <span style={{
+                fontSize: '12px',
+                fontWeight: tab.active ? '800' : '600',
+                color: tab.active ? '#1d4ed8' : '#64748b',
+                lineHeight: 1
+              }}>
+                {tab.title}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
