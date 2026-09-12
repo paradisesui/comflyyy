@@ -14,7 +14,7 @@ export default function HomePage() {
   const [aiInsight, setAiInsight] = useState<any>(null);
   const [loadingAi, setLoadingAi] = useState<boolean>(false);
 
-  // คำนวณ Room Score ตามสูตรจริง[cite: 2]
+  // คำนวณ Room Score ตามสูตรจริง
   const calculateDynamicRoomScore = (data: any) => {
     if (!data) return null;
     let score = 100;
@@ -130,15 +130,16 @@ export default function HomePage() {
     }
   };
 
-  // คุมธีมขาว-น้ำเงิน เรียบง่าย ไม่ใช้สีลูกกวาด
+  // เมนูนำทางแบบ Bottom Navigation Bar
   const navTabs = [
-    { href: '/sensors', icon: '🛏️', title: 'Comfy Room', desc: 'คุณภาพห้องนอน' },
-    { href: '/persona', icon: '⌚', title: 'Smart Watch', desc: 'Garmin Persona' },
-    { href: '/sensitivity', icon: '🎯', title: 'Sensitivity', desc: 'จุดอ่อนการนอน' },
-    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติสะสม', desc: 'History Logs' },
+    { href: '/', icon: '📊', title: 'ภาพรวม', active: true },
+    { href: '/sensors', icon: '🛏️', title: 'ห้องนอน' },
+    { href: '/persona', icon: '⌚', title: 'Garmin' },
+    { href: '/sensitivity', icon: '🎯', title: 'จุดอ่อน' },
+    { href: '/sensitivity-profile', icon: '📜', title: 'ประวัติ' },
   ];
 
-  // คำนวณ Circular Ring
+  // คำนวณ Circular Progress Ring
   const circleRadius = 72;
   const circumference = 2 * Math.PI * circleRadius;
   const numericScore = typeof combinedScoreValue === 'number' ? Math.min(100, Math.max(0, combinedScoreValue)) : 79;
@@ -150,24 +151,24 @@ export default function HomePage() {
       backgroundColor: '#f8fafc',
       color: '#0f172a',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '20px 14px 48px 14px',
+      padding: '20px 14px 90px 14px', // เผื่อระยะล่าง 90px สำหรับ Bottom Bar
       display: 'flex',
       justifyContent: 'center'
     }}>
       <main style={{
         width: '100%',
-        maxWidth: '800px',
+        maxWidth: '700px',
         display: 'flex',
         flexDirection: 'column',
         gap: '14px'
       }}>
 
-        {/* 1. Header Bar เรียบหรู ขาว-น้ำเงิน */}
+        {/* 1. Header Bar คลีน ขาว-น้ำเงิน */}
         <header style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '4px 2px'
+          padding: '2px 4px'
         }}>
           <div>
             <div style={{ fontSize: '20px', fontWeight: '900', letterSpacing: '-0.3px', lineHeight: 1.1 }}>
@@ -180,8 +181,8 @@ export default function HomePage() {
           </div>
 
           <Link href="/account" style={{
-            width: '38px',
-            height: '38px',
+            width: '36px',
+            height: '36px',
             borderRadius: '50%',
             backgroundColor: '#ffffff',
             border: '1px solid #e2e8f0',
@@ -190,62 +191,13 @@ export default function HomePage() {
             justifyContent: 'center',
             color: '#1d4ed8',
             textDecoration: 'none',
-            fontSize: '15px'
+            fontSize: '14px'
           }}>
             👤
           </Link>
         </header>
 
-        {/* 2. Navigation 4 ปุ่ม: สีขาวคลีน คุมโทนน้ำเงิน ไม่มีสีแฟนซี */}
-        <nav style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: '10px'
-        }}>
-          {navTabs.map((tab, idx) => (
-            <Link key={idx} href={tab.href} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 14px',
-              borderRadius: '16px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
-              textDecoration: 'none',
-              transition: 'all 0.15s ease'
-            }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                backgroundColor: '#eff6ff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '17px',
-                flexShrink: 0
-              }}>
-                {tab.icon}
-              </div>
-              <div>
-                <strong style={{
-                  fontSize: '13px',
-                  color: '#0f172a',
-                  fontWeight: '700',
-                  display: 'block',
-                  lineHeight: 1.2
-                }}>
-                  {tab.title}
-                </strong>
-                <span style={{ fontSize: '10.5px', color: '#64748b' }}>
-                  {tab.desc}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </nav>
-
-        {/* 3. Combined Score Card: สีขาวล้วน ไม่ไล่เฉด */}
+        {/* 2. Combined Score Card สีขาวล้วน ไม่ไล่เฉด */}
         <section style={{
           backgroundColor: '#ffffff',
           borderRadius: '20px',
@@ -257,7 +209,6 @@ export default function HomePage() {
           justifyContent: 'center',
           textAlign: 'center'
         }}>
-          {/* Badge วันที่ขนาดกะทัดรัด */}
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -265,7 +216,7 @@ export default function HomePage() {
             backgroundColor: '#eff6ff',
             padding: '4px 12px',
             borderRadius: '9999px',
-            marginBottom: '16px'
+            marginBottom: '14px'
           }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#1d4ed8' }}></span>
             <span style={{ fontSize: '11px', color: '#1d4ed8', fontWeight: '700' }}>
@@ -273,7 +224,7 @@ export default function HomePage() {
             </span>
           </div>
 
-          {/* Circular Progress Ring สไตล์ Minimal Blue */}
+          {/* Circular Progress Ring */}
           <div style={{ position: 'relative', width: '164px', height: '164px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="164" height="164" viewBox="0 0 164 164" style={{ transform: 'rotate(-90deg)' }}>
               <circle
@@ -317,7 +268,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* สถานะผลการนอน */}
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -336,13 +286,14 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 4. Sub Scores คู่ (Garmin & Room Env) */}
+        {/* 3. Sub Scores คู่: เปลี่ยน Garmin Score เป็นสีน้ำเงินเข้ม (Navy Blue) ไม่ใช้สีม่วง */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '12px'
         }}>
-          <div style={{
+          {/* Garmin Score: โทนสีขาว-น้ำเงิน สุภาพ */}
+          <Link href="/persona" style={{
             backgroundColor: '#ffffff',
             borderRadius: '18px',
             border: '1px solid #e2e8f0',
@@ -350,17 +301,19 @@ export default function HomePage() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            textAlign: 'center'
+            textAlign: 'center',
+            textDecoration: 'none'
           }}>
             <span style={{ fontSize: '18px', marginBottom: '2px' }}>⌚</span>
-            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>GARMIN SCORE</span>
-            <strong style={{ fontSize: '28px', fontWeight: '900', color: '#1d4ed8', margin: '2px 0' }}>
+            <span style={{ fontSize: '11px', color: '#1e3a8a', fontWeight: '800' }}>GARMIN SCORE</span>
+            <strong style={{ fontSize: '28px', fontWeight: '900', color: '#1e3a8a', margin: '2px 0' }}>
               {garminScoreDisplay ?? '--'}
             </strong>
-            <span style={{ fontSize: '10.5px', color: '#94a3b8' }}>คะแนนจากนาฬิกา</span>
-          </div>
+            <span style={{ fontSize: '10.5px', color: '#64748b' }}>คะแนนจากนาฬิกา →</span>
+          </Link>
 
-          <div style={{
+          {/* Room Env Score: โทนขาว-เขียวนิ่ง สุภาพ */}
+          <Link href="/sensors" style={{
             backgroundColor: '#ffffff',
             borderRadius: '18px',
             border: '1px solid #e2e8f0',
@@ -368,18 +321,19 @@ export default function HomePage() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            textAlign: 'center'
+            textAlign: 'center',
+            textDecoration: 'none'
           }}>
             <span style={{ fontSize: '18px', marginBottom: '2px' }}>🌿</span>
-            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>ROOM ENV SCORE</span>
-            <strong style={{ fontSize: '28px', fontWeight: '900', color: '#059669', margin: '2px 0' }}>
+            <span style={{ fontSize: '11px', color: '#065f46', fontWeight: '800' }}>ROOM ENV SCORE</span>
+            <strong style={{ fontSize: '28px', fontWeight: '900', color: '#047857', margin: '2px 0' }}>
               {roomScoreDisplay ?? '--'}
             </strong>
-            <span style={{ fontSize: '10.5px', color: '#94a3b8' }}>คะแนนสภาพแวดล้อม</span>
-          </div>
+            <span style={{ fontSize: '10.5px', color: '#64748b' }}>คะแนนสภาพแวดล้อม →</span>
+          </Link>
         </div>
 
-        {/* 5. AI Diagnosis Card เรียบง่าย ไม่ฉูดฉาด */}
+        {/* 4. AI Diagnosis Card */}
         <section style={{
           backgroundColor: '#ffffff',
           borderRadius: '20px',
@@ -425,7 +379,6 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Sub Card 1: Diagnosis */}
           <div style={{
             backgroundColor: '#f8fafc',
             border: '1px solid #e2e8f0',
@@ -448,7 +401,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Sub Card 2: Actionable Recommendations */}
           <div style={{
             backgroundColor: '#f8fafc',
             border: '1px solid #e2e8f0',
@@ -472,6 +424,50 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      {/* 5. Fixed Bottom Navigation Bar (แทนที่ปุ่ม 4 ก้อนด้านบนอย่างสมบูรณ์) */}
+      <nav style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#ffffff',
+        borderTop: '1px solid #e2e8f0',
+        display: 'flex',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        padding: '8px 12px 14px 12px',
+        boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.04)',
+        zIndex: 50
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: '600px',
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center'
+        }}>
+          {navTabs.map((tab, idx) => (
+            <Link key={idx} href={tab.href} style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textDecoration: 'none',
+              gap: '2px',
+              color: tab.active ? '#1d4ed8' : '#64748b'
+            }}>
+              <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+              <span style={{
+                fontSize: '10.5px',
+                fontWeight: tab.active ? '800' : '500',
+                color: tab.active ? '#1d4ed8' : '#64748b'
+              }}>
+                {tab.title}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
